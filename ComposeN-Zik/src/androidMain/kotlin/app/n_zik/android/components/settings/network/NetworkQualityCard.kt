@@ -1,0 +1,126 @@
+package app.n_zik.android.components.settings.network
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.media3.common.util.UnstableApi
+import app.n_zik.android.enums.AudioQualityFormat
+import app.n_zik.android.enums.ImageQualityFormat
+import app.n_zik.android.utils.audioQualityFormatKey
+import app.n_zik.android.utils.imageQualityFormatKey
+import app.n_zik.android.utils.rememberPreference
+import app.n_zik.android.components.dialog.common.DialogPresence
+import app.n_zik.android.R
+import app.n_zik.android.components.dialog.common.ValueSelectorDialog
+import app.n_zik.android.components.settings.DownloadQualityEntry
+import app.n_zik.android.components.settings.UpdateDownloadsButton
+import app.n_zik.android.components.settings.common.OtherSettingsEntry
+import app.n_zik.android.components.settings.common.SettingsSectionCard
+import app.n_zik.android.components.settings.common.settingsSearchTarget
+import app.n_zik.android.core.coil.ImageCacheFactory
+
+@UnstableApi
+@Composable
+internal fun NetworkQualityCard(
+    query: String,
+    audioDialog: MutableState<Boolean>,
+    imageDialog: MutableState<Boolean>,
+    networkQuality: ImageCacheFactory.NetworkQuality,
+    includeDownloadQuality: Boolean = true,
+    onRestartRequired: (Boolean) -> Unit,
+) {
+    var audioQualityFormat by rememberPreference(audioQualityFormatKey, AudioQualityFormat.Auto)
+    var imageQualityFormat by rememberPreference(imageQualityFormatKey, ImageQualityFormat.Auto)
+    var showAudioQualityDialog by audioDialog
+    var showImageQualityDialog by imageDialog
+
+    SettingsSectionCard(
+        title = stringResource(R.string.settings_network_quality_title),
+        icon = R.drawable.headphones,
+        content = {
+
+            if (query.isBlank() || stringResource(R.string.audio_quality_format).contains(query, true)) {
+                OtherSettingsEntry(
+                    modifier = Modifier.settingsSearchTarget("network.quality.audio_quality_format"),
+                    title = stringResource(R.string.audio_quality_format),
+                    text = stringResource(R.string.network_stream_audio_quality_description),
+                    selectedValueText = when (audioQualityFormat) {
+                        AudioQualityFormat.Auto -> automaticQualityStatusText(networkQuality)
+                        AudioQualityFormat.High -> stringResource(R.string.audio_quality_format_high)
+                        AudioQualityFormat.Low -> stringResource(R.string.audio_quality_format_low)
+                    },
+                    icon = R.drawable.speaker,
+                    onClick = { showAudioQualityDialog = true }
+                )
+            }
+
+            if (query.isBlank() || stringResource(R.string.settings_network_image_quality_label).contains(query, true)) {
+                OtherSettingsEntry(
+                    modifier = Modifier.settingsSearchTarget("network.quality.image_quality_format"),
+                    title = stringResource(R.string.settings_network_image_quality_label),
+                    text = stringResource(R.string.network_artwork_quality_description),
+                    selectedValueText = when (imageQualityFormat) {
+                        ImageQualityFormat.Auto -> automaticQualityStatusText(networkQuality)
+                        ImageQualityFormat.High -> stringResource(R.string.audio_quality_format_high)
+                        ImageQualityFormat.Medium -> stringResource(R.string.audio_quality_format_medium)
+                        ImageQualityFormat.Low -> stringResource(R.string.audio_quality_format_low)
+                    },
+                    icon = R.drawable.image,
+                    onClick = { showImageQualityDialog = true }
+                )
+            }
+
+            if (includeDownloadQuality && (query.isBlank() || stringResource(R.string.downloads_quality_format).contains(query, true) || stringResource(R.string.downloads_action_refresh_quality).contains(query, true))) {
+                DownloadQualityEntry(automaticQualityText = automaticQualityStatusText(networkQuality), onQualityChanged = { onRestartRequired(true) })
+                UpdateDownloadsButton()
+            }
+
+        }
+    )
+
+    DialogPresence(visible = showAudioQualityDialog) {
+        ValueSelectorDialog(
+            title = stringResource(R.string.audio_quality_format),
+            values = AudioQualityFormat.values().toList(),
+            selectedValue = audioQualityFormat,
+            onValueSelected = {
+                audioQualityFormat = it
+                onRestartRequired(true)
+                showAudioQualityDialog = false
+            },
+            onDismiss = { showAudioQualityDialog = false },
+            valueText = {
+                when (it) {
+                    AudioQualityFormat.Auto -> stringResource(R.string.audio_quality_automatic)
+                    AudioQualityFormat.High -> stringResource(R.string.audio_quality_format_high)
+                    AudioQualityFormat.Low -> stringResource(R.string.audio_quality_format_low)
+                }
+            }
+        )
+    }
+
+    DialogPresence(visible = showImageQualityDialog) {
+        ValueSelectorDialog(
+            title = stringResource(R.string.settings_network_image_quality_label),
+            values = ImageQualityFormat.values().toList(),
+            selectedValue = imageQualityFormat,
+            onValueSelected = {
+                imageQualityFormat = it
+                showImageQualityDialog = false
+            },
+            onDismiss = { showImageQualityDialog = false },
+            valueText = {
+                when (it) {
+                    ImageQualityFormat.Auto -> stringResource(R.string.audio_quality_automatic)
+                    ImageQualityFormat.High -> stringResource(R.string.audio_quality_format_high)
+                    ImageQualityFormat.Medium -> stringResource(R.string.audio_quality_format_medium)
+                    ImageQualityFormat.Low -> stringResource(R.string.audio_quality_format_low)
+                }
+            }
+        )
+    }
+
+}

@@ -1,0 +1,722 @@
+package app.n_zik.android.components.menu.player
+
+import androidx.compose.foundation.layout.height
+import app.n_zik.android.components.search.SearchEmptyFeedback
+import app.n_zik.android.components.search.SearchEmptySpace
+import kotlinx.coroutines.flow.onEach
+
+import app.n_zik.android.core.database.*
+
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.unit.dp
+import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
+import app.n_zik.android.core.database.canEditPlaylistMembership
+import app.n_zik.android.core.database.canEditStoredPlaylistMembership
+import app.n_zik.android.core.database.editStoredPlaylistMembership
+import app.n_zik.android.R
+import app.n_zik.android.core.database.Database
+import app.n_zik.android.core.rewind.RewindPlaylists
+
+import app.n_zik.android.cleanPrefix
+import app.n_zik.android.context
+import app.n_zik.android.enums.MenuStyle
+import app.n_zik.android.download.utils.MyDownloadHelper
+import app.n_zik.android.playback.services.PlayerServiceModern
+import app.n_zik.android.ui.components.LocalMenuState
+import app.n_zik.android.components.settings.accounts.isYouTubeSyncEnabled
+import app.n_zik.android.utils.addSongToYtPlaylist
+import app.n_zik.android.utils.asSong
+import app.n_zik.android.utils.isNetworkConnected
+import app.n_zik.android.utils.menuStyleKey
+import app.n_zik.android.utils.rememberEqualizerLauncher
+import app.n_zik.android.utils.rememberPreference
+
+import app.n_zik.android.utils.removeYTSongFromPlaylist
+import kotlinx.coroutines.CoroutineScope
+import app.n_zik.android.utils.coroutines.NzikDispatchers
+import kotlinx.coroutines.launch
+import app.n_zik.android.core.utils.Toaster
+import timber.log.Timber
+import java.util.UUID
+import androidx.compose.foundation.text.BasicText
+import app.n_zik.android.models.Playlist
+import app.n_zik.android.models.PlaylistPreview
+import app.n_zik.android.enums.NavRoutes
+import app.n_zik.android.components.ui.iconBadgeBackground
+import app.n_zik.android.colorPalette
+import app.n_zik.android.uiRoundnessShape
+import app.n_zik.android.typography
+import app.n_zik.android.components.dialog.playlist.NewPlaylistDialog
+import app.n_zik.android.components.menu.ListMenu
+import app.n_zik.android.ui.components.themed.IconButton
+import app.n_zik.android.utils.semiBold
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import app.n_zik.android.enums.PlaylistSortBy
+import app.n_zik.android.enums.SortOrder
+import app.n_zik.android.utils.Preference
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import android.annotation.SuppressLint
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.ui.Alignment
+import app.n_zik.android.MONTHLY_PREFIX
+import app.n_zik.android.PINNED_PREFIX
+import app.n_zik.android.ui.styling.favoritesIcon
+import app.n_zik.android.components.tab.Search
+import androidx.compose.ui.unit.times
+import app.n_zik.android.components.menu.player.PlayerItemMenu
+
+@Composable
+fun SettingIcon(@DrawableRes icon: Int) {
+    Box(
+        modifier = Modifier
+            .size(32.dp)
+            .iconBadgeBackground(
+                color = colorPalette().accent.copy(alpha = 0.1f),
+                shape = uiRoundnessShape()
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            tint = colorPalette().accent,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@ExperimentalTextApi
+@ExperimentalAnimationApi
+@UnstableApi
+@Composable
+fun PlayerMenu(
+    navController: NavController,
+    binder: PlayerServiceModern.Binder,
+    mediaItem: MediaItem,
+    onDismiss: () -> Unit,
+    onClosePlayer: () -> Unit,
+    onMatchingSong: (() -> Unit)? = null,
+    onShowSleepTimer: () -> Unit,
+    disableScrollingText: Boolean
+    ) {
+    
+    val menuState = LocalMenuState.current
+    val styleState = rememberPreference(menuStyleKey, MenuStyle.List)
+
+    val menu = remember(mediaItem.mediaId, binder, menuState, styleState) {
+        PlayerItemMenu.create(
+            navController = navController,
+            binder = binder,
+            mediaItem = mediaItem,
+            menuState = menuState,
+            styleState = styleState,
+            onDismiss = onDismiss,
+            onClosePlayer = onClosePlayer,
+            onShowSleepTimer = onShowSleepTimer
+        )
+    }
+    
+    menu.MenuComponent()
+}
+
+
+@ExperimentalTextApi
+@ExperimentalAnimationApi
+@UnstableApi
+@Composable
+fun AddToPlaylistPlayerMenu(
+    navController: NavController,
+    binder: PlayerServiceModern.Binder,
+    mediaItem: MediaItem,
+    onDismiss: () -> Unit,
+    onClosePlayer: () -> Unit,
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    AddToPlaylistItemMenu(
+        navController = navController,
+        mediaItem = mediaItem,
+        onGoToPlaylist = {
+            onClosePlayer()
+        },
+        onAddToPlaylist = add@{ playlist, position ->
+            if (!canEditPlaylistMembership(playlist)) return@add
+            if (!isYouTubeSyncEnabled() || !playlist.isYoutubePlaylist){
+                Database.asyncTransaction {
+                    editStoredPlaylistMembership(playlist.id) {
+                        insertIgnore(mediaItem)
+                        mapIgnore(playlist, mediaItem.asSong)
+                    }
+                }
+            } else {
+                coroutineScope.launch(NzikDispatchers.DATA) {
+                    if (!canEditStoredPlaylistMembership(playlist.id)) return@launch
+                    addSongToYtPlaylist(playlist.id, position, playlist.browseId ?: "", mediaItem)
+                }
+            }
+
+        },
+        onRemoveFromPlaylist = remove@{ playlist ->
+            if (!canEditPlaylistMembership(playlist)) return@remove
+            Database.asyncTransaction {
+                val position = songPlaylistMapTable.findPositionOf( mediaItem.mediaId, playlist.id )
+                if( position == -1 ) return@asyncTransaction
+
+
+            }
+            if(isYouTubeSyncEnabled() && playlist.isYoutubePlaylist && playlist.isEditable) {
+                Database.asyncTransaction {
+                    coroutineScope.launch(NzikDispatchers.DATA) {
+                        if (!canEditStoredPlaylistMembership(playlist.id)) return@launch
+                        if (removeYTSongFromPlaylist(
+                                mediaItem.mediaId,
+                                playlist.browseId ?: "",
+                                playlist.id
+                            )
+                        )
+                            songPlaylistMapTable.deleteBySongId( mediaItem.mediaId, playlist.id )
+
+                    }
+                }
+            } else
+                Database.asyncTransaction {
+                    editStoredPlaylistMembership(playlist.id) {
+                        songPlaylistMapTable.deleteBySongId(mediaItem.mediaId, playlist.id)
+                    }
+                }
+        },
+        onDismiss = onDismiss,
+    )
+}
+
+@UnstableApi
+@ExperimentalAnimationApi
+@Composable
+fun AddToPlaylistItemMenu(
+    navController: NavController,
+    onDismiss: () -> Unit,
+    onAddToPlaylist: ((Playlist, Int) -> Unit),
+    onRemoveFromPlaylist: ((Playlist) -> Unit),
+    mediaItem: MediaItem,
+    onGoToPlaylist: ((Long) -> Unit)? = null,
+) {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+
+    val screenHeight = configuration.screenHeightDp.dp
+
+    val newPlaylistDialog = NewPlaylistDialog { playlist ->
+        onDismiss()
+        onAddToPlaylist(playlist, 0)
+    }
+
+    newPlaylistDialog.Render()
+
+    val sortBy by rememberPreference(Preference.HOME_LIBRARY_PLAYLIST_SORT_BY.key, PlaylistSortBy.SongCount)
+    val sortOrder by rememberPreference(Preference.HOME_LIBRARY_PLAYLIST_SORT_ORDER.key, SortOrder.Ascending)
+    var playlistsLoaded by remember { mutableStateOf(false) }
+    val playlistPreviews by remember {
+        Database.playlistTable.sortPreviews( sortBy, sortOrder ).onEach { playlistsLoaded = true }
+    }.collectAsStateWithLifecycle(emptyList(), context = NzikDispatchers.DATA)
+
+    val playlistIds by remember {
+        Database.songPlaylistMapTable.mappedTo( mediaItem.mediaId )
+    }.collectAsStateWithLifecycle(emptyList(), context = NzikDispatchers.DATA)
+
+    val editablePreviews = playlistPreviews.filter { canEditPlaylistMembership(it.playlist) }
+    val pinnedPlaylists = editablePreviews.filter {
+        it.playlist.name.startsWith(PINNED_PREFIX, 0, true)
+                && if (isNetworkConnected(context)) !(it.playlist.isYoutubePlaylist && !it.playlist.isEditable) else !it.playlist.isYoutubePlaylist
+    }
+
+    val youtubePlaylists = editablePreviews.filter { it.playlist.isEditable && it.playlist.isYoutubePlaylist && !it.playlist.name.startsWith(PINNED_PREFIX) }
+
+    val unpinnedPlaylists = editablePreviews.filter {
+        !it.playlist.name.startsWith(PINNED_PREFIX, 0, true) &&
+                !it.playlist.name.startsWith(MONTHLY_PREFIX, 0, true) &&
+                // Spec 2: generated rewind-* playlists are never add-to targets
+                !RewindPlaylists.isRewind(it.playlist.name) &&
+                !it.playlist.isYoutubePlaylist
+    }
+
+    ListMenu.Menu(title = stringResource(R.string.library_playlists_title)) {
+        val search = Search()
+        val title = stringResource(R.string.library_playlists_title)
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .fillMaxWidth()
+        ) {
+            IconButton(
+                onClick = onDismiss,
+                icon = R.drawable.chevron_back,
+                color = colorPalette().accent,
+                modifier = Modifier
+                    .padding(all = 4.dp)
+                    .size(20.dp)
+            )
+            IconButton(
+                onClick = { search.onShortClick() },
+                icon = R.drawable.search_circle,
+                color = colorPalette().favoritesIcon,
+                modifier = Modifier
+                    .padding(all = 4.dp)
+                    .size(24.dp)
+            )
+            BasicText(
+                text = title,
+                style = typography().m.semiBold,
+                modifier = Modifier.weight(1f).padding(start = 8.dp)
+            )
+            IconButton(
+                onClick = { newPlaylistDialog.onShortClick() },
+                icon = R.drawable.add_in_playlist,
+                color = colorPalette().accent,
+                modifier = Modifier
+                    .padding(all = 4.dp)
+                    .size(24.dp)
+            )
+        }
+        search.SearchBar(this)
+        val filteredPinnedPlaylists = pinnedPlaylists.filter { it.playlist.name.contains(search.inputValue, true) }
+        val filteredYoutubePlaylists = youtubePlaylists.filter { it.playlist.name.contains(search.inputValue, true) }
+        val filteredUnpinnedPlaylists = unpinnedPlaylists.filter { it.playlist.name.contains(search.inputValue, true) }
+
+        val noPlaylistResults = filteredPinnedPlaylists.isEmpty() && filteredUnpinnedPlaylists.isEmpty() && (!isNetworkConnected(context) || filteredYoutubePlaylists.isEmpty())
+        SearchEmptyFeedback(
+            query = search.inputValue,
+            empty = noPlaylistResults,
+            loading = !playlistsLoaded
+        )
+        if (search.inputValue.isNotBlank() && noPlaylistResults) {
+            SearchEmptySpace(Modifier.height(160.dp))
+        }
+        if (filteredPinnedPlaylists.isNotEmpty()) {
+            BasicText(
+                text = stringResource(R.string.playlist_pinned_title),
+                style = typography().m.semiBold,
+                modifier = Modifier.padding(start = 20.dp, top = 5.dp)
+            )
+
+            onAddToPlaylist.let { onAddToPlaylist ->
+                filteredPinnedPlaylists.forEach { playlistPreview ->
+                    ListMenu.Entry(
+                        text = cleanPrefix(playlistPreview.playlist.name),
+                        icon = { SettingIcon(R.drawable.add_in_playlist) },
+                        subtitle = pluralStringResource(R.plurals.library_song_count, playlistPreview.songCount, playlistPreview.songCount),
+                        onClick = {
+                            onAddToPlaylist(playlistPreview.playlist, playlistPreview.songCount)
+                            Toaster.done()
+                            onDismiss()
+                        },
+                        trailingContent = {
+
+                            if (playlistPreview.playlist.isYoutubePlaylist) {
+                                Image(
+                                    painter = painterResource(R.drawable.ytmusic),
+                                    contentDescription = null,
+                                    colorFilter = ColorFilter.tint(
+                                        Color.Red.copy(0.75f).compositeOver(Color.White)
+                                    ),
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                )
+                            }
+                            IconButton(
+                                icon = R.drawable.open,
+                                color = colorPalette().accent,
+                                onClick = {
+                                    if (onGoToPlaylist != null) {
+                                        onGoToPlaylist(playlistPreview.playlist.id)
+                                        onDismiss()
+                                    }
+                                    navController.navigate(route = "${NavRoutes.localPlaylist.name}/${playlistPreview.playlist.id}")
+                                },
+                                modifier = Modifier
+                                    .size(24.dp)
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        if (filteredYoutubePlaylists.isNotEmpty() && isNetworkConnected(context)) {
+            BasicText(
+                text = stringResource(R.string.sync_youtube_playlists_title),
+                style = typography().m.semiBold,
+                modifier = Modifier.padding(start = 20.dp, top = 5.dp)
+            )
+
+            onAddToPlaylist.let { onAddToPlaylist ->
+                filteredYoutubePlaylists.forEach { playlistPreview ->
+                    ListMenu.Entry(
+                        text = cleanPrefix(playlistPreview.playlist.name),
+                        icon = { SettingIcon(R.drawable.add_in_playlist) },
+                        subtitle = pluralStringResource(R.plurals.library_song_count, playlistPreview.songCount, playlistPreview.songCount),
+                        onClick = {
+                            onAddToPlaylist(playlistPreview.playlist, playlistPreview.songCount)
+                            Toaster.done()
+                            onDismiss()
+                        },
+                        trailingContent = {
+                            IconButton(
+                                icon = R.drawable.open,
+                                color = colorPalette().accent,
+                                onClick = {
+                                    if (onGoToPlaylist != null) {
+                                        onGoToPlaylist(playlistPreview.playlist.id)
+                                        onDismiss()
+                                    }
+                                    navController.navigate(route = "${NavRoutes.localPlaylist.name}/${playlistPreview.playlist.id}")
+                                },
+                                modifier = Modifier
+                                    .size(24.dp)
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        if (filteredUnpinnedPlaylists.isNotEmpty()) {
+            BasicText(
+                text = stringResource(R.string.library_playlists_title),
+                style = typography().m.semiBold,
+                modifier = Modifier.padding(start = 20.dp, top = 5.dp)
+            )
+
+            onAddToPlaylist.let { onAddToPlaylist ->
+                filteredUnpinnedPlaylists.forEach { playlistPreview ->
+                    ListMenu.Entry(
+                        text = cleanPrefix(playlistPreview.playlist.name),
+                        icon = { SettingIcon(R.drawable.add_in_playlist) },
+                        subtitle = pluralStringResource(R.plurals.library_song_count, playlistPreview.songCount, playlistPreview.songCount),
+                        onClick = {
+                            onAddToPlaylist(playlistPreview.playlist, playlistPreview.songCount)
+                            Toaster.done()
+                            onDismiss()
+                        },
+                        trailingContent = {
+
+
+                            IconButton(
+                                icon = R.drawable.open,
+                                color = colorPalette().accent,
+                                onClick = {
+                                    if (onGoToPlaylist != null) {
+                                        onGoToPlaylist(playlistPreview.playlist.id)
+                                        onDismiss()
+                                    }
+                                    navController.navigate(route = "${NavRoutes.localPlaylist.name}/${playlistPreview.playlist.id}")
+                                },
+                                modifier = Modifier
+                                    .size(24.dp)
+                            )
+
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@ExperimentalTextApi
+@SuppressLint("SuspiciousIndentation")
+@UnstableApi
+@ExperimentalAnimationApi
+@Composable
+fun AddToPlaylistArtistSongsMenu(
+    navController: NavController,
+    onDismiss: () -> Unit,
+    onAddToPlaylist: ((PlaylistPreview) -> Unit),
+    onGoToPlaylist: ((Long) -> Unit)? = null,
+    onRemoveFromPlaylist: ((Playlist) -> Unit)? = null
+) {
+    val context = LocalContext.current
+    val configuration = LocalConfiguration.current
+
+    val screenHeight = configuration.screenHeightDp.dp
+
+    val newPlaylistDialog = NewPlaylistDialog { playlist ->
+        onDismiss()
+        Database.asyncTransaction {
+            val pId = playlist.id
+            onAddToPlaylist(
+                PlaylistPreview(
+                    Playlist(
+                        id = pId,
+                        name = playlist.name
+                    ),
+                    0
+                )
+            )
+        }
+    }
+
+    newPlaylistDialog.Render()
+
+    val sortBy by rememberPreference(Preference.HOME_LIBRARY_PLAYLIST_SORT_BY.key, PlaylistSortBy.SongCount)
+    val sortOrder by rememberPreference(Preference.HOME_LIBRARY_PLAYLIST_SORT_ORDER.key, SortOrder.Ascending)
+    var playlistsLoaded by remember { mutableStateOf(false) }
+    val playlistPreviews by remember {
+        Database.playlistTable.sortPreviews( sortBy, sortOrder ).onEach { playlistsLoaded = true }
+    }.collectAsStateWithLifecycle(emptyList(), context = NzikDispatchers.DATA)
+
+    val editablePreviews = playlistPreviews.filter { canEditPlaylistMembership(it.playlist) }
+    val pinnedPlaylists = editablePreviews.filter {
+        it.playlist.name.startsWith(PINNED_PREFIX, 0, true)
+                && if (isNetworkConnected(context)) !(it.playlist.isYoutubePlaylist && !it.playlist.isEditable) else !it.playlist.isYoutubePlaylist
+    }
+
+    val youtubePlaylists = editablePreviews.filter { it.playlist.isEditable && it.playlist.isYoutubePlaylist && !it.playlist.name.startsWith(PINNED_PREFIX) }
+
+    val unpinnedPlaylists = editablePreviews.filter {
+        !it.playlist.name.startsWith(PINNED_PREFIX, 0, true) &&
+                !it.playlist.name.startsWith(MONTHLY_PREFIX, 0, true) &&
+                // Spec 2: generated rewind-* playlists are never add-to targets
+                !RewindPlaylists.isRewind(it.playlist.name) &&
+                !it.playlist.isYoutubePlaylist
+    }
+
+    ListMenu.Menu(title = stringResource(R.string.library_playlists_title)) {
+        val search = Search()
+        val title = stringResource(R.string.library_playlists_title)
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .fillMaxWidth()
+        ) {
+            IconButton(
+                onClick = onDismiss,
+                icon = R.drawable.chevron_back,
+                color = colorPalette().accent,
+                modifier = Modifier
+                    .padding(all = 4.dp)
+                    .size(20.dp)
+            )
+            IconButton(
+                onClick = { search.onShortClick() },
+                icon = R.drawable.search_circle,
+                color = colorPalette().favoritesIcon,
+                modifier = Modifier
+                    .padding(all = 4.dp)
+                    .size(24.dp)
+            )
+            BasicText(
+                text = title,
+                style = typography().m.semiBold,
+                modifier = Modifier.weight(1f).padding(start = 8.dp)
+            )
+            IconButton(
+                onClick = { newPlaylistDialog.onShortClick() },
+                icon = R.drawable.add_in_playlist,
+                color = colorPalette().accent,
+                modifier = Modifier
+                    .padding(all = 4.dp)
+                    .size(24.dp)
+            )
+        }
+        search.SearchBar(this)
+        val filteredPinnedPlaylists = pinnedPlaylists.filter { it.playlist.name.contains(search.inputValue, true) }
+        val filteredYoutubePlaylists = youtubePlaylists.filter { it.playlist.name.contains(search.inputValue, true) }
+        val filteredUnpinnedPlaylists = unpinnedPlaylists.filter { it.playlist.name.contains(search.inputValue, true) }
+
+        val noPlaylistResults = filteredPinnedPlaylists.isEmpty() && filteredUnpinnedPlaylists.isEmpty() && (!isNetworkConnected(context) || filteredYoutubePlaylists.isEmpty())
+        SearchEmptyFeedback(
+            query = search.inputValue,
+            empty = noPlaylistResults,
+            loading = !playlistsLoaded
+        )
+        if (search.inputValue.isNotBlank() && noPlaylistResults) {
+            SearchEmptySpace(Modifier.height(160.dp))
+        }
+        if (filteredPinnedPlaylists.isNotEmpty()) {
+            BasicText(
+                text = stringResource(R.string.playlist_pinned_title),
+                style = typography().m.semiBold,
+                modifier = Modifier.padding(start = 20.dp, top = 5.dp)
+            )
+
+            onAddToPlaylist.let { onAddToPlaylist ->
+                filteredPinnedPlaylists.forEach { playlistPreview ->
+                    ListMenu.Entry(
+                        text = cleanPrefix(playlistPreview.playlist.name),
+                        icon = { SettingIcon(R.drawable.add_in_playlist) },
+                        subtitle = pluralStringResource(R.plurals.library_song_count, playlistPreview.songCount, playlistPreview.songCount),
+                        onClick = {
+                            onAddToPlaylist(
+                                PlaylistPreview(
+                                    playlistPreview.playlist,
+                                    playlistPreview.songCount
+                                )
+                            )
+                            Toaster.done()
+                            onDismiss()
+                        },
+                        trailingContent = {
+
+                            if (playlistPreview.playlist.isYoutubePlaylist) {
+                                Image(
+                                    painter = painterResource(R.drawable.ytmusic),
+                                    contentDescription = null,
+                                    colorFilter = ColorFilter.tint(
+                                        Color.Red.copy(0.75f).compositeOver(Color.White)
+                                    ),
+                                    modifier = Modifier
+                                        .size(18.dp)
+                                )
+                            }
+                            IconButton(
+                                icon = R.drawable.open,
+                                color = colorPalette().accent,
+                                onClick = {
+                                    if (onGoToPlaylist != null) {
+                                        onGoToPlaylist(playlistPreview.playlist.id)
+                                        onDismiss()
+                                    }
+                                    navController.navigate(route = "${NavRoutes.localPlaylist.name}/${playlistPreview.playlist.id}")
+                                },
+                                modifier = Modifier
+                                    .size(24.dp)
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        if (filteredYoutubePlaylists.isNotEmpty() && isNetworkConnected(context)) {
+            BasicText(
+                text = stringResource(R.string.sync_youtube_playlists_title),
+                style = typography().m.semiBold,
+                modifier = Modifier.padding(start = 20.dp, top = 5.dp)
+            )
+
+            onAddToPlaylist.let { onAddToPlaylist ->
+                filteredYoutubePlaylists.forEach { playlistPreview ->
+                    ListMenu.Entry(
+                        text = cleanPrefix(playlistPreview.playlist.name),
+                        icon = { SettingIcon(R.drawable.add_in_playlist) },
+                        subtitle = pluralStringResource(R.plurals.library_song_count, playlistPreview.songCount, playlistPreview.songCount),
+                        onClick = {
+                            onAddToPlaylist(
+                                PlaylistPreview(
+                                    playlistPreview.playlist,
+                                    playlistPreview.songCount
+                                )
+                            )
+                            Toaster.done()
+                            onDismiss()
+                        },
+                        trailingContent = {
+                            IconButton(
+                                icon = R.drawable.open,
+                                color = colorPalette().accent,
+                                onClick = {
+                                    if (onGoToPlaylist != null) {
+                                        onGoToPlaylist(playlistPreview.playlist.id)
+                                        onDismiss()
+                                    }
+                                    navController.navigate(route = "${NavRoutes.localPlaylist.name}/${playlistPreview.playlist.id}")
+                                },
+                                modifier = Modifier
+                                    .size(24.dp)
+                            )
+                        }
+                    )
+                }
+            }
+        }
+
+        if (filteredUnpinnedPlaylists.isNotEmpty()) {
+            BasicText(
+                text = stringResource(R.string.library_playlists_title),
+                style = typography().m.semiBold,
+                modifier = Modifier.padding(start = 20.dp, top = 5.dp)
+            )
+
+            onAddToPlaylist.let { onAddToPlaylist ->
+                filteredUnpinnedPlaylists.forEach { playlistPreview ->
+                    ListMenu.Entry(
+                        text = cleanPrefix(playlistPreview.playlist.name),
+                        icon = { SettingIcon(R.drawable.add_in_playlist) },
+                        subtitle = pluralStringResource(R.plurals.library_song_count, playlistPreview.songCount, playlistPreview.songCount),
+                        onClick = {
+                            onAddToPlaylist(
+                                PlaylistPreview(
+                                    playlistPreview.playlist,
+                                    playlistPreview.songCount
+                                )
+                            )
+                            Toaster.done()
+                            onDismiss()
+                        },
+                        trailingContent = {
+
+
+                            IconButton(
+                                icon = R.drawable.open,
+                                color = colorPalette().accent,
+                                onClick = {
+                                    if (onGoToPlaylist != null) {
+                                        onGoToPlaylist(playlistPreview.playlist.id)
+                                        onDismiss()
+                                    }
+                                    navController.navigate(route = "${NavRoutes.localPlaylist.name}/${playlistPreview.playlist.id}")
+                                },
+                                modifier = Modifier
+                                    .size(24.dp)
+                            )
+
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+

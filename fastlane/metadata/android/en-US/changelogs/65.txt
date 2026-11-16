@@ -1,0 +1,13 @@
+Added:
+- New unified settings dialogs (action bar, Quick Picks)
+- Shake sensitivity options; "Morphing" M3E background
+
+Changed:
+- Export/import file names use ISO date format
+- Softer M3E animations; Material 3 Expressive refresh loaders
+
+Fixed:
+- Player: buffering, timeline jumps, M3E unresponsiveness
+- Queue panel no longer closes while scrolling
+- Lyrics: scroll, recentering, and crash fixes
+- "Go to Album" fallback; explicit badges; nav bar layout

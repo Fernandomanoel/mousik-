@@ -1,0 +1,10 @@
+Added:
+- Voice search with Google SpeechRecognizer (any language, auto detection)
+- RiPlay & Exportify CSV import with automatic Match Album
+- Smart Trash: bin to clear favorites, cache, downloads and history
+- Independent sort preferences per tab and per playlist
+- Cancel button to stop background matching jobs
+- Lyrics: full fallback chain for Karaoke, Synced and Unsynced modes
+- Block playback of unmatched songs (warning toast)
+Fixed:
+- Missing queue button on UI presets

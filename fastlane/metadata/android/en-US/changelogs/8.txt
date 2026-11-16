@@ -1,0 +1,12 @@
+Changed:
+- Changelog pop-up updated: shows name/size, opens latest in-app
+- Monochrome app icon in player
+- New translations
+- Default color changed from green to purple
+- Reintroduced local artist library with new Artist UI
+
+Bug Fixes:
+- Fixed notification permission crashes; prompt on first launch
+- App shortcuts (long press icon) now working
+- Fixed remaining time showing when disabled or negative
+- Fixed forward/rewind buttons acting weird after clicks

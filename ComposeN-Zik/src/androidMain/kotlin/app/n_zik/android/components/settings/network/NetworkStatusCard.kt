@@ -1,0 +1,107 @@
+package app.n_zik.android.components.settings.network
+
+import app.n_zik.android.components.settings.common.settingsSearchTarget
+import androidx.compose.ui.Modifier
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import app.n_zik.android.R
+import app.n_zik.android.utils.imageQualityFormatKey
+import app.n_zik.android.enums.ImageQualityFormat
+import app.n_zik.android.utils.rememberPreference
+import app.n_zik.android.enums.AudioQualityFormat
+import app.n_zik.android.enums.DownloadQualityFormat
+import app.n_zik.android.enums.downloadQualityFormatKey
+import app.n_zik.android.utils.audioQualityFormatKey
+import app.n_zik.android.core.coil.ImageCacheFactory
+import app.n_zik.android.components.settings.common.SettingsSectionCard
+import app.n_zik.android.components.settings.common.OtherInfoSettingsEntry
+import androidx.compose.runtime.getValue
+
+@Composable
+internal fun automaticQualityStatusText(networkQuality: ImageCacheFactory.NetworkQuality): String {
+    val detectedText = stringResource(when (networkQuality) {
+        ImageCacheFactory.NetworkQuality.LOW -> R.string.network_quality_low
+        ImageCacheFactory.NetworkQuality.MEDIUM -> R.string.network_quality_medium
+        ImageCacheFactory.NetworkQuality.HIGH -> R.string.network_quality_high
+    })
+    return stringResource(R.string.audio_quality_auto_fmt, detectedText)
+}
+
+@Composable
+internal fun NetworkStatusCard(
+    networkQuality: ImageCacheFactory.NetworkQuality,
+    titleRes: Int = R.string.network_status,
+    iconRes: Int = R.drawable.network,
+) {
+    val imageQualityFormat by rememberPreference(imageQualityFormatKey, ImageQualityFormat.Auto)
+    val audioQualityFormat by rememberPreference(audioQualityFormatKey, AudioQualityFormat.Auto)
+    val downloadQualityFormat by rememberPreference(downloadQualityFormatKey, DownloadQualityFormat.Auto)
+
+    SettingsSectionCard(
+        title = stringResource(titleRes),
+        icon = iconRes,
+        content = {
+            val detectedText = when(networkQuality) {
+                ImageCacheFactory.NetworkQuality.LOW -> stringResource(R.string.network_quality_low)
+                ImageCacheFactory.NetworkQuality.MEDIUM -> stringResource(R.string.network_quality_medium)
+                ImageCacheFactory.NetworkQuality.HIGH -> stringResource(R.string.network_quality_high)
+            }
+
+            val imageStatusText = if (imageQualityFormat == ImageQualityFormat.Auto) {
+                stringResource(R.string.audio_quality_auto_fmt, detectedText)
+            } else {
+                when(imageQualityFormat) {
+                    ImageQualityFormat.High -> stringResource(R.string.audio_quality_format_high)
+                    ImageQualityFormat.Medium -> stringResource(R.string.audio_quality_format_medium)
+                    ImageQualityFormat.Low -> stringResource(R.string.audio_quality_format_low)
+                    else -> detectedText
+                }
+            }
+
+            OtherInfoSettingsEntry(
+                modifier = Modifier.settingsSearchTarget("network.network_status.image_quality_format"),
+                title = stringResource(R.string.settings_network_image_quality_label),
+                text = stringResource(R.string.network_current_artwork_quality_description),
+                selectedValueText = imageStatusText,
+                icon = R.drawable.image
+            )
+
+            val audioStatusText = if (audioQualityFormat == AudioQualityFormat.Auto) {
+                stringResource(R.string.audio_quality_auto_fmt, detectedText)
+            } else {
+                when(audioQualityFormat) {
+                    AudioQualityFormat.High -> stringResource(R.string.audio_quality_format_high)
+                    AudioQualityFormat.Low -> stringResource(R.string.audio_quality_format_low)
+                    else -> detectedText
+                }
+            }
+
+            OtherInfoSettingsEntry(
+                modifier = Modifier.settingsSearchTarget("network.network_status.audio_quality_format"),
+                title = stringResource(R.string.audio_quality_format),
+                text = stringResource(R.string.network_current_stream_audio_quality_description),
+                selectedValueText = audioStatusText,
+                icon = R.drawable.audio_quality
+            )
+
+            val downloadStatusText = if (downloadQualityFormat == DownloadQualityFormat.Auto) {
+                stringResource(R.string.audio_quality_auto_fmt, detectedText)
+            } else {
+                when(downloadQualityFormat) {
+                    DownloadQualityFormat.High -> stringResource(R.string.audio_quality_format_high)
+                    DownloadQualityFormat.Low -> stringResource(R.string.audio_quality_format_low)
+                    else -> detectedText
+                }
+            }
+
+            OtherInfoSettingsEntry(
+                modifier = Modifier.settingsSearchTarget("network.network_status.download_quality_format"),
+                title = stringResource(R.string.downloads_quality_format),
+                text = stringResource(R.string.network_current_download_audio_quality_description),
+                selectedValueText = downloadStatusText,
+                icon = R.drawable.download
+            )
+        }
+    )
+
+}

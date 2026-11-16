@@ -1,0 +1,7 @@
+Fixed:
+- Lyrics: no longer stuck on Karaoke when switching to Synced
+- Lyrics: fall back to LrcLib/KuGou when BetterLyrics gives Karaoke timings for Synced
+- Lyrics: "Fetch lyrics again" in Auto mode no longer shows infinite shimmer
+
+Improved:
+- Lyrics: real-time settings updates with crossfade

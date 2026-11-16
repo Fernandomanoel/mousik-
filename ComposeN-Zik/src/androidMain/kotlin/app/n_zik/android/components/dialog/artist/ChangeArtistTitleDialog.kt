@@ -1,0 +1,91 @@
+package app.n_zik.android.components.dialog.artist
+
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.TextFieldValue
+import timber.log.Timber
+import app.n_zik.android.MODIFIED_PREFIX
+import app.n_zik.android.core.ondevice.isDeviceArtistId
+import app.n_zik.android.core.ondevice.rememberDeviceGroupOriginalName
+import app.n_zik.android.cleanPrefix
+import app.n_zik.android.models.Artist
+import app.n_zik.android.core.utils.Toaster
+import app.n_zik.android.R
+import app.n_zik.android.components.dialog.song.RenameDialog
+import app.n_zik.android.core.database.Database
+import app.n_zik.android.core.migration.NameConvergence
+
+class ChangeArtistTitleDialog private constructor(
+    activeState: MutableState<Boolean>,
+    valueState: MutableState<TextFieldValue>,
+    private val getArtist: () -> Artist?
+) : RenameDialog(activeState, valueState) {
+
+    companion object {
+        @Composable
+        operator fun invoke(getArtist: () -> Artist?): ChangeArtistTitleDialog {
+            val current = rememberUpdatedState(getArtist)
+            return remember(getArtist()?.id) {
+                ChangeArtistTitleDialog(mutableStateOf(false), mutableStateOf(TextFieldValue())) { current.value() }
+            }
+        }
+    }
+
+    override val keyboardOption: KeyboardOptions = KeyboardOptions.Default
+    override val iconId: Int = R.drawable.title_edit
+    override val messageId: Int = R.string.metadata_action_change_title
+    override val menuIconTitle: String
+        @Composable
+        get() = stringResource( messageId )
+    override val dialogTitle: String
+        @Composable
+        get() = menuIconTitle
+
+    override fun showDialog() {
+        value = TextFieldValue(cleanPrefix(getArtist()?.name ?: ""))
+        errorMessage = ""
+        super.showDialog()
+    }
+
+    override fun onSet( newValue: String ) {
+        super.onSet( newValue )
+        if( errorMessage.isNotEmpty() ) return
+
+        val artist = getArtist() ?: return
+        // The old name must be read (cleaned) BEFORE the row is rewritten below.
+        val oldName = cleanPrefix(artist.name ?: "").trim()
+        // Normalize the user input (clean tokens, no prefix ever at a token
+        // position) before it is stored or propagated.
+        val cleanNew = NameConvergence.normalizeText( newValue )
+        if (cleanNew.isEmpty()) {
+            Timber.tag("NameConvergence").d("artist rename skipped: blank input for row %s", artist.id)
+            return
+        }
+        if (cleanNew.contains(',')) {
+            Timber.tag("NameConvergence").d(
+                "artist rename skipped: multi-token input \"%s\" for row %s", cleanNew, artist.id
+            )
+            return
+        }
+        // No change: the row (and its modified: marker) is kept as-is and the
+        // full propagation scan is skipped.
+        if (cleanNew.equals(oldName, ignoreCase = true)) return
+        Database.asyncTransaction {
+            syncTransaction {
+                if (isDeviceArtistId(artist.id)) rememberDeviceGroupOriginalName(artist.id, artist.name)
+                artistTable.insertIgnore( artist )
+                artistTable.update( artist.copy(name = "$MODIFIED_PREFIX$cleanNew") )
+                // Converge every copy linked to this row (songs + albums of its
+                // songs) in the same transaction as the row rename.
+                NameConvergence.propagateRename( this, artist.id, oldName, cleanNew )
+            }
+            Toaster.done()
+        }
+        hideDialog()
+    }
+}

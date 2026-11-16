@@ -1,0 +1,229 @@
+package app.n_zik.android.components.settings.accounts
+
+import app.n_zik.android.components.settings.common.settingsTopContentPadding
+
+import android.annotation.SuppressLint
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
+import app.n_zik.android.enums.NavRoutes
+import app.n_zik.android.utils.enableYouTubeLoginKey
+import app.n_zik.android.utils.enableYouTubeSyncKey
+import app.n_zik.android.utils.encryptedPreferences
+import app.n_zik.android.utils.pauseSearchHistoryKey
+import app.n_zik.android.utils.preferences
+import app.n_zik.android.utils.rememberPreference
+import app.n_zik.android.utils.useLoginForBrowseKey
+import app.n_zik.android.utils.ytCookieKey
+import app.n_zik.android.BuildConfig
+import app.n_zik.android.R
+import app.n_zik.android.appContext
+import app.n_zik.android.colorPalette
+import app.n_zik.android.components.search.SearchHistorySection
+import app.n_zik.android.components.search.SearchHistoryStore
+import app.n_zik.android.components.search.filterSearchHistory
+import app.n_zik.android.components.search.rememberSearchHistory
+import app.n_zik.android.components.settings.LastFmSettingsCard
+import app.n_zik.android.components.settings.ListenTogetherSettingsCard
+import app.n_zik.android.components.settings.ProfileFaceCard
+import app.n_zik.android.components.settings.common.SettingsCardSlot
+import app.n_zik.android.components.settings.common.SettingsDescription
+import app.n_zik.android.components.settings.common.rememberSettingsSearchFocus
+import app.n_zik.android.components.settings.common.settingsSearchContent
+import app.n_zik.android.components.settings.common.settingsSearchDescription
+import app.n_zik.android.components.settings.common.settingsSearchTitle
+import app.n_zik.android.components.settings.common.visibleCardTitleRes
+import app.n_zik.android.components.tab.Search
+import app.n_zik.innertube.hasYouTubeAuthCookie
+import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.first
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
+@SuppressLint("BatteryLife")
+@ExperimentalAnimationApi
+@Composable
+fun AccountsSettings(
+    navController: NavController,
+    focus: String = ""
+) {
+    val search = Search(initialVisible = true)
+    val searchFocus = rememberSettingsSearchFocus(search.isFocused, search.inputValue.isBlank())
+
+    val context = LocalContext.current
+
+    val isHistoryPaused by rememberPreference(pauseSearchHistoryKey, false)
+    val history = rememberSearchHistory(SearchHistoryStore.PAGE_SETTINGS_ACCOUNTS, isHistoryPaused)
+    val historyMatches = filterSearchHistory(history.value, search.inputValue)
+    val historyVisible = search.isFocused && historyMatches.isNotEmpty()
+
+    fun recordSearchQuery(query: String = search.inputValue) {
+        history.value = SearchHistoryStore.record(context.preferences, SearchHistoryStore.PAGE_SETTINGS_ACCOUNTS, query)
+    }
+
+    // Scroll to the Profiles / Listen Together card when the screen was opened with
+    // focus=profiles / focus=listentogether (spec-customizable-burger-menu burger long press).
+    val scrollState = rememberScrollState()
+    var containerTopY by remember { mutableFloatStateOf(-1f) }
+    var profilesCardTopY by remember { mutableFloatStateOf(-1f) }
+    var listenTogetherCardTopY by remember { mutableFloatStateOf(-1f) }
+
+    LaunchedEffect(focus) {
+        if (focus != "profiles" && focus != "listentogether") return@LaunchedEffect
+        // The card may be off-screen but is still laid out: wait until its position is
+        // measured (read inside snapshotFlow, see the same mechanism in OtherSettings).
+        val focusedProfiles = focus == "profiles"
+        val offset = snapshotFlow {
+            val cardTopY = if (focusedProfiles) profilesCardTopY else listenTogetherCardTopY
+            if (cardTopY < 0f || containerTopY < 0f) -1f
+            else cardTopY - containerTopY + scrollState.value
+        }.first { it >= 0f }
+        scrollState.animateScrollTo(offset.roundToInt())
+    }
+
+    Column(
+        modifier = Modifier
+            .background(colorPalette().background0)
+            .fillMaxHeight()
+            .fillMaxWidth()
+            .verticalScroll(scrollState)
+            .onGloballyPositioned { containerTopY = it.positionInRoot().y }
+            .settingsTopContentPadding()
+    ) {
+
+        settingsSearchTitle(searchFocus, R.string.settings_accounts_title, R.drawable.person)
+
+        settingsSearchDescription(searchFocus) {
+            SettingsDescription(
+                text = stringResource(R.string.settings_accounts_page_description),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
+
+        search.SearchBar(this, barPadding = searchFocus.barPadding, onSearch = { recordSearchQuery() })
+
+        SearchHistorySection(
+            visible = historyVisible,
+            queries = historyMatches,
+            onQueryClick = { search.input = TextFieldValue(it); recordSearchQuery(it); search.isFocused = false },
+            onQueryDelete = {
+                history.value = SearchHistoryStore.delete(context.preferences, SearchHistoryStore.PAGE_SETTINGS_ACCOUNTS, it)
+            },
+            onQueryDeleteAll = {
+                history.value = SearchHistoryStore.deleteAll(context.preferences, SearchHistoryStore.PAGE_SETTINGS_ACCOUNTS)
+            }
+        )
+
+        val hasSearchResults = search.inputValue.isBlank() || visibleCardTitleRes(context, 5, search.inputValue).isNotEmpty()
+        LaunchedEffect(hasSearchResults) {
+            if (!hasSearchResults) scrollState.scrollTo(0)
+        }
+        AccountsSettingsContent(
+            search = search,
+            navController = navController,
+            onCardPosition = { id, top ->
+                when (id) {
+                    "profiles" -> profilesCardTopY = top
+                    "listentogether" -> listenTogetherCardTopY = top
+                }
+            },
+            cardsContainer = { cards -> settingsSearchContent(searchFocus, hasResults = hasSearchResults, query = search.inputValue) { cards() } },
+        )
+
+
+
+    }
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@Composable
+internal fun AccountsSettingsContent(
+    search: Search,
+    navController: NavController,
+    selectedCards: Set<Int>? = null,
+    cardModifier: @Composable (Int) -> Modifier = { Modifier },
+    onCardPosition: (String, Float) -> Unit = { _, _ -> },
+    cardsContainer: @Composable (@Composable () -> Unit) -> Unit = { it() },
+) {
+    cardsContainer {
+        if (selectedCards == null || R.string.profile_face in selectedCards) {
+            SettingsCardSlot(R.string.profile_face, order = 0, modifier = { cardModifier(R.string.profile_face).onGloballyPositioned { onCardPosition("profiles", it.positionInRoot().y) } }) {
+                ProfileFaceCard(onOpenProfiles = { navController.navigate(NavRoutes.profiles.name) })
+            }
+        }
+        if (selectedCards == null || R.string.settings_youtube_music_title in selectedCards) {
+            SettingsCardSlot(R.string.settings_youtube_music_title, order = 1, modifier = { cardModifier(R.string.settings_youtube_music_title) }) {
+                AccountsYouTubeCard(search)
+            }
+        }
+        AccountsSyncCards(selectedCards, cardModifier)
+        if (selectedCards == null || R.string.settings_lastfm_title in selectedCards) {
+            SettingsCardSlot(R.string.settings_lastfm_title, order = 6, modifier = { cardModifier(R.string.settings_lastfm_title) }) {
+                LastFmSettingsCard()
+            }
+        }
+        if (selectedCards == null || R.string.settings_discord_title in selectedCards) {
+            SettingsCardSlot(R.string.settings_discord_title, order = 7, modifier = { cardModifier(R.string.settings_discord_title) }) {
+                AccountsDiscordCard(search)
+            }
+        }
+        if (selectedCards == null || R.string.listen_together_title in selectedCards) {
+            SettingsCardSlot(R.string.listen_together_title, order = 8, modifier = { cardModifier(R.string.listen_together_title).onGloballyPositioned { onCardPosition("listentogether", it.positionInRoot().y) } }) {
+                ListenTogetherSettingsCard(onOpenScreen = { navController.navigate(NavRoutes.listenTogether.name) })
+            }
+        }
+        if (selectedCards == null || R.string.settings_reset in selectedCards) {
+            SettingsCardSlot(R.string.settings_reset, order = 9, modifier = { cardModifier(R.string.settings_reset) }) {
+                AccountsResetCard(search)
+            }
+        }
+        if (selectedCards == null || R.string.common_brand_github in selectedCards) {
+            SettingsCardSlot(R.string.common_brand_github, order = 10, modifier = { cardModifier(R.string.common_brand_github) }) {
+                GitHubAccountCard(showAppInstallation = true)
+            }
+        }
+    }
+}
+
+fun isYouTubeLoginEnabled(): Boolean {
+    val isYouTubeLoginEnabled = appContext().encryptedPreferences.getBoolean(enableYouTubeLoginKey, false)
+    return isYouTubeLoginEnabled
+}
+
+internal fun isYouTubeSyncBuild(buildType: String = BuildConfig.BUILD_TYPE): Boolean =
+    buildType == "debug" || buildType == "dev64" || buildType == "dev32"
+
+fun isYouTubeSyncEnabled(): Boolean {
+    if (!isYouTubeSyncBuild()) return false
+    val isYouTubeSyncEnabled = appContext().encryptedPreferences.getBoolean(enableYouTubeSyncKey, false)
+    val useLoginForBrowse = appContext().preferences.getBoolean(useLoginForBrowseKey, true)
+    return isYouTubeSyncEnabled && isYouTubeLoggedIn() && isYouTubeLoginEnabled() && useLoginForBrowse
+}
+
+fun isYouTubeLoggedIn(): Boolean {
+    val cookie = appContext().encryptedPreferences.getString(ytCookieKey, "")
+    return hasYouTubeAuthCookie(cookie)
+}

@@ -1,0 +1,196 @@
+package app.n_zik.android.components.player
+
+import android.app.Application
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Computer
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import app.n_zik.android.ui.styling.Appearance
+import app.n_zik.android.ui.styling.ColorPalette
+import app.n_zik.android.ui.styling.LocalAppearance
+import app.n_zik.android.ui.styling.Typography
+import app.n_zik.android.R
+import app.n_zik.android.components.glass.GlassArea
+import app.n_zik.android.components.glass.GlassAreaMode
+import app.n_zik.android.components.glass.GlassSettings
+import app.n_zik.android.components.glass.usesGlassMaterial
+import app.n_zik.android.components.navigation.dock.LocalCompactMiniPlayerProgress
+import app.n_zik.android.components.navigation.dock.LocalCompactMiniPlayerProgressProvider
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28], application = Application::class)
+class GlassMiniPlayerIconButtonTest {
+    @get:Rule val compose = createComposeRule()
+
+    @Test fun `disabled glass mini control leaves parent drag ownership while enabled control retains it`() {
+        val enabled = mutableStateOf(false)
+        var observedScroll: androidx.compose.foundation.ScrollState? = null
+        var clicks = 0
+        val shape = RoundedCornerShape(12.dp)
+        val appearance = Appearance(ColorPalette.fallback, Typography.fallback, shape, shape, shape)
+        compose.setContent {
+            CompositionLocalProvider(LocalAppearance provides appearance) {
+                androidx.compose.runtime.key(enabled.value) {
+                    val scroll = androidx.compose.foundation.rememberScrollState()
+                    androidx.compose.runtime.SideEffect { observedScroll = scroll }
+                    androidx.compose.foundation.layout.Column(Modifier.size(120.dp).verticalScroll(scroll)) {
+                        GlassMiniPlayerIconButton(Icons.Filled.Computer, Color.White, { clicks++ },
+                            "Disabled drag", enabled = enabled.value,
+                            settings = GlassSettings(enabled = true))
+                        Box(Modifier.size(120.dp, 500.dp))
+                    }
+                }
+            }
+        }
+        for (active in listOf(false, true)) {
+            compose.runOnIdle { enabled.value = active }
+            val button = compose.onNodeWithContentDescription("Disabled drag")
+            if (active) button.assertIsEnabled() else button.assertIsNotEnabled()
+            button.performTouchInput {
+                down(center)
+                moveTo(center - Offset(0f, 100f), delayMillis = 300)
+                up()
+            }
+            compose.runOnIdle {
+                assertEquals(0, clicks)
+                if (active) assertEquals(0, requireNotNull(observedScroll).value)
+                else assertTrue(requireNotNull(observedScroll).value > 0)
+            }
+        }
+        compose.onNodeWithContentDescription("Disabled drag").performTouchInput { click() }
+        compose.runOnIdle { assertEquals(1, clicks) }
+    }
+
+    @Test
+    fun `central control uses compact glass size with centered content and click across dock states`() {
+        var settings by mutableStateOf(GlassSettings(enabled = true))
+        var buffering by mutableStateOf(false)
+        var clicks = 0
+        val presentation = mutableStateOf(0f to false)
+        val shape = RoundedCornerShape(12.dp)
+        val appearance = Appearance(ColorPalette.fallback, Typography.fallback, shape, shape, shape)
+        compose.setContent {
+            CompositionLocalProvider(
+                LocalAppearance provides appearance,
+                LocalCompactMiniPlayerProgress provides presentation.value.first,
+                LocalCompactMiniPlayerProgressProvider provides
+                    if (presentation.value.second) ({ presentation.value.first }) else null,
+            ) {
+                GlassMiniPlayerPlayPauseButton(
+                    onClick = { clicks++ },
+                    backgroundColor = Color.Black,
+                    contentDescription = "Play or pause",
+                    settings = settings,
+                ) {
+                    Box(Modifier.align(Alignment.Center).size(24.dp)
+                        .testTag(if (buffering) "buffering" else "play-pause-icon"))
+                }
+            }
+        }
+        val configurations = (GlassAreaMode.entries.map { mode ->
+            GlassSettings(enabled = true, areaModes = mapOf(GlassArea.MiniPlayer to mode))
+        } + listOf(
+            GlassSettings(enabled = false),
+            GlassSettings(enabled = true, miniPlayer = false),
+        ))
+        val cases = configurations.flatMap { config ->
+            listOf(0f to false, 1f to false, 0f to true, .5f to true, 1f to true).map { config to it }
+        }
+        cases.forEachIndexed { index, (config, state) ->
+            compose.runOnIdle { settings = config; presentation.value = state; buffering = index % 2 == 0 }
+            val button = compose.onNodeWithContentDescription("Play or pause")
+            val size = if (config.usesGlassMaterial(GlassArea.MiniPlayer)) 36.dp
+                else miniPlayerControlSize(state.first, state.second)
+            button.assertWidthIsEqualTo(size).assertHeightIsEqualTo(size)
+                .performTouchInput { click() }
+            val content = compose.onNodeWithTag(
+                if (buffering) "buffering" else "play-pause-icon", useUnmergedTree = true,
+            )
+            content.assertWidthIsEqualTo(24.dp).assertHeightIsEqualTo(24.dp)
+            val buttonCenter = button.fetchSemanticsNode().boundsInRoot.center
+            val contentCenter = content.fetchSemanticsNode().boundsInRoot.center
+            assertEquals(buttonCenter.x, contentCenter.x, .5f)
+            assertEquals(buttonCenter.y, contentCenter.y, .5f)
+            compose.runOnIdle { assertEquals(index + 1, clicks) }
+        }
+    }
+
+    @Test
+    fun `guest lock and device callbacks survive both glass preference changes`() {
+        var settings by mutableStateOf(GlassSettings(enabled = true))
+        var enabled by mutableStateOf(true)
+        var skips = 0
+        var outputs = 0
+        val shape = RoundedCornerShape(12.dp)
+        val appearance = Appearance(ColorPalette.fallback, Typography.fallback, shape, shape, shape)
+        compose.setContent {
+            CompositionLocalProvider(LocalAppearance provides appearance) {
+                Row {
+                    GlassMiniPlayerIconButton(
+                        icon = R.drawable.play_skip_forward,
+                        color = Color.White,
+                        onClick = { skips++ },
+                        contentDescription = "Next track",
+                        enabled = enabled,
+                        settings = settings,
+                    )
+                    GlassMiniPlayerIconButton(
+                        icon = Icons.Filled.Computer,
+                        color = Color.White,
+                        onClick = { outputs++ },
+                        contentDescription = "Audio output",
+                        settings = settings,
+                    )
+                }
+            }
+        }
+        (GlassAreaMode.entries.map { mode ->
+            GlassSettings(enabled = true, areaModes = mapOf(GlassArea.MiniPlayer to mode))
+        } + listOf(
+            GlassSettings(enabled = false),
+            GlassSettings(enabled = true, miniPlayer = false),
+        )).forEachIndexed { index, config ->
+            compose.runOnIdle { settings = config; enabled = true }
+            compose.onNodeWithContentDescription("Next track").assertIsEnabled()
+                .performTouchInput { click() }
+            compose.runOnIdle { enabled = false }
+            compose.onNodeWithContentDescription("Next track").assertIsNotEnabled()
+                .performTouchInput { click() }
+            compose.onNodeWithContentDescription("Audio output").assertIsEnabled()
+                .performTouchInput { click() }
+            compose.runOnIdle {
+                assertEquals(index + 1, skips)
+                assertEquals(index + 1, outputs)
+            }
+        }
+    }
+}

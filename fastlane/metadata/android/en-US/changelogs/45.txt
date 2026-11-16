@@ -1,0 +1,8 @@
+New:
+- UI Roundness setting to control the roundness of the entire app
+- Preview for thumbnail size, roundness, and UI roundness in settings
+Fixed:
+- Slider step dots clipped or misaligned - now positioned accurately over the track
+Improved:
+- Slider redesigned with a Material 3 Expressive "Jelly" spring animation on the thumb
+- Continuous sliding with seamless magnetic snap to preset values

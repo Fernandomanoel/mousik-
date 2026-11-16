@@ -1,0 +1,13 @@
+Added:
+- Sync progress and failure notifications, plus Retry Sync dialog
+- History: fine-grained dates and sorting (Date, A-Z, Artist)
+- Search: long-press menus for album, artist, playlist, video suggestions
+
+Improved:
+- Home refresh and image loading improved on slow connections
+
+Fixed:
+- Shuffle queue now unlimited (was 500 songs)
+- Search "More of" in album menu; queue spacing fixes
+- Karaoke: lyrics position and backward seeking
+- Lyrics settings menu redesign and layout fixes

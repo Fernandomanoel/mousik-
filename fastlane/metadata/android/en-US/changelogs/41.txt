@@ -1,0 +1,19 @@
+Fixed:
+- Widget crash on Android 17
+- RPC stuck on "browsing" while listening
+- Black status bar in pitch black mode
+- Crash on Minified build
+- Missing description on appearance page
+- Settings search showing proper results
+- Non UTF-8 characters in the app
+
+Improved:
+- Smoother visualizer on low-end devices
+- Playback speed can go up to 10x
+- Better settings search results
+
+Added:
+- Search in AI Recommendation Settings
+
+Removed:
+- Old speed button key (hold play to change speed)

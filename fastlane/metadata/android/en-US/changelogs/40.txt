@@ -1,0 +1,9 @@
+Improved:
+- Player now memorizes the last successful YouTube client to bypass recent streaming restrictions and avoid long loading times
+
+Fixed:
+- Fixed GitHub button in OTA screen redirecting to a 404 page
+- Fixed playback skipping to next song when "Skip on error" is disabled; more retries before error
+
+Refactored:
+- Reworked playback package internals (internal only, no user-facing changes)

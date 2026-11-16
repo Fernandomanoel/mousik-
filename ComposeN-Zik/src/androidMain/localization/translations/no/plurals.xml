@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Maintenance -->
+    <plurals name="maintenance_systems_need_attention">
+        <item quantity="one">%d systemet trenger oppmerksomhet</item>
+        <item quantity="other">%d systemer trenger oppmerksomhet</item>
+    </plurals>
+    <plurals name="sync_detail_songs_liked">
+        <item quantity="one">%1$d sang liker</item>
+        <item quantity="other">%1$d sanger liker</item>
+    </plurals>
+    <plurals name="sync_detail_playlists_synced">
+        <item quantity="one">%1$d spilleliste synkronisert</item>
+        <item quantity="other">%1$d spillelister synkronisert</item>
+    </plurals>
+    <plurals name="sync_detail_songs_imported">
+        <item quantity="one">%1$d sang importert</item>
+        <item quantity="other">%1$d sanger importert</item>
+    </plurals>
+    <plurals name="sync_detail_albums_imported">
+        <item quantity="one">%1$d album importert</item>
+        <item quantity="other">%1$d album importert</item>
+    </plurals>
+    <plurals name="sync_detail_episodes">
+        <item quantity="one">%1$d episode</item>
+        <item quantity="other">%1$d episoder</item>
+    </plurals>
+    <plurals name="library_song_count">
+        <item quantity="one">%1$d sang</item>
+        <item quantity="other">%1$d sanger</item>
+    </plurals>
+    <plurals name="about_translator_count">
+        <item quantity="one">%1$d oversetter</item>
+        <item quantity="other">%1$d oversettere</item>
+    </plurals>
+    <plurals name="about_developer_designer_count">
+        <item quantity="one">%1$d utvikler / designer</item>
+        <item quantity="other">%1$d utviklere / designere</item>
+    </plurals>
+    <plurals name="statistics_songs_heard_count">
+        <item quantity="one">%1$d sang hørt</item>
+        <item quantity="other">%1$d sanger hørt</item>
+    </plurals>
+    <plurals name="history_delete_search_query_count">
+        <item quantity="one">Slett %1$d søk</item>
+        <item quantity="other">Slett %1$d søkespørringer</item>
+    </plurals>
+    <plurals name="history_delete_playback_event_count">
+        <item quantity="one">Slett %1$d avspillingshendelse</item>
+        <item quantity="other">Slett %1$d avspillingshendelser</item>
+    </plurals>
+    <plurals name="podcast_episode_count_with_duration">
+        <item quantity="one">%1$d episode · %2$s</item>
+        <item quantity="other">%1$d episoder · %2$s</item>
+    </plurals>
+    <plurals name="sync_youtube_playlist_songs_adding">
+        <item quantity="one">Legger til %1$d sang til YouTube-spillelisten</item>
+        <item quantity="other">Legger til %1$d sanger til YouTube-spillelisten</item>
+    </plurals>
+    <plurals name="sync_youtube_playlist_songs_added">
+        <item quantity="one">La til %1$d sang til YouTube-spillelisten</item>
+        <item quantity="other">La til %1$d sanger til YouTube-spillelisten</item>
+    </plurals>
+    <plurals name="backup_import_profile_state_complete_count">
+        <item quantity="one">Profiltilstand importert: %1$d profil</item>
+        <item quantity="other">Profiltilstand importert: %1$d profiler</item>
+    </plurals>
+    <plurals name="library_export_cached_song_confirmation_count">
+        <item quantity="one">Eksporter %1$d cached/lastet ned sang?</item>
+        <item quantity="other">Eksporter %1$d cached/nedlastede sanger?</item>
+    </plurals>
+    <plurals name="downloads_stale_startup_removed_count">
+        <item quantity="one">%1$d nedlastet sang mangler filen og ble fjernet. Vennligst last den ned på nytt.</item>
+        <item quantity="other">%1$d nedlastede sanger mangler sine filer og ble fjernet. Vennligst last dem ned på nytt.</item>
+    </plurals>
+    <plurals name="recommendations_quick_picks_song_count">
+        <item quantity="one">%1$d anbefalt sang</item>
+        <item quantity="other">%1$d anbefalte sanger</item>
+    </plurals>
+    <plurals name="listen_together_blocked_user_count">
+        <item quantity="one">%1$d bruker blokkert</item>
+        <item quantity="other">%1$d brukere blokkert</item>
+    </plurals>
+    <plurals name="maintenance_pass_cleaned_count">
+        <item quantity="one">%1$d element renset</item>
+        <item quantity="other">%1$d elementer renset</item>
+    </plurals>
+    <plurals name="maintenance_pass_deferred_count">
+        <item quantity="one">%1$d element utsatt</item>
+        <item quantity="other">%1$d elementer som er utsatt</item>
+    </plurals>
+    <plurals name="maintenance_pass_skipped_count">
+        <item quantity="one">%1$d element hoppet over</item>
+        <item quantity="other">%1$d elementer hoppet over</item>
+    </plurals>
+    <plurals name="maintenance_dedup_flagged_count">
+        <item quantity="one">Flagged %1$d row</item>
+        <item quantity="other">Flagged %1$d rows</item>
+    </plurals>
+    <plurals name="maintenance_dedup_merged_count">
+        <item quantity="one">Flettet %1$d rad</item>
+        <item quantity="other">Merged %1$d rows</item>
+    </plurals>
+    <plurals name="recovery_profile_deleted_count">
+        <item quantity="one">Slettet %1$d profil</item>
+        <item quantity="other">Slettet %1$d profiler</item>
+    </plurals>
+    <plurals name="recovery_profile_reset_count">
+        <item quantity="one">Tilbakestille %1$d profil. Gi appen en ny beskjed</item>
+        <item quantity="other">Tilbakestille %1$d profiler. Start appen på nytt på nytt</item>
+    </plurals>
+    <plurals name="recovery_profile_restored_count">
+        <item quantity="one">Gjenopprettet %1$d profil: Start appen på nytt</item>
+        <item quantity="other">Gjenopprettet %1$d profiler: omstart appen</item>
+    </plurals>
+    <plurals name="album_loading_song_count">
+        <item quantity="one">Loading %1$d song…</item>
+        <item quantity="other">Loading %1$d songs…</item>
+    </plurals>
+    <plurals name="artist_deduplication_result_count">
+        <item quantity="one">Flettet %1$d duplikatartist med høyre artist</item>
+        <item quantity="other">Flettet %1$d dupliserte artister med høyre artist</item>
+    </plurals>
+    <plurals name="artist_link_cleanup_result_count">
+        <item quantity="one">Fjernet %1$d feil artist link</item>
+        <item quantity="other">Fjernet %1$d feil artistlinker</item>
+    </plurals>
+    <plurals name="library_song_count_with_duration">
+        <item quantity="one">%1$d sang • %2$s</item>
+        <item quantity="other">%1$d sanger • %2$s</item>
+    </plurals>
+    <plurals name="metadata_musicbrainz_rating_vote_count">
+        <item quantity="one">(%1$d stemme)</item>
+        <item quantity="other">(%1$d stemmer)</item>
+    </plurals>
+    <plurals name="metadata_musicbrainz_rating_vote_count_attribution">
+        <item quantity="one">%1$d stemme på MusicBrainz</item>
+        <item quantity="other">%1$d stemmer på MusicBrainz</item>
+    </plurals>
+    <plurals name="playlist_delete_all_confirmation_count">
+        <item quantity="one">Er du sikker på at du vil slette den eneste spillelisten (%1$d)?</item>
+        <item quantity="other">Are you sure you want to delete ALL %1$d playlists?</item>
+    </plurals>
+    <plurals name="playlist_delete_selected_confirmation_count">
+        <item quantity="one">Er du sikker på at du vil slette denne spillelisten (%1$d)?</item>
+        <item quantity="other">Er du sikker på at du vil slette disse %1$d spillelistene?</item>
+    </plurals>
+    <plurals name="playlist_positions_shuffled_count">
+        <item quantity="one">%1$d posisjonert</item>
+        <item quantity="other">%1$d posisjoner tilfeldig</item>
+    </plurals>
+    <plurals name="song_metadata_updated_song_count">
+        <item quantity="one">Oppdatert %1$d sang</item>
+        <item quantity="other">Oppdaterte %1$d sanger</item>
+    </plurals>
+    <plurals name="rewind_home_year_play_count">
+        <item quantity="one">%1$s · %2$s spiller</item>
+        <item quantity="other">%1$s · %2$s spiller</item>
+    </plurals>
+    <plurals name="rewind_listening_day_count_without">
+        <item quantity="one">%1$s dag uten å høre på.</item>
+        <item quantity="other">%1$s dager uten å høre på.</item>
+    </plurals>
+    <plurals name="rewind_loader_status_day_count">
+        <item quantity="one">%1$s LISTENDE DAG</item>
+        <item quantity="other">%1$s LISTENING DAYS</item>
+    </plurals>
+    <plurals name="rewind_loader_status_minute_count">
+        <item quantity="one">%1$s MINUTTER</item>
+        <item quantity="other">%1$s MINUTTER</item>
+    </plurals>
+    <plurals name="rewind_loader_status_play_count">
+        <item quantity="one">%1$s SPILL</item>
+        <item quantity="other">%1$s SPILLER</item>
+    </plurals>
+    <plurals name="rewind_loader_status_song_count">
+        <item quantity="one">%1$s UNIQUE SONG</item>
+        <item quantity="other">%1$s UNIQUE SONGS</item>
+    </plurals>
+    <plurals name="rewind_meta_song_count">
+        <item quantity="one">%1$s sang</item>
+        <item quantity="other">%1$s sanger</item>
+    </plurals>
+    <plurals name="rewind_play_count_label">
+        <item quantity="one">%1$s spiller</item>
+        <item quantity="other">%1$s spiller</item>
+    </plurals>
+    <plurals name="rewind_top_song_teaser_count">
+        <item quantity="one">%1$d SONG.\nEN VINNER.</item>
+        <item quantity="other">%1$d SANGS.\nEN VINNER.</item>
+    </plurals>
+    <plurals name="maintenance_abnormal_job_count">
+        <item quantity="one">%1$d jobb er ikke avsluttet</item>
+        <item quantity="other">%1$d jobber ikke fullført</item>
+    </plurals>
+</resources>

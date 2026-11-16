@@ -1,0 +1,10 @@
+Fixed:
+- Bottom floating bar/mini player hiding content on local artist and statistics screens
+- YouTube Music metadata for songs with combined authors
+- Artist name wiped after playing a song and going back to the album
+- Crash in the "More of [artist]" button in song/video/search menus
+Added:
+- Option to enable/disable Discord browsing
+Other:
+- Home page section titles temporarily in English only
+- Check discussion if you want to help: https://github.com/orgs/N-Zik-Group/discussions/607

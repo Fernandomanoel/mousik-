@@ -1,0 +1,15 @@
+Changed:
+- Adaptive smart recommendations that scale with playlist size (10-120)
+- Smart Shuffle icon
+- Removed the warning message asking for a soft restart
+
+Added:
+- Choose the display order for searches in Settings
+- Added back smart shuffle to Home songs tab
+
+Bug Fixes:
+- Fixed: Caption not showing in Video mode
+- Fixed: Backward icon after exiting video mode
+- Fixed: Video text showing behind status bar
+- Fixed: Discord RPC broken image URLs
+- Fixed: Crash when importing songs from backup

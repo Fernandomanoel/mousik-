@@ -1,0 +1,11 @@
+BETA:
+- Beta discussion: https://github.com/orgs/N-Zik-Group/discussions/555
+Added:
+- Grid and list views for the lyrics menu
+- Karaoke lyrics view with word-level syncing
+- Global offset dialog to correct synchronization
+- Recenter button when manually scrolling lyrics
+Fixed:
+- Stuttering on long karaoke lines and translations
+- Fallback to synced lyrics (LrcLib) when BetterLyrics has no word tags
+- Playback crash, tiny thumbnail, modern player control buttons

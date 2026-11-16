@@ -1,0 +1,69 @@
+Un frontend multilingue YouTube Music pour Android, axé sur les performances, les raffinements UI/UX, l'expansion des fonctionnalités et le support à long terme.
+
+<b>N-Zik</b> est un fork open source de <a href="https://github.com/knighthat/Kreate">Kreate</a>.
+
+<b>Note :</b> N-Zik est né comme un projet personnel. Pour des alternatives plus matures, voir <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a> ou <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
+
+<b>Utilisation de l'IA :</b> J'utilise l'IA générative pour le code (via <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD Method</a>), révisé et testé avant publication.
+
+✨ <b>POURQUOI N-ZIK ?</b> Sans publicité, lecture en arrière-plan, cache hors ligne, UI personnalisable - gratuit, toujours.
+
+🎨 <b>UI personnalisable</b>
+- Interface Jetpack Compose
+- Thèmes : AMOLED, Deep Dark, Crisp Light + accents colorés
+- 3D Carousel Player, widgets d'accueil, lecteur unifié + mini-lecteur
+- Profils d'artistes, Discovery et ambiances, en-têtes pliables
+
+🫧 <b>Effet Glass (BETA, facultatif)</b>
+Désactivé à l’installation. Activez dans Paramètres : natif, contour seul ou Glass par catégorie, qualité réglable. Peut alourdir le rendu et consommer plus de batterie ; réduisez la qualité ou désactivez si besoin.
+Crédits Glass : Square / Convx Project (GPL-3.0) ; Kyant0 AndroidLiquidGlass / Backdrop (Apache-2.0).
+
+🎵 <b>Expérience audio</b>
+- Qualité premium via YouTube Music Premium, auto-appliquée
+- Paroles synchronisées avec édition et traduction en temps réel
+- Reconnaissance musicale (type Shazam), recherche vocale, visualiseur audio
+- Contrôles pro : vitesse, pitch, normalisation, crossfade, boost volume, bass boost, réverbération
+- Barre ondulée Audio Bar pour une navigation précise
+
+💾 <b>Hors ligne, métadonnées et confidentialité</b>
+- Cache intelligent et téléchargements pistes/playlist, qualité au choix
+- Exportation via FFmpeg avec toutes les métadonnées (téléchargeables lors de la première utilisation ; indisponible sur les appareils x86 32 bits)
+- Éditeur de métadonnées intégré (AAC/Opus, pochette)
+- Statistiques d'écoute et historiques locaux
+- Sauvegarde auto, intervalles et rétention personnalisés
+
+🔗 <b>Intégrations</b>
+- Connexion YouTube : recommandations, vidéo, moteur de synchro bidirectionnel expérimental
+- Scrobbling Last.fm avec Now Playing et love/unlove
+- Analyses MusicBrainz des artistes et des albums
+- Discord Rich Presence, mode avancé avec aperçu en direct
+- Invidious pour streaming YouTube alternatif
+- Import/export de playlists : RiPlay, Spotify, YouTube Music, N-Zik
+
+👥 <b>Écouter ensemble</b>
+- Rejoignez ou créez des sessions d'écoute live via code ou lien d'invitation
+
+🗓️ <b>Rembobiner</b>
+- Récapitulatifs annuels et mensuels d'écoute, playlists Rewind auto-générées
+
+📱 <b>Écoutez n'importe où :</b> Android Auto, Automotive, TV et Tablets
+
+🛠️ <b>Fonctionnalités avancées</b>
+- Multi-profils : base de données et réglages distincts
+- Reprise auto Bluetooth, file persistante et auto-remplie
+- Corbeille intelligente, morceaux cachés, système de dislike, contrôle parental
+- Proxy, adaptation qualité réseau, export des journaux
+- Rescue Center, écran de maintenance, onboarding, raccourcis app
+- Mises à jour OTA GitHub, minuteur, lecture en arrière-plan
+
+📦 <b>Builds disponibles</b>
+- Release64/Beta64 (`com.nevar.nzik`): Build complet, appareils 64-bit uniquement
+- Release32/Beta32 (`com.nevar.nzik`): Build complet, appareils 32-bit uniquement
+- Minified64 (`com.nevar.nzik`): Build R8 léger, pour appareils bas de gamme (64-bit)
+- Minified32 (`com.nevar.nzik`): Build R8 léger (32-bit)
+- FOSS (`com.nevar.nzik.foss`): Sans auto-updater, pour F-Droid (toutes architectures)
+- Dev64/Dev32 (`com.nevar.nzik.dev`): Builds de développement, tests uniquement
+
+Aucun build n'embarque FFmpeg : c'est une extension téléchargeable (installée à la première utilisation, gérée dans Paramètres → Extensions). Seul FOSS est sur F-Droid.
+
+ViMusic reste crédité pour les origines du projet.

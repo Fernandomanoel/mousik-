@@ -1,0 +1,15 @@
+New:
+- Smart Queue Scroll with persistence (toggle in settings)
+- More reliable lyrics translations (rebelonion/translator)
+- Localized toasts in the queue screen
+- Stacked download notifications
+
+Improved:
+- Optimized Lyrics screen performance and readability
+- Improved queue stability and drag-and-drop
+
+Fixed:
+- Fixed duplicate items in search and queue index sync
+- Fixed queue drag-and-drop flickering
+- Fixed missing cover art in offline mode
+- Resolved translation initialization bugs

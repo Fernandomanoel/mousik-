@@ -1,0 +1,675 @@
+package app.n_zik.android.components.menu.album
+
+import android.content.Intent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
+import app.n_zik.innertube.Innertube
+import app.n_zik.innertube.YtMusic
+import app.n_zik.innertube.requests.albumPage
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+import app.n_zik.android.MODIFIED_PREFIX
+import app.n_zik.android.cleanPrefix
+import app.n_zik.android.enums.DislikeMode
+import app.n_zik.android.enums.MenuStyle
+import app.n_zik.android.enums.NavRoutes
+import app.n_zik.android.enums.SyncDirection
+import app.n_zik.android.models.Album
+import app.n_zik.android.models.Song
+import app.n_zik.android.models.SongAlbumMap
+import app.n_zik.android.ui.components.LocalMenuState
+import app.n_zik.android.ui.components.MenuState
+import app.n_zik.android.ui.components.tab.toolbar.Button
+import app.n_zik.android.ui.components.tab.toolbar.Clickable
+import app.n_zik.android.ui.components.tab.toolbar.Descriptive
+import app.n_zik.android.ui.components.tab.toolbar.Menu
+import app.n_zik.android.ui.components.tab.toolbar.MenuIcon
+import app.n_zik.android.ui.components.themed.Enqueue
+import app.n_zik.android.ui.components.themed.HeaderIconButton
+import app.n_zik.android.ui.components.themed.IconButton
+import app.n_zik.android.ui.components.themed.PlayNext
+import app.n_zik.android.ui.components.themed.PlaylistsMenu
+import app.n_zik.android.ui.styling.Dimensions
+import app.n_zik.android.ui.styling.favoritesIcon
+import app.n_zik.android.utils.asMediaItem
+import app.n_zik.android.utils.asSong
+import app.n_zik.android.utils.conditional
+import app.n_zik.android.utils.disableScrollingTextKey
+import app.n_zik.android.utils.excludeDislikedAlbumsKey
+import app.n_zik.android.utils.getSyncDirection
+import app.n_zik.android.utils.isNetworkConnected
+import app.n_zik.android.utils.menuStyleKey
+import app.n_zik.android.utils.preferences
+import app.n_zik.android.utils.getActiveProfile
+import app.n_zik.android.utils.rememberPreference
+import app.n_zik.android.utils.secondary
+import app.n_zik.android.utils.semiBold
+import app.n_zik.android.utils.syncPushAlbumBookmarkKey
+import app.n_zik.android.core.utils.Toaster
+import app.n_zik.android.LocalPlayerServiceBinder
+import app.n_zik.android.R
+import app.n_zik.android.appContext
+import app.n_zik.android.colorPalette
+import app.n_zik.android.components.dialog.album.ChangeAlbumAuthorsDialog
+import app.n_zik.android.components.dialog.album.ChangeAlbumBrowseIdDialog
+import app.n_zik.android.components.dialog.album.ChangeAlbumCoverDialog
+import app.n_zik.android.components.dialog.album.ChangeAlbumTitleDialog
+import app.n_zik.android.components.dialog.tab.DeleteAllDownloadedSongsDialog
+import app.n_zik.android.components.dialog.tab.DownloadAllSongsDialog
+import app.n_zik.android.components.glass.GlassHorizontalSeparator
+import app.n_zik.android.components.menu.artistMoreFromTitle
+import app.n_zik.android.components.menu.rememberMenuSongs
+import app.n_zik.android.components.menu.ObserveMenuProfile
+import app.n_zik.android.components.menu.GridMenu
+import app.n_zik.android.components.menu.ListMenu
+import app.n_zik.android.components.menu.MenuSheetDragHandle
+import app.n_zik.android.components.menu.MenuSheetSurface
+import app.n_zik.android.components.menu.menuSheetSectionBackground
+import app.n_zik.android.components.settings.accounts.isYouTubeSyncEnabled
+import app.n_zik.android.components.shuffleButtonIconRes
+import app.n_zik.android.components.tab.SongShuffler
+import app.n_zik.android.core.coil.ImageCacheFactory
+import app.n_zik.android.core.database.Database
+import app.n_zik.android.core.database.artistEntryNames
+import app.n_zik.android.surfaceColor
+import app.n_zik.android.thumbnailShape
+import app.n_zik.android.typography
+import app.n_zik.android.utils.ToastRelay
+import app.n_zik.android.utils.coroutines.NzikDispatchers
+import app.n_zik.android.utils.player.addNextOffMain
+import app.n_zik.android.utils.player.enqueueOffMain
+
+@UnstableApi
+@OptIn(ExperimentalFoundationApi::class)
+class OnlineAlbumItemMenu private constructor(
+    private val navController: NavController,
+    private val album: Innertube.AlbumItem,
+    override val menuState: MenuState,
+    styleState: MutableState<MenuStyle>
+) : Menu {
+
+    private val ownerProfile = getActiveProfile(appContext())
+
+    companion object {
+        @Composable
+        operator fun invoke(navController: NavController, album: Innertube.AlbumItem): OnlineAlbumItemMenu =
+            OnlineAlbumItemMenu(
+                navController = navController,
+                album = album,
+                menuState = LocalMenuState.current,
+                styleState = rememberPreference(menuStyleKey, MenuStyle.List)
+            )
+    }
+
+    lateinit var buttons: List<Button>
+    override var menuStyle: MenuStyle by styleState
+
+    @Composable
+    override fun ListMenu() = ListMenu.Menu(title = null, showDragHandle = false) {
+        // Section: Playback
+        SectionTitle(stringResource(R.string.common_playback_section_title))
+        buttons.getOrNull(0)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        buttons.getOrNull(1)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        buttons.getOrNull(2)?.let { if (it is MenuIcon) it.ListMenuItem() }
+
+        // Section: Management
+        SectionTitle(stringResource(R.string.library_management_section_title))
+        buttons.getOrNull(3)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        buttons.getOrNull(4)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        buttons.getOrNull(5)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        for (i in (buttons.size - 4) until buttons.size) {
+            buttons.getOrNull(i)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        }
+
+        // Section: Navigation
+        val navRange = 6 until (buttons.size - 4)
+        if (!navRange.isEmpty()) {
+            SectionTitle(stringResource(R.string.common_navigation_section_title))
+            for (i in navRange) {
+                buttons.getOrNull(i)?.let { if (it is MenuIcon) it.ListMenuItem() }
+            }
+        }
+    }
+
+    @Composable
+    override fun GridMenu() = GridMenu.Menu(title = null, showDragHandle = false) {
+        // Section: Playback
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            SectionTitle(stringResource(R.string.common_playback_section_title))
+        }
+        buttons.getOrNull(0)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        buttons.getOrNull(1)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        buttons.getOrNull(2)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+
+        // Section: Management
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            SectionTitle(stringResource(R.string.library_management_section_title))
+        }
+        buttons.getOrNull(3)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        buttons.getOrNull(4)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        buttons.getOrNull(5)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        for (i in (buttons.size - 4) until buttons.size) {
+            buttons.getOrNull(i)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        }
+
+        // Section: Navigation
+        val navRange = 6 until (buttons.size - 4)
+        if (!navRange.isEmpty()) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                SectionTitle(stringResource(R.string.common_navigation_section_title))
+            }
+            for (i in navRange) {
+                buttons.getOrNull(i)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+            }
+        }
+    }
+
+    @Composable
+    private fun AlbumItemDisplay(
+        title: String?,
+        authorsText: String?,
+        year: String?,
+        thumbnailUrl: String?,
+        modifier: Modifier = Modifier
+    ) {
+        val context = LocalContext.current
+        val coroutineScope = rememberCoroutineScope()
+        val disableScrollingText by rememberPreference(disableScrollingTextKey, false)
+        val showDisliked by rememberPreference(excludeDislikedAlbumsKey, DislikeMode.Enabled)
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = modifier
+                .fillMaxWidth()
+                .menuSheetSectionBackground(surfaceColor(colorPalette().background1))
+        ) {
+            MenuSheetDragHandle()
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        vertical = Dimensions.itemsVerticalPadding,
+                        horizontal = 16.dp
+                    )
+            ) {
+                // Album's thumbnail
+                Box(
+                    Modifier.size(Dimensions.thumbnails.album / 2)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(Dimensions.thumbnails.album / 2)
+                            .clip(thumbnailShape())
+                    ) {
+                        ImageCacheFactory.Thumbnail(
+                            thumbnailUrl = thumbnailUrl,
+                            modifier = Modifier.size(Dimensions.thumbnails.album / 2)
+                        )
+                    }
+
+                    val likeState by remember(album.key) {
+                        Database.albumTable
+                            .likeState(album.key)
+                            .distinctUntilChanged()
+                    }.collectAsStateWithLifecycle(null, context = NzikDispatchers.DATA)
+
+                    if (likeState != null)
+                        HeaderIconButton(
+                            onClick = {},
+                            icon = when(likeState) {
+                                false -> R.drawable.bookmark_slash
+                                else -> R.drawable.bookmark
+                            },
+                            color = when(likeState) {
+                                false -> colorPalette().red
+                                else -> colorPalette().favoritesIcon
+                            },
+                            iconSize = 12.dp,
+                            placementModifier = Modifier.align(Alignment.BottomStart)
+                                .absoluteOffset(x = (-8).dp)
+                        )
+                }
+
+                // Album's information
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    BasicText(
+                        text = cleanPrefix(title ?: ""),
+                        style = typography().xs.semiBold.copy(
+                            color = colorPalette().text,
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier
+                            .conditional(!disableScrollingText) { basicMarquee(iterations = Int.MAX_VALUE) }
+                    )
+
+                    authorsText?.let { authors ->
+                        if (authors.isNotBlank()) {
+                            BasicText(
+                                text = cleanPrefix(authors),
+                                style = typography().xs.semiBold.secondary.copy(
+                                    color = colorPalette().textSecondary,
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .conditional(!disableScrollingText) { basicMarquee(iterations = Int.MAX_VALUE) }
+                            )
+                        }
+                    }
+
+                    year?.let {
+                        if (it.isNotBlank()) {
+                            BasicText(
+                                text = it,
+                                style = typography().xxs.semiBold.secondary.copy(
+                                    color = colorPalette().textSecondary,
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                // Trailing content (Bookmark & Share)
+                val isBookmarked by remember(album.key) {
+                    Database.albumTable
+                        .isBookmarked(album.key)
+                        .distinctUntilChanged()
+                }.collectAsStateWithLifecycle(false, context = NzikDispatchers.DATA)
+
+                val likeState by remember(album.key) {
+                    Database.albumTable
+                        .likeState(album.key)
+                        .distinctUntilChanged()
+                }.collectAsStateWithLifecycle(null, context = NzikDispatchers.DATA)
+
+                Column(
+                    Modifier.width(48.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    IconButton(
+                        icon = when(likeState) {
+                            true -> R.drawable.bookmark
+                            false -> R.drawable.bookmark_slash
+                            null -> R.drawable.bookmark_outline
+                        },
+                        color = when(likeState) {
+                            true -> colorPalette().favoritesIcon
+                            false -> colorPalette().red
+                            null -> colorPalette().text
+                        },
+                        onClick = {
+                            coroutineScope.launch(NzikDispatchers.DATA) {
+                                Database.albumTable.insertIgnore(
+                                    app.n_zik.android.models.Album(
+                                        id = album.key,
+                                        title = album.info?.name,
+                                        thumbnailUrl = album.thumbnail?.url,
+                                        year = album.year,
+                                        authorsText = album.authors?.joinToString(", ") { it.name ?: "" }
+                                    )
+                                )
+                                val pushAlbumBookmark = appContext().preferences.getBoolean(syncPushAlbumBookmarkKey, false)
+                                val syncDir = getSyncDirection()
+                                if (likeState != true && isYouTubeSyncEnabled() && pushAlbumBookmark && syncDir != SyncDirection.YT_TO_APP && isNetworkConnected(appContext())) {
+                                    val playlistId = album.playlistId
+                                    if (playlistId != null) {
+                                        YtMusic.likePlaylistOrAlbum(playlistId)
+                                    }
+                                } else if (likeState == true && isYouTubeSyncEnabled() && pushAlbumBookmark && syncDir != SyncDirection.YT_TO_APP && isNetworkConnected(appContext())) {
+                                    val playlistId = album.playlistId
+                                    if (playlistId != null) {
+                                        YtMusic.removelikePlaylistOrAlbum(playlistId)
+                                    }
+                                }
+                                if (showDisliked.isEnabled) {
+                                    Database.albumTable.rotateLikeState(album.key)
+                                } else {
+                                    Database.albumTable.toggleBookmark(album.key)
+                                }
+                            }
+                            val newState = if (showDisliked.isEnabled) {
+                                when(likeState) {
+                                    true -> false // bookmarked → disliked
+                                    false -> null // disliked → neutral
+                                    null -> true  // neutral → bookmarked
+                                }
+                            } else {
+                                when(likeState) {
+                                    true -> null  // bookmarked → neutral
+                                    false -> true // disliked → bookmarked
+                                    null -> true  // neutral → bookmarked
+                                }
+                            }
+                            val messageId = if (showDisliked.isEnabled) {
+                                when(newState) {
+                                    true -> R.string.library_favorites_added
+                                    false -> R.string.library_dislikes_added
+                                    null -> R.string.library_favorites_removed
+                                }
+                            } else {
+                                when(newState) {
+                                    true -> R.string.library_favorites_added
+                                    null -> R.string.library_favorites_removed
+                                    else -> R.string.library_favorites_added
+                                }
+                            }
+                            val albumName = album.info?.name
+                            if( albumName != null )
+                                Toaster.s( messageId, "\"$albumName\"" )
+                            else
+                                Toaster.s( messageId )
+                        },
+                        modifier = Modifier
+                            .padding(all = 4.dp)
+                            .size(20.dp)
+                    )
+
+                    IconButton(
+                        icon = R.drawable.share_social,
+                        color = colorPalette().text,
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/browse/${album.key}")
+                            }
+                            context.startActivity(Intent.createChooser(intent, null))
+                        },
+                        modifier = Modifier
+                            .padding(all = 4.dp)
+                            .size(20.dp)
+                    )
+                }
+            }
+
+            GlassHorizontalSeparator(Modifier.height(1.dp))
+        }
+    }
+
+    @Composable
+    override fun MenuComponent() {
+        if (!ObserveMenuProfile(ownerProfile, menuState::hide)) return
+        val binder = LocalPlayerServiceBinder.current
+        val context = LocalContext.current
+
+        var fetchedSongs by remember { mutableStateOf<List<Song>?>(null) }
+
+        var displayTitle by remember { mutableStateOf(album.title ?: album.info?.name) }
+        var displayAuthors by remember { mutableStateOf(album.authors.artistEntryNames().joinToString(", ")) }
+        var displayYear by remember { mutableStateOf(album.year) }
+        var displayThumbnailUrl by remember { mutableStateOf(album.thumbnail?.url) }
+
+        val dbAlbum by remember(album.key) { Database.albumTable.findById(album.key) }
+            .collectAsStateWithLifecycle(null, context = NzikDispatchers.DATA)
+        val songs by rememberMenuSongs(fetchedSongs)
+
+        val albumProvider = {
+            dbAlbum ?: Album(
+                id = album.key,
+                title = displayTitle,
+                thumbnailUrl = displayThumbnailUrl,
+                year = displayYear,
+                authorsText = displayAuthors,
+                shareUrl = "https://music.youtube.com/browse/${album.key}",
+                timestamp = System.currentTimeMillis()
+            )
+        }
+        val changeTitle = ChangeAlbumTitleDialog(albumProvider)
+        val changeAuthors = ChangeAlbumAuthorsDialog(albumProvider)
+        val changeCover = ChangeAlbumCoverDialog(albumProvider)
+        val changeId = ChangeAlbumBrowseIdDialog(menuState = menuState, getAlbum = albumProvider)
+
+        LaunchedEffect(album.key) {
+            withContext(NzikDispatchers.DATA) {
+                if (album.key.startsWith("LOCAL_ALBUM_")) {
+                    fetchedSongs = emptyList()
+                    return@withContext
+                }
+                
+                val result = Innertube.albumPage(browseId = album.key.removePrefix(MODIFIED_PREFIX))?.getOrNull()
+                if (result != null) {
+                    displayTitle = result.title.takeIf { !it.isNullOrBlank() } ?: displayTitle
+                    displayAuthors = result.authors.artistEntryNames().joinToString(", ").takeIf { it.isNotBlank() } ?: displayAuthors
+                    displayYear = result.year.takeIf { !it.isNullOrBlank() } ?: displayYear
+                    displayThumbnailUrl = result.thumbnail?.url.takeIf { !it.isNullOrBlank() } ?: displayThumbnailUrl
+                    fetchedSongs = result.songsPage?.items?.mapNotNull { it.asSong } ?: emptyList()
+                    Database.asyncTransaction {
+                        Database.albumTable.insertIgnore(Album(
+                            id = album.key,
+                            title = displayTitle,
+                            thumbnailUrl = displayThumbnailUrl,
+                            year = displayYear,
+                            authorsText = displayAuthors,
+                            shareUrl = result.url,
+                            timestamp = System.currentTimeMillis()
+                        ))
+                        fetchedSongs?.forEachIndexed { index, song ->
+                            Database.insertIgnore(song.asMediaItem)
+                            Database.songAlbumMapTable.upsert(
+                                listOf(SongAlbumMap(songId = song.id, albumId = album.key, position = index))
+                            )
+                        }
+                    }
+                } else {
+                    fetchedSongs = emptyList() // Failed to fetch or no songs
+                }
+            }
+        }
+
+        val playNext = PlayNext {
+            val currentSongs = songs
+            if (currentSongs == null) {
+                ToastRelay.loadingWarning()
+            } else if (currentSongs.isNotEmpty()) {
+                // Queue changes must survive the popup closing.
+                NzikDispatchers.fireAndForget(NzikDispatchers.UI).launch {
+                    val mediaItems = withContext(NzikDispatchers.DATA) { currentSongs.map { it.asMediaItem } }
+                    binder?.player?.addNextOffMain(mediaItems, appContext())
+                }
+                menuState.hide()
+            } else {
+                Toaster.e(R.string.player_no_song_found)
+            }
+        }
+
+        val enqueue = Enqueue {
+            val currentSongs = songs
+            if (currentSongs == null) {
+                ToastRelay.loadingWarning()
+            } else if (currentSongs.isNotEmpty()) {
+                NzikDispatchers.fireAndForget(NzikDispatchers.UI).launch {
+                    val mediaItems = withContext(NzikDispatchers.DATA) { currentSongs.map { it.asMediaItem } }
+                    binder?.player?.enqueueOffMain(mediaItems, appContext())
+                }
+                menuState.hide()
+            } else {
+                Toaster.e(R.string.player_no_song_found)
+            }
+        }
+
+        val playlistsMenu = PlaylistsMenu.init(
+            navController = navController,
+            mediaItems = { songs?.map { it.asMediaItem } ?: emptyList() },
+            onFailure = { _, _ -> },
+            finalAction = { menuState.hide() },
+            onDismiss = { openMenu() }
+        )
+
+        val addToPlaylist = object : MenuIcon by playlistsMenu, Descriptive by playlistsMenu, Clickable {
+            override fun onShortClick() {
+                val currentSongs = songs
+                if (currentSongs == null) {
+                    ToastRelay.loadingWarning()
+                } else if (currentSongs.isNotEmpty()) {
+                    playlistsMenu.onShortClick()
+                } else {
+                    Toaster.e(R.string.player_no_song_found)
+                }
+            }
+            override fun onLongClick() {}
+        }
+
+        val downloadAllDialog = DownloadAllSongsDialog { songs ?: emptyList() }
+        val downloadAll = object : MenuIcon by downloadAllDialog, Descriptive by downloadAllDialog, Clickable {
+            override fun onShortClick() {
+                val currentSongs = songs
+                if (currentSongs == null) {
+                    ToastRelay.loadingWarning()
+                } else if (currentSongs.isNotEmpty()) {
+                    downloadAllDialog.onShortClick()
+                } else {
+                    Toaster.e(R.string.player_no_song_found)
+                }
+            }
+            override fun onLongClick() {}
+        }
+
+        val deleteAllDialog = DeleteAllDownloadedSongsDialog { songs ?: emptyList() }
+        val deleteAll = object : MenuIcon by deleteAllDialog, Descriptive by deleteAllDialog, Clickable {
+            override fun onShortClick() {
+                val currentSongs = songs
+                if (currentSongs == null) {
+                    ToastRelay.loadingWarning()
+                } else if (currentSongs.isNotEmpty()) {
+                    deleteAllDialog.onShortClick()
+                } else {
+                    Toaster.e(R.string.player_no_song_found)
+                }
+            }
+            override fun onLongClick() {}
+        }
+
+        val shuffle = object : MenuIcon, Descriptive, Clickable {
+            // Issue #866 (gh-866): app-wide shuffle confirmation flash - the icon follows the
+            // binder's flash state (shuffle_ok ~1 s), triggered in onShortClick below.
+            override val iconId: Int get() = shuffleButtonIconRes(binder)
+            override val color: androidx.compose.ui.graphics.Color
+                @Composable
+                get() = colorPalette().text
+            override val messageId: Int = R.string.player_action_shuffle
+            @get:Composable override val menuIconTitle: String get() = stringResource(messageId)
+            override fun onShortClick() {
+                val currentSongs = songs
+                if (currentSongs == null) {
+                    ToastRelay.loadingWarning()
+                } else if (currentSongs.isNotEmpty()) {
+                    SongShuffler.playShuffled(binder ?: return, currentSongs)
+                    binder?.triggerShuffleOkFlash()
+                    menuState.hide()
+                } else {
+                    Toaster.e(R.string.player_no_song_found)
+                }
+            }
+            override fun onLongClick() {}
+        }
+
+        buttons = mutableListOf<Button>().apply {
+            add(shuffle)
+            add(playNext)
+            add(enqueue)
+            add(addToPlaylist)
+            add(downloadAll)
+            add(deleteAll)
+
+            album.authors?.forEach { artist ->
+                val artistName = artist.name
+                val browseId = artist.endpoint?.browseId
+                if (!artistName.isNullOrBlank() && !browseId.isNullOrBlank()) {
+                    add(object : MenuIcon, Descriptive, Clickable {
+                        override val iconId: Int = R.drawable.people
+                        override val messageId: Int = R.string.library_artists_title
+                        @get:Composable override val menuIconTitle: String get() = artistMoreFromTitle(artistName)
+                        override fun onShortClick() {
+                            menuState.hide()
+                            val path = "$browseId?params=${artist.endpoint?.params.orEmpty()}"
+                            NavRoutes.artist.navigateHere(navController, path)
+                        }
+                        override fun onLongClick() {}
+                    })
+                }
+            }
+
+            add(changeTitle)
+            add(changeAuthors)
+            add(changeCover)
+            add(changeId)
+        }
+
+        MenuSheetSurface {
+            changeTitle.Render()
+            changeAuthors.Render()
+            changeCover.Render()
+            changeId.Render()
+            downloadAllDialog.Render()
+            deleteAllDialog.Render()
+            AlbumItemDisplay(
+                title = albumProvider().title,
+                authorsText = albumProvider().authorsText,
+                year = albumProvider().year,
+                thumbnailUrl = albumProvider().thumbnailUrl
+            )
+
+            if (menuStyle == MenuStyle.List)
+                ListMenu()
+            else
+                GridMenu()
+        }
+    }
+
+    @Composable
+    private fun SectionTitle(title: String) {
+        BasicText(
+            text = title,
+            style = typography().xxs.semiBold.copy(
+                color = colorPalette().accent,
+                textAlign = TextAlign.Start
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 4.dp)
+        )
+    }
+}

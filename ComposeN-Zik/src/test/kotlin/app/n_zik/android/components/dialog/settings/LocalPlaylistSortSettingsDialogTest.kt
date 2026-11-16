@@ -1,0 +1,61 @@
+package app.n_zik.android.components.dialog.settings
+
+import android.app.Application
+import android.content.Context
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.unit.dp
+import androidx.test.core.app.ApplicationProvider
+import app.n_zik.android.enums.FontType
+import app.n_zik.android.ui.styling.Appearance
+import app.n_zik.android.ui.styling.DefaultDarkColorPalette
+import app.n_zik.android.ui.styling.LocalAppearance
+import app.n_zik.android.ui.styling.typographyOf
+import app.n_zik.android.R
+import org.junit.After
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33], application = Application::class, qualifiers = "w360dp-h640dp")
+class LocalPlaylistSortSettingsDialogTest {
+    @get:Rule val composeRule = createComposeRule()
+    private val context: Context = ApplicationProvider.getApplicationContext()
+
+    @After fun hideDialog() {
+        LocalPlaylistSortSettingsDialog.hideDialog()
+    }
+
+    @Test fun `local playlist sort configurator identifies the playlist detail screen`() {
+        val shape = RoundedCornerShape(20.dp)
+        val appearance = Appearance(
+            colorPalette = DefaultDarkColorPalette,
+            typography = typographyOf(Color.White, true, false, FontType.Rubik),
+            thumbnailShape = shape,
+            uiRoundnessShape = shape,
+            artistThumbnailShape = shape
+        )
+        LocalPlaylistSortSettingsDialog.showDialog()
+        composeRule.setContent {
+            CompositionLocalProvider(LocalAppearance provides appearance) {
+                LocalPlaylistSortSettingsDialog.Render()
+            }
+        }
+
+        composeRule.onNodeWithText(
+            context.getString(R.string.settings_dialog_sort_title_format, context.getString(R.string.settings_local_playlist_title)),
+        )
+            .assertIsDisplayed()
+        composeRule.onNodeWithText(
+            context.getString(R.string.settings_dialog_sort_title_format, context.getString(R.string.library_playlists_title)),
+        )
+            .assertDoesNotExist()
+    }
+}

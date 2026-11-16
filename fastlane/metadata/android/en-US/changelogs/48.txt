@@ -1,0 +1,13 @@
+Added:
+- New visualizer options moved to a dedicated Settings section
+- New flat wave visualizer in NextVisualizer
+- Audio crossfade between songs (disabled by default)
+- Volume boost level (on top of loudness normalization)
+- Option to show/hide skip time buttons in the player
+Changed:
+- Default roundness: UI 25, thumbnail 20
+Fixed:
+- Visualizer settings now update in real time
+- Thumbnail crossfade glitch showing wrong artwork
+Removed:
+- Old and unused visualizers

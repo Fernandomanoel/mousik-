@@ -1,0 +1,13 @@
+Added:
+- Karaoke lyrics with smooth scrolling
+- Resizable queue panel; pull-to-refresh sync with progress UI
+- Quick Picks on Android Auto (pagination, Play All, Shuffle)
+
+Changed:
+- Android Auto order/sort matches app preferences
+- Live custom color updates; Karaoke default on fresh install
+
+Fixed:
+- Home loading for anonymous users; radio/discover login
+- Android Auto: explicit badge, queue scroll, album artwork
+- Artist name wipe; "More of" crash; podcasts in Home/search

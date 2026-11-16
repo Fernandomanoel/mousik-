@@ -1,0 +1,423 @@
+# mousikḗ
+
+**mousikḗ** is a modified fork of [N-Zik](https://github.com/N-Zik-Group/N-Zik) (GPL-3.0), with a Spotify-like dark/green look, 
+an artists strip in search, a Downloads hub, an optional external folder for downloaded songs and a new app icon/name. 
+All original credits and the GPL-3.0 license are kept. The text below is the original N-Zik README.
+
+---
+
+<div align="center">
+  <img alt="project's banner" src="./assets/design/ic_banner2.png" width="1080" />    
+  
+  <h3>🌐 <a href="https://n-zik.vercel.app/">Official Website</a></h3>
+  <p>
+    <b>N-Zik</b> is a multilingual, open-source Android music app.
+  </p>
+  <p>
+    A desktop companion is available: <a href="https://github.com/N-Zik-Group/N-Zik-Desktop-Compagnon">N-Zik Desktop Compagnon</a>
+    controls your library and playback from a Windows or Linux PC.
+  </p>
+  <p>
+    <strong>N-Zik</strong> is a side project I originally built for myself and friends, not chasing glory. 
+    It's grown a bit since then, which is cool.
+  </p>
+  <p>
+    I use generative AI to assist with code, structured with the 
+    <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD Method</a>, 
+    but everything gets reviewed and tested before it's pushed. I'm not shipping blind.
+  </p>
+  <p>
+    If AI-assisted development isn't your thing, no hard feelings, 
+    there are plenty of great alternatives.
+  </p>
+</div>
+
+  <br>
+  
+</div>
+
+<div align="center">
+  <img src="assets/stats/download-card.svg" alt="N-Zik Stats" /><br>
+  <img src="assets/stats/download-growth.svg" alt="Download Growth" /><br>
+  <img src="assets/stats/star-growth.svg" alt="Star Growth" />
+  
+ <br><br>
+
+[![Launched on DevGlobe](https://devglobe.app/badges/launched-on-devglobe-dark.svg)](https://devglobe.app/projects/n-zik?utm_source=badge&utm_medium=embed)
+
+  [![License: GPL v3](https://img.shields.io/github/license/N-Zik-Group/N-Zik?style=flat&color=blue)](https://www.gnu.org/licenses/gpl-3.0)
+  [![CodeFactor](https://img.shields.io/codefactor/grade/github/N-Zik-Group/N-Zik?style=flat&label=CodeFactor)](https://www.codefactor.io/repository/github/n-zik-group/n-zik)
+
+</div>
+
+# 📲 Installation
+
+[![GitHub](./assets/get-it-on/GitHub.png)](https://github.com/N-Zik-Group/N-Zik/releases/latest)
+[![BetaVersions](https://github.com/N-Zik-Group/N-Zik/blob/main/assets/get-it-on/GitHubBeta.png?raw=true)](https://github.com/N-Zik-Group/N-Zik/releases?q=&type=prerelease)
+[![F-Droid](./assets/get-it-on/F-Droid.png)](https://f-droid.org/packages/com.nevar.nzik.foss/)
+[![IzzyOnDroid](./assets/get-it-on/IzzyOnDroid.png)](https://apt.izzysoft.de/fdroid/index/apk/com.nevar.nzik.foss?repo=main)
+[![OpenAPK](./assets/get-it-on/OpenAPK.png)](https://www.openapk.net/n-zik/com.nevar.nzik.foss/)
+[![AndroidFreeware](./assets/get-it-on/AndroidFreeware.png)](https://www.androidfreeware.net/download-n-zik-apk.html)
+[![Obtainium](./assets/get-it-on/Obtainium.png)](<https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.nevar.nzik.foss%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FN-Zik-Group%2FN-Zik%22%2C%22author%22%3A%22N-Zik-Group%22%2C%22name%22%3A%22N-Zik%20(FOSS)%22%2C%22preferredApkIndex%22%3A0%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3Afalse%2C%5C%22fallbackToOlderReleases%5C%22%3Atrue%2C%5C%22filterReleaseTitlesByRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22filterReleaseNotesByRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22verifyLatestTag%5C%22%3Afalse%2C%5C%22sortMethodChoice%5C%22%3A%5C%22date%5C%22%2C%5C%22useLatestAssetDateAsReleaseDate%5C%22%3Afalse%2C%5C%22releaseTitleAsVersion%5C%22%3Afalse%2C%5C%22trackOnly%5C%22%3Afalse%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22matchGroupToUse%5C%22%3A%5C%22%5C%22%2C%5C%22versionDetection%5C%22%3Atrue%2C%5C%22releaseDateAsVersion%5C%22%3Afalse%2C%5C%22useVersionCodeAsOSVersion%5C%22%3Afalse%2C%5C%22apkFilterRegEx%5C%22%3A%5C%22N-Zik-foss%5C%5C%5C%5C.apk%5C%22%2C%5C%22invertAPKFilter%5C%22%3Afalse%2C%5C%22autoApkFilterByArch%5C%22%3Atrue%2C%5C%22appName%5C%22%3A%5C%22N-Zik%20(FOSS)%5C%22%2C%5C%22appAuthor%5C%22%3A%5C%22N-Zik-Group%5C%22%2C%5C%22shizukuPretendToBeGooglePlay%5C%22%3Afalse%2C%5C%22allowInsecure%5C%22%3Afalse%2C%5C%22exemptFromBackgroundUpdates%5C%22%3Afalse%2C%5C%22skipUpdateNotifications%5C%22%3Afalse%2C%5C%22about%5C%22%3A%5C%22N-Zik%20is%20a%20multilingual%20YouTube%20Music%20client%20built%20with%20performance%20improvements%2C%20UI%2FUX%20refinement%2C%20and%20new%20features.%5C%22%2C%5C%22refreshBeforeDownload%5C%22%3Afalse%2C%5C%22includeZips%5C%22%3Afalse%2C%5C%22zippedApkFilterRegEx%5C%22%3A%5C%22%5C%22%2C%5C%22includeTarballs%5C%22%3Afalse%2C%5C%22tarballedApkFilterRegEx%5C%22%3A%5C%22%5C%22%7D%22%2C%22overrideSource%22%3Anull%7D>)
+[![Appteka](./assets/get-it-on/Appteka.png)](https://appteka.store/search?q=N-Zik)
+
+## 📦 Available Builds
+
+- **Release64** & **Beta64** (`com.nevar.nzik`): Complete build with all components, 64-bit devices only (arm64-v8a + x86_64).
+- **Release32** & **Beta32** (`com.nevar.nzik`): Complete build with all components, 32-bit devices only (armeabi-v7a + x86).
+- **Minified64** (`com.nevar.nzik`): Lightweight R8-shrunk build, recommended for low-end devices, 64-bit devices only.
+- **Minified32** (`com.nevar.nzik`): Lightweight R8-shrunk build, 32-bit devices only.
+- **FOSS** (`com.nevar.nzik.foss`): Complete build without auto-updater, suitable for alternative stores, runs on every architecture (universal APK).
+- **Dev64** & **Dev32** (`com.nevar.nzik.dev`): Development builds from latest commits, for testing only (Dev64 64-bit only, Dev32 32-bit only).
+
+> ℹ️ The `64`/`32` in a build name is an honest ABI label, not a feature cutoff.
+
+---
+
+<div align="center">
+<br><br>
+<img src="assets/design/warning-rounded.png" width="50%">
+<br>
+
+<h1>⏳ Only <a href="https://keepandroidopen.org"><img src="https://img.shields.io/badge/J--46-red?style=flat-round&logo=android&logoColor=white" alt="Android Lockdown"/></a> days remaining until Android Lockdown</h1>
+
+Starting in **~~September 2026~~ January 2027** [See why the date changed here](https://keepandroidopen.org/en/faq/), Google will require **identity verification for all Android developers**, including those distributing applications **outside of Google Play**.
+
+As a **Free and Open Source Software (FOSS)** project, **N‑Zik** and his **developer** opposes this requirement due to its impact on developer privacy, independent distribution, and software freedom.
+
+📖 [Learn more](https://keepandroidopen.org) · ✍️ [Sign the petition](https://www.change.org/p/stop-google-from-limiting-apk-file-usage/)
+
+</div>
+<br>
+
+<div align="center">
+
+## 📚 Wiki
+
+[![Ask DeepWiki](https://img.shields.io/badge/Ask-DeepWiki-8d5cff?style=flat)](https://deepwiki.com/N-Zik-Group/N-Zik)
+
+<br>
+
+## 🌍 Community
+
+Join the N-Zik Discord:
+
+<a href="https://discord.gg/bneHC7QRje">
+  <img src="https://discord.com/api/guilds/1345079801324634193/widget.png?style=banner2" alt="Discord Server">
+</a>
+
+<br>
+
+</div>
+
+# 🎧 Features
+
+- 🌍 **Multilingual Support**: Available in English, Italian, German, Russian, French, Spanish, Czech, Turkish, Romanian, and more. Contributions are always welcome!
+- 🔊 **High Quality Audio** - Premium streaming quality is unlocked automatically - just connect your YouTube Music Premium account.
+- 🎨 **Modern and Intuitive UI**
+- 🫧 **[Glass Effect (BETA, optional)](#glass-effect-beta)**: Configurable glass and contour presentation, disabled on fresh installations.
+- 💾 **Smart Offline Caching**: Automatically cache songs for offline playback with customizable cache limits.
+- 📥 **Downloads**: Download individual tracks or entire playlists for permanent offline access, with a dedicated download quality (Auto/High/Low) and a batch "Update downloads" action.
+- ▶️ **Background Playback**: Keep your music playing while using other apps.
+- 🎵 **NZik Radio**: Algorithmic radio mode that auto-queues related songs based on the current track.
+- 📊 **Listening Statistics**: Track your habits, favorite artists, and playback trends.
+- ⬇️ **OTA Updates**: Receive automatic in-app updates without needing to reinstall manually.
+- 🌈 **Audio Visualizer**: Enjoy real-time visual effects synchronized with your music.
+> [!NOTE]
+> 🎤 The audio visualizer requires **microphone permission** and must be enabled in the settings.
+- 🕹️ **Discord Rich Presence**: Display your currently playing track directly on your Discord profile. An advanced mode adds custom text templates, activity type, up to 2 custom buttons, pause-presence, and a live interactive preview card.
+- 📰 **Discovery**: Explore moods, genres, releases, and albums from your favorite artists, plus trending picks.
+- 🔄 **Playlist Import & Export**: Easily back up, share, and restore playlists, you can import from Riplay, Spotify ([Exportify](https://exportify.net/)), Youtube Music and N-Zik
+- ✍️ **Advanced Lyrics Support**: Fetch, display word by word, sync and unsync lyrics with smart fallback mechanisms, edit, and translate them in real-time via Google Translate with source language detection.
+- 🎭 **Custom Themes**: Personalize the app with multiple theme options.
+- ⏲️ **Sleep Timer**: Automatically stop playback after a configurable duration.
+- 🎚️ **Advanced Audio Controls**: Adjust volume, playback speed, pitch, normalization, silence skipping, crossfade, volume boost, bass boost, and reverb.
+- 🔍 **Song Recognition**: Identify songs playing around you via audio fingerprinting (Shazam-like).
+- 🎤 **Voice Search**: Search for music using your voice with animated overlay.
+- 📱 **On-Device Music**: Play local music files stored directly on your device.
+- 📺 **Wide Platform Support**: Compatible with Android Auto, Android Automotive, Android TV, and YouTube video playback.
+- 🪟 **Widgets**: New widgets for your home screen (Compact, Turntable, and Playlist).
+- 🧩 **Extensions**: Heavy features are delivered as small, downloadable modules that add capability without bloating every APK. Manage them from the burger menu → **Extensions**, which opens the Extensions page in Settings with **Installed** (state, size, update/uninstall) and **Marketplace** (browse + download available extensions) tabs. The first extension is **FFmpeg**, which unlocks **Media Export** and the **Metadata Editor**, the app's only FFmpeg-powered features; regular playback, streaming and downloads never use it. It downloads automatically on first use (≈ 25 MB, SHA-256 verified, app-update-style progress notification), updates and uninstalls independently of the app, and is version-pinned to the app. _(Note: the FFmpeg extension is not available on x86 32-bit devices.)_
+- 📤 **Media Export**: Export cached or downloaded music to external storage with full metadata (title, artist, album, cover art, copyright, etc.) powered by FFmpeg. _(Note: requires the **FFmpeg extension**; see the [Extensions](#-features) entry in the Features list. Managed in Settings → Extensions. Not available on x86 32-bit devices.)_
+- ✏️ **Metadata Editor**: Edit song metadata (title, artist, album, genre, year, cover art, and more) directly in-app. Supports both AAC and Opus codecs with automatic cover art embedding.
+- ⚙️ **Settings & Database Auto-Backup**: Save, restore, and automatically back up your complete app configuration and database with customizable intervals, retention limits, and optional YouTube/Discord/Last.fm credential inclusion.
+- 📡 **Offline First**: Enjoy your music library even without an internet connection.
+- 🎵 **YouTube Music accounts and channels**: Switch between Google accounts and YouTube channels, including channels managed by the same account. Each N-Zik profile has one active YouTube Music channel for personalized browsing and recommendations.
+- 🔁 **YouTube Music sync (experimental)**: Debug and Dev builds can sync likes and library items both ways with the active channel.
+- 🔄 **Auto-Resume on Device Connect**: Automatically resume playback when Bluetooth headphones or speakers connect.
+- 💾 **Persistent Queue**: Your queue is saved and restored across app sessions.
+- 🔀 **Auto-fill Queue**: Automatically adds more songs when the queue is nearly empty.
+- 🗑️ **Smart Trash**: Intelligent cleanup of songs based on listen count thresholds.
+- 🔇 **Hidden Songs**: Hide or unhide songs from your library view.
+- 👨‍👩‍👧‍👦 **Parental Control**: Block explicit content based on your settings.
+- 🔗 **Invidious Integration**: Use an alternative YouTube frontend for streaming.
+- 🌐 **Proxy Support**: Configurable proxy for YouTube API requests.
+- 📶 **Network Quality Adaptation**: Adaptive streaming based on your connection quality.
+- 📋 **Log Export**: Export app logs to a file, or copy them to the clipboard, for easy debugging and reporting.
+- 👤 **Multi-Profile**: Switch between multiple isolated profiles (per-profile database and preferences) from the settings or the main-menu switcher.
+- 👥 **Listen Together**: Join or host live listening sessions with other users via an 8-character code or invite link. Runs on Metrolist's [MetroServer](https://github.com/MetrolistGroup/metroserver) infrastructure (N-Zik is an officially supported host), and you can point it at your own custom server in the settings.
+- 🎼 **Last.fm Integration**: Scrobble what you listen to: Now Playing, love/unlove, and configurable scrobbling options.
+- 🧠 **MusicBrainz Insights**: Rich artist and album information, community data, and external links.
+- 🚫 **Dislike System**: Dislike songs, artists, and albums to keep them out of your recommendations, with dedicated "Disliked" tabs.
+- ⏯️ **Unified Player**: The full player and the mini-player are one experience; long-press the mini-player to open the in-app queue overlay.
+- 🗓️ **Rewind**: Yearly and monthly listening recaps ("My Rewind"), auto-generated Rewind playlists, background music, and deck image export.
+- 🎨 **[Theme Store (BETA)](https://github.com/N-Zik-Group/N-Zik-Theme-Store)**: Browse community themes, preview them in Normal or Glass, and apply the parts you want. Create your own themes, share them as ZIP files, or submit them to the catalog.
+- 🚑 **Rescue Center**: Use the dedicated launcher shortcut to recover your database, settings, and themes by profile.
+- 🛠️ **Maintenance Screen**: Inspect the app state and its live subsystems, and export logs or crash reports.
+- 🚪 **First-Launch Onboarding**: A guided 4-step flow (display name, playlist import, account setup).
+- ⚡ **App Shortcuts**: Dynamically registered home-screen shortcuts (search, albums, artists, library, rescue).
+- 📈 **Audio Bar**: A visual waveform seekbar for precise track navigation.
+
+<a id="glass-effect-beta"></a>
+
+# 🫧 Glass Effect (BETA)
+
+Glass is optional and **disabled on fresh installations**. Enable it in Settings, then choose native, contour-only or Glass presentation by category and adjust the rendering quality. Glass can increase rendering work and battery use; lower the quality or disable it to suit your device.
+
+<div align="center">
+  <img alt="Glass demonstration in the existing phone frame" src="assets/design/preview/framed_videos/glass-demo.gif" height="300px" />
+  <br><br>
+  <img alt="Glass settings and quality controls" src="assets/design/preview/img/04.png" height="300px" />
+  <img alt="Home with Glass enabled" src="assets/design/preview/img/05.png" height="300px" />
+  <img alt="Player with Glass enabled" src="assets/design/preview/img/06.png" height="300px" />
+  <img alt="Carousel player with Glass enabled" src="assets/design/preview/img/07.png" height="300px" />
+</div>
+
+Glass builds on [Square / Convx Project](https://github.com/Lelonio/Square) (GPL-3.0) and [Kyant0 AndroidLiquidGlass / Backdrop](https://github.com/Kyant0/AndroidLiquidGlass) (Apache-2.0). Full attribution and license notices appear under [N-Zik credits](ComposeN-Zik/src/androidMain/res/raw/credits.md).
+
+# 📷 Screenshots & Videos
+
+<div align="center">
+    <h3>🎬 Demos</h3>
+    <img alt="Home Demo" src="assets/design/preview/framed_videos/home.gif" height="300px" />
+    <img alt="Carousel Demo" src="assets/design/preview/framed_videos/carrousel.gif" height="300px" />
+    <img alt="Lyrics Demo" src="assets/design/preview/framed_videos/lyrics.gif" height="300px" />
+    <img alt="Artist Demo" src="assets/design/preview/framed_videos/artist.gif" height="300px" />
+    <img alt="Songs Demo" src="assets/design/preview/framed_videos/songs.gif" height="300px" />
+    <img alt="Search Demo" src="assets/design/preview/framed_videos/search.gif" height="300px" />
+    <img alt="Settings Demo" src="assets/design/preview/framed_videos/settings.gif" height="300px" />
+    <img alt="OTA Demo" src="assets/design/preview/framed_videos/ota.gif" height="300px" />
+    <img alt="VZ Demo" src="assets/design/preview/framed_videos/vz.gif" height="300px" />
+    <br><br>
+    <h3>🏠 Main</h3>
+    <img alt="Home (Light)" src="assets/design/preview/img/01.png" height="300px" />
+    <img alt="Home (Dark)" src="assets/design/preview/img/02.png" height="300px" />
+    <img alt="Home (AMOLED)" src="assets/design/preview/img/03.png" height="300px" />
+    <br><br>
+    <h3>▶️ Player</h3>
+    <img alt="Player" src="assets/design/preview/img/08.png" height="300px" />
+    <img alt="Player (Cover Animation)" src="assets/design/preview/img/09.png" height="300px" />
+    <img alt="Player (Audio Bar)" src="assets/design/preview/img/10.png" height="300px" />
+    <img alt="Player (Lyrics)" src="assets/design/preview/img/11.png" height="300px" />
+    <br><br>
+    <h3>📃 Player - queue</h3>
+    <img alt="Player Queue" src="assets/design/preview/img/12.png" height="300px" />
+    <img alt="Player Queue2" src="assets/design/preview/img/13.png" height="300px" />
+    <br><br>
+    <h3>🎵 Library</h3>
+    <img alt="Playlist" src="assets/design/preview/img/14.png" height="300px" />
+    <img alt="Artist" src="assets/design/preview/img/15.png" height="300px" />
+    <br><br>
+    <h3>🔍 Search</h3>
+    <img alt="Search" src="assets/design/preview/img/16.png" height="300px" />
+    <img alt="Voice Search" src="assets/design/preview/img/17.png" height="300px" />
+    <img alt="Song Recognition" src="assets/design/preview/img/18.png" height="300px" />
+    <br><br>
+    <h3>📊 History</h3>
+    <img alt="History" src="assets/design/preview/img/19.png" height="300px" />
+    <img alt="Stats" src="assets/design/preview/img/20.png" height="300px" />
+    <br><br>
+    <h3>⚙️ Settings</h3>
+    <img alt="Settings" src="assets/design/preview/img/21.png" height="300px" />
+    <img alt="Profiles" src="assets/design/preview/img/22.png" height="300px" />
+    <img alt="Accounts" src="assets/design/preview/img/23.png" height="300px" />
+    <br><br>
+    <h3>🕹️ Discord</h3>
+    <img alt="Discord RPC (Settings)" src="assets/design/preview/img/24.png" height="300px" />
+    <img alt="Discord RPC (Live)" src="assets/design/preview/img/25.png" height="300px" />
+    <br>
+    <img width="280" height="100" alt="Discord Rich Presence Preview 1" src="https://github.com/user-attachments/assets/f820686e-8e24-4ac1-8133-505dd94550cc" />
+    <img width="280" height="100" alt="Discord Rich Presence Preview 2" src="https://github.com/user-attachments/assets/8d03df13-3114-40d4-a403-f7d57524787c" />
+    <br>
+    <img width="320" height="207" alt="Discord Rich Presence Preview 3" src="https://github.com/user-attachments/assets/f9d0c5a7-b334-45df-a35a-810813ddd26a" />
+    <br><br>
+    <h3>⬇️ Auto Update</h3>
+    <img alt="OTA Updates" src="assets/design/preview/img/26.png" height="300px" />
+    <br><br>
+    <h3>🗓️ Rewind</h3>
+    <img alt="Rewind" src="assets/design/preview/img/27.png" height="300px" />
+    <img alt="Rewind (Intro)" src="assets/design/preview/img/28.png" height="300px" />
+    <br><br>
+    <h3>📺 Other Android Platforms</h3>
+    <img alt="Android Auto" src="assets/design/preview/img/29.png" height="200px" />
+    <img alt="Android Automotive" src="assets/design/preview/img/30.png" height="200px" />
+    <img alt="Android TV" src="assets/design/preview/img/31.png" height="200px" />
+    <img alt="Android Tablet" src="assets/design/preview/img/32.png" height="200px" />
+    <br><br>
+    <h3>🪟 Widgets</h3>
+    <img width="220" src="https://github.com/user-attachments/assets/d1ebf277-433d-4ed4-b3c7-4cff067c5cb9" alt="Compact Widget Preview 1"/>
+    <img width="220" src="https://github.com/user-attachments/assets/60f49cd0-5e8e-47c2-b66e-aa05ba389d35" alt="Compact Widget Preview 2"/>
+    <br>
+    <img width="180" src="https://github.com/user-attachments/assets/cdeec72a-7263-4f2a-acf2-b009727af56e" alt="Turntable Widget Preview 1"/>
+    <img width="180" src="https://github.com/user-attachments/assets/6bc819fa-dd9e-43cb-b527-5e1f86b4d004" alt="Turntable Widget Preview 2"/>
+    <br>
+    <img width="180" src="https://github.com/user-attachments/assets/d68d397d-18c8-4137-abfa-8116a9aa97e9" alt="Playlist Widget Preview 1"/>
+    <img width="180" src="https://github.com/user-attachments/assets/d24f97d0-5e9c-45a7-9f44-1ee5be61e22a" alt="Playlist Widget Preview 2"/>
+</div>
+
+# 🌐 Translations
+
+## Overall
+
+[![Overall](https://crowdin-stats.rewake.org/embed/29f72ed2-fc01-4570-8c8f-3e6e9acbaf0c/overall.svg?unit=strings&theme=dark&bg=transparent&text=f4efff&muted=b8a9ca&accent=8d5cff&border=transparent)](https://crowdin.com/project/N-Zik)
+
+## Translation Progress
+
+[![Translation Progress](https://crowdin-stats.rewake.org/embed/29f72ed2-fc01-4570-8c8f-3e6e9acbaf0c/table.svg?theme=dark&bg=transparent&text=f4efff&muted=b8a9ca&accent=8d5cff&border=transparent)](https://crowdin.com/project/N-Zik)
+
+## Contributors
+
+<!-- crowdin-contributors:start -->
+<p align="center">
+<a href="https://crowdin.com/profile/babapro123agent"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17628336/medium/652a4ba8122a453346351b024913fd24_default.png" width="54" height="54" alt="babapro123agent" title="babapro123agent" /></a>
+<a href="https://crowdin.com/profile/ebisadeghi81362647"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17301554/medium/890d19d37674fddaf0e70d7e15f9145f.jpeg" width="54" height="54" alt="Ebi Sadeghi (Behnam)" title="Ebi Sadeghi (Behnam)" /></a>
+<a href="https://crowdin.com/profile/floot727"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17413824/medium/eefda7cd518f1f4e9f292cef645ca112.jpeg" width="54" height="54" alt="Floot" title="Floot" /></a>
+<a href="https://crowdin.com/profile/LeonDayi"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17519450/medium/0a7d52edd7725d4d9d3366b86401d46e.jpg" width="54" height="54" alt="Leon Dayı" title="Leon Dayı" /></a>
+<a href="https://crowdin.com/profile/manuel09"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17179874/medium/74fa7d43eb181ca8f68d611f7f379e44.png" width="54" height="54" alt="manuel09" title="manuel09" /></a>
+<a href="https://crowdin.com/profile/Mickael81"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/16589059/medium/65fcdfc7892c0e034a5b24fcba44b471_default.png" width="54" height="54" alt="Mickael81" title="Mickael81" /></a>
+<a href="https://crowdin.com/profile/Nick806"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/17910183/medium/234b8a1b1b91ba19e30891e033975024.jpeg" width="54" height="54" alt="Nicola Zamprogno" title="Nicola Zamprogno" /></a>
+<a href="https://crowdin.com/profile/NEVARLeVrai"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/16131012/medium/847885a012bc64ae85091c750fe095b0.jpg" width="54" height="54" alt="NΞVΛR" title="NΞVΛR" /></a>
+<a href="https://crowdin.com/profile/OrangeZXZ"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/16130898/medium/63a28f52887ba3835eb7cc7ef828ec5b.png" width="54" height="54" alt="OrangeZXZ" title="OrangeZXZ" /></a>
+<a href="https://crowdin.com/profile/siggi1984"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/15963157/medium/af6f94fe7cea3595b77a2a8b41433d03.png" width="54" height="54" alt="siggi1984" title="siggi1984" /></a>
+<a href="https://crowdin.com/profile/Usia"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/16236470/medium/315b1ebbd38e0f7e41d44bee752afa33.jpg" width="54" height="54" alt="Usia" title="Usia" /></a>
+<a href="https://crowdin.com/profile/yrrad8"><img src="https://crowdin-static.cf-downloads.crowdin.com/avatar/16884921/medium/26b03f3f453a0e021552026b04acfd3c_default.png" width="54" height="54" alt="yrrad8" title="yrrad8" /></a>
+</p>
+<!-- crowdin-contributors:end -->
+
+## 🌍 Help Translate
+
+Want to:
+
+- Translate into a new language?
+- Improve an existing translation?
+- Fix typos or inconsistencies?
+
+Join us on Crowdin!
+
+Android UI sources are in [the thematic catalogs](ComposeN-Zik/src/androidMain/localization/source/). Store listing sources are in [Fastlane](fastlane/source/). Submit translations through Crowdin.
+
+> ❓ Don't see your language?
+
+[![Translated with Crowdin](https://badges.crowdin.net/badge/light/crowdin-on-dark.png)](https://crowdin.com/project/N-Zik)
+
+
+---
+
+# 🤝 Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, verification and pull requests.
+
+# 👀 Status
+
+[![Refresh contributor grids](https://github.com/N-Zik-Group/N-Zik/actions/workflows/readme-contributors.yml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/readme-contributors.yml)
+
+## 🛠️ Build & Deployment
+
+[![Build Stable Flavors](https://github.com/N-Zik-Group/N-Zik/actions/workflows/build-all-flavors-weekly.yml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/build-all-flavors-weekly.yml)  
+[![Build Beta](https://github.com/N-Zik-Group/N-Zik/actions/workflows/build-beta-flavor.yaml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/build-beta-flavor.yaml)  
+[![Build Dev](https://github.com/N-Zik-Group/N-Zik/actions/workflows/build-dev.yml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/build-dev.yml)  
+[![Automatic Cache Builder](https://github.com/N-Zik-Group/N-Zik/actions/workflows/cache-builder.yaml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/cache-builder.yaml)  
+[![Build & Sign Release64 Flavor Only (TEST)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/build-test.yaml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/build-test.yaml)
+
+## 🔄 Automation & Maintenance
+
+[![Fetch, create, and update repo's contributors](https://github.com/N-Zik-Group/N-Zik/actions/workflows/weekly-update-contributors.yaml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/weekly-update-contributors.yaml)  
+[![Automatic Dependency Submission](https://github.com/N-Zik-Group/N-Zik/actions/workflows/dependency-graph/auto-submission/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/dependency-graph/auto-submission)  
+[![Dependabot Updates](https://github.com/N-Zik-Group/N-Zik/actions/workflows/dependabot/dependabot-updates/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/dependabot/dependabot-updates)  
+[![Chores](https://github.com/N-Zik-Group/N-Zik/actions/workflows/house-keeper.yaml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/house-keeper.yaml)  
+[![Close stale tickets weekly](https://github.com/N-Zik-Group/N-Zik/actions/workflows/close-stale-tickets.yaml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/close-stale-tickets.yaml)  
+[![Comment or close on label](https://github.com/N-Zik-Group/N-Zik/actions/workflows/comment-on-label.yaml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/comment-on-label.yaml)  
+[![Update Project Stats and Chart](https://github.com/N-Zik-Group/N-Zik/actions/workflows/metrics.yml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/metrics.yml)  
+[![Update Android Lockdown Countdown](https://github.com/N-Zik-Group/N-Zik/actions/workflows/update-android-lockdown-countdown.yml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/update-android-lockdown-countdown.yml)  
+[![Sync Listen Together proto from metroproto](https://github.com/N-Zik-Group/N-Zik/actions/workflows/sync-metroproto.yml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/sync-metroproto.yml)  
+[![Add labels](https://github.com/N-Zik-Group/N-Zik/actions/workflows/add-labels.yaml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/add-labels.yaml)  
+[![N-Zik Roadmap](https://github.com/N-Zik-Group/N-Zik/actions/workflows/mobile-roadmap.yml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/mobile-roadmap.yml) [N-Zik roadmap](https://github.com/orgs/N-Zik-Group/projects/1) <br />
+[![Auto-assign issues](https://github.com/N-Zik-Group/N-Zik/actions/workflows/auto-assign-issues.yml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/auto-assign-issues.yml)  
+[![CodeQL](https://github.com/N-Zik-Group/N-Zik/actions/workflows/codeql.yml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/codeql.yml)  
+[![Label automation tests](https://github.com/N-Zik-Group/N-Zik/actions/workflows/label-automation-tests.yml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/label-automation-tests.yml)  
+[![Fetch, create, and update repo's translators](https://github.com/N-Zik-Group/N-Zik/actions/workflows/weekly-update-translators.yaml/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/weekly-update-translators.yaml)  
+[![Copilot](https://github.com/N-Zik-Group/N-Zik/actions/workflows/agents/copilot-pull-request-reviewer/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/agents/copilot-pull-request-reviewer)  
+[![CodeQL - Code Quality](https://github.com/N-Zik-Group/N-Zik/actions/workflows/github-code-quality/codeql/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/github-code-quality/codeql)  
+[![CodeQL (GitHub default setup)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/N-Zik-Group/N-Zik/actions/workflows/github-code-scanning/codeql)
+
+# 👥 Contributors
+
+<!-- project-contributors:start -->
+<p align="center">
+<a href="https://github.com/NEVARLeVrai"><img src="https://avatars.githubusercontent.com/u/63956787?v=4" width="54" height="54" alt="NEVARLeVrai" title="NEVARLeVrai" /></a>
+<a href="https://github.com/fast4x"><img src="https://avatars.githubusercontent.com/u/1484476?v=4" width="54" height="54" alt="fast4x" title="fast4x" /></a>
+<a href="https://github.com/knighthat"><img src="https://avatars.githubusercontent.com/u/68310158?v=4" width="54" height="54" alt="knighthat" title="knighthat" /></a>
+<a href="https://github.com/vfsfitvnm"><img src="https://avatars.githubusercontent.com/u/46219656?v=4" width="54" height="54" alt="vfsfitvnm" title="vfsfitvnm" /></a>
+<a href="https://github.com/aneesh1122"><img src="https://avatars.githubusercontent.com/u/45353488?v=4" width="54" height="54" alt="aneesh1122" title="aneesh1122" /></a>
+<a href="https://github.com/twistios"><img src="https://avatars.githubusercontent.com/u/54811436?v=4" width="54" height="54" alt="twistios" title="twistios" /></a>
+<a href="https://github.com/martkol"><img src="https://avatars.githubusercontent.com/u/55714786?v=4" width="54" height="54" alt="martkol" title="martkol" /></a>
+<a href="https://github.com/ikanakova"><img src="https://avatars.githubusercontent.com/u/38765251?v=4" width="54" height="54" alt="ikanakova" title="ikanakova" /></a>
+<a href="https://github.com/Abhinavreddy-B"><img src="https://avatars.githubusercontent.com/u/98270503?v=4" width="54" height="54" alt="Abhinavreddy-B" title="Abhinavreddy-B" /></a>
+<a href="https://github.com/OrangeZXZ"><img src="https://avatars.githubusercontent.com/u/104271365?v=4" width="54" height="54" alt="OrangeZXZ" title="OrangeZXZ" /></a>
+<a href="https://github.com/jzitnik-dev"><img src="https://avatars.githubusercontent.com/u/72742578?v=4" width="54" height="54" alt="jzitnik-dev" title="jzitnik-dev" /></a>
+<a href="https://github.com/siggi1984"><img src="https://avatars.githubusercontent.com/u/103368536?v=4" width="54" height="54" alt="siggi1984" title="siggi1984" /></a>
+<a href="https://github.com/DanielSevillano"><img src="https://avatars.githubusercontent.com/u/68847306?v=4" width="54" height="54" alt="DanielSevillano" title="DanielSevillano" /></a>
+<a href="https://github.com/MedieroAF"><img src="https://avatars.githubusercontent.com/u/186194125?v=4" width="54" height="54" alt="MedieroAF" title="MedieroAF" /></a>
+<a href="https://github.com/KyNarec"><img src="https://avatars.githubusercontent.com/u/113847208?v=4" width="54" height="54" alt="KyNarec" title="KyNarec" /></a>
+<a href="https://github.com/claude"><img src="https://avatars.githubusercontent.com/u/81847?v=4" width="54" height="54" alt="claude" title="claude" /></a>
+<a href="https://github.com/coolcarp"><img src="https://avatars.githubusercontent.com/u/76832747?v=4" width="54" height="54" alt="coolcarp" title="coolcarp" /></a>
+<a href="https://github.com/kaanelloed"><img src="https://avatars.githubusercontent.com/u/11068249?v=4" width="54" height="54" alt="kaanelloed" title="kaanelloed" /></a>
+<a href="https://github.com/yerlotic"><img src="https://avatars.githubusercontent.com/u/108224581?v=4" width="54" height="54" alt="yerlotic" title="yerlotic" /></a>
+<a href="https://github.com/yrrrad8"><img src="https://avatars.githubusercontent.com/u/196932432?v=4" width="54" height="54" alt="yrrrad8" title="yrrrad8" /></a>
+<a href="https://github.com/sayyid5416"><img src="https://avatars.githubusercontent.com/u/78584556?v=4" width="54" height="54" alt="sayyid5416" title="sayyid5416" /></a>
+<a href="https://github.com/muhaaliss"><img src="https://avatars.githubusercontent.com/u/102979224?v=4" width="54" height="54" alt="muhaaliss" title="muhaaliss" /></a>
+<a href="https://github.com/DarkCrypt"><img src="https://avatars.githubusercontent.com/u/121076677?v=4" width="54" height="54" alt="DarkCrypt" title="DarkCrypt" /></a>
+<a href="https://github.com/Chandramauli-Arm64"><img src="https://avatars.githubusercontent.com/u/189079276?v=4" width="54" height="54" alt="Chandramauli-Arm64" title="Chandramauli-Arm64" /></a>
+<a href="https://github.com/nabil0x"><img src="https://avatars.githubusercontent.com/u/277480763?v=4" width="54" height="54" alt="nabil0x" title="nabil0x" /></a>
+<a href="https://github.com/bartoostveen"><img src="https://avatars.githubusercontent.com/u/50515369?v=4" width="54" height="54" alt="bartoostveen" title="bartoostveen" /></a>
+<a href="https://github.com/Bnyro"><img src="https://avatars.githubusercontent.com/u/82752168?v=4" width="54" height="54" alt="Bnyro" title="Bnyro" /></a>
+<a href="https://github.com/Neurology0443"><img src="https://avatars.githubusercontent.com/u/95717211?v=4" width="54" height="54" alt="Neurology0443" title="Neurology0443" /></a>
+<a href="https://github.com/leoheitmannruiz"><img src="https://avatars.githubusercontent.com/u/148111793?v=4" width="54" height="54" alt="leoheitmannruiz" title="leoheitmannruiz" /></a>
+<a href="https://github.com/sharunkumar"><img src="https://avatars.githubusercontent.com/u/715417?v=4" width="54" height="54" alt="sharunkumar" title="sharunkumar" /></a>
+<a href="https://github.com/bbyeen"><img src="https://avatars.githubusercontent.com/u/80675742?v=4" width="54" height="54" alt="bbyeen" title="bbyeen" /></a>
+<a href="https://github.com/sriio"><img src="https://avatars.githubusercontent.com/u/8983976?v=4" width="54" height="54" alt="sriio" title="sriio" /></a>
+<a href="https://github.com/surendrajat"><img src="https://avatars.githubusercontent.com/u/11215000?v=4" width="54" height="54" alt="surendrajat" title="surendrajat" /></a>
+<a href="https://github.com/ARBoyGo"><img src="https://avatars.githubusercontent.com/u/69381592?v=4" width="54" height="54" alt="ARBoyGo" title="ARBoyGo" /></a>
+<a href="https://github.com/davidsalido"><img src="https://avatars.githubusercontent.com/u/46091673?v=4" width="54" height="54" alt="davidsalido" title="davidsalido" /></a>
+<a href="https://github.com/locxter"><img src="https://avatars.githubusercontent.com/u/54595101?v=4" width="54" height="54" alt="locxter" title="locxter" /></a>
+<a href="https://github.com/lrusso96"><img src="https://avatars.githubusercontent.com/u/26090639?v=4" width="54" height="54" alt="lrusso96" title="lrusso96" /></a>
+<a href="https://github.com/offa"><img src="https://avatars.githubusercontent.com/u/8887756?v=4" width="54" height="54" alt="offa" title="offa" /></a>
+<a href="https://github.com/Craeckie"><img src="https://avatars.githubusercontent.com/u/5006444?v=4" width="54" height="54" alt="Craeckie" title="Craeckie" /></a>
+<a href="https://github.com/wispl"><img src="https://avatars.githubusercontent.com/u/108438586?v=4" width="54" height="54" alt="wispl" title="wispl" /></a>
+<a href="https://github.com/mikropsoft"><img src="https://avatars.githubusercontent.com/u/75412448?v=4" width="54" height="54" alt="mikropsoft" title="mikropsoft" /></a>
+<a href="https://github.com/0x5h31d0n"><img src="https://avatars.githubusercontent.com/u/63775224?v=4" width="54" height="54" alt="0x5h31d0n" title="0x5h31d0n" /></a>
+<a href="https://github.com/RohanTemgire"><img src="https://avatars.githubusercontent.com/u/56552357?v=4" width="54" height="54" alt="RohanTemgire" title="RohanTemgire" /></a>
+<a href="https://github.com/Poussinou"><img src="https://avatars.githubusercontent.com/u/19646549?v=4" width="54" height="54" alt="Poussinou" title="Poussinou" /></a>
+<a href="https://github.com/ov1d1u"><img src="https://avatars.githubusercontent.com/u/1385202?v=4" width="54" height="54" alt="ov1d1u" title="ov1d1u" /></a>
+<a href="https://github.com/LEOSCHUMY"><img src="https://avatars.githubusercontent.com/u/37011404?v=4" width="54" height="54" alt="LEOSCHUMY" title="LEOSCHUMY" /></a>
+<a href="https://github.com/iscle"><img src="https://avatars.githubusercontent.com/u/8018823?v=4" width="54" height="54" alt="iscle" title="iscle" /></a>
+<a href="https://github.com/TheRedCyclops"><img src="https://avatars.githubusercontent.com/u/76230780?v=4" width="54" height="54" alt="TheRedCyclops" title="TheRedCyclops" /></a>
+<a href="https://github.com/dark-uzi"><img src="https://avatars.githubusercontent.com/u/73175017?v=4" width="54" height="54" alt="dark-uzi" title="dark-uzi" /></a>
+<a href="https://github.com/Strange-IPmart"><img src="https://avatars.githubusercontent.com/u/9611012?v=4" width="54" height="54" alt="Strange-IPmart" title="Strange-IPmart" /></a>
+<a href="https://github.com/AlejandroMoc"><img src="https://avatars.githubusercontent.com/u/118225979?v=4" width="54" height="54" alt="AlejandroMoc" title="AlejandroMoc" /></a>
+</p>
+<!-- project-contributors:end -->
+
+# 🎖️ Credits
+
+**[View N-Zik credits and licenses](ComposeN-Zik/src/androidMain/res/raw/credits.md)**
+
+Made with ❤️ by the N-Zik Group community · Project license: GPLv3 - see [LICENSE](LICENSE)
+
+In the app, open **Settings > About > Credits**.
+
+# ⚠️ Disclaimer
+
+N-Zik and its contents are not affiliated with, funded, authorized, endorsed by, or in any way associated with YouTube, Google LLC, or any of its affiliates or subsidiaries.
+
+Any trademarks, service marks, trade names, or other intellectual property rights used in this project remain the property of their respective owners.

@@ -1,0 +1,85 @@
+package app.n_zik.android.core.rewind
+
+import app.n_zik.android.models.Playlist
+import app.n_zik.android.core.database.Database
+import kotlinx.coroutines.flow.first
+import timber.log.Timber
+
+private const val TAG = "RewindPlaylistGeneration"
+
+/** Write mode of [generateRewindPlaylist] (spec 2 — the single write path of every `rewind-*` playlist): */
+internal enum class GenerateMode {
+
+    /**
+     * Worker path: create the playlist only if it does not exist yet. An existing
+     * playlist is left intact (idempotent WorkManager re-run, and a user deletion is
+     * never resurrected by the cycle — only the deck pill can bring it back).
+     */
+    CreateIfMissing,
+
+    /**
+     * Button / post-import job path: delete the existing playlist first (its
+     * `SongPlaylistMap` mappings cascade away) and recreate it. The click or the
+     * import is an explicit "recompute now" act.
+     */
+    Regenerate
+}
+
+/**
+ * The shared generation function of every `rewind-*` playlist (spec 2): the monthly/yearly
+ * workers ([GenerateMode.CreateIfMissing]), the deck's regenerate pills and the post-import
+ * job ([GenerateMode.Regenerate]) all funnel through it — no other code writes `rewind-*`
+ * names.
+ *
+ * Window (epoch millis) -> [Database.eventTable.findSongsMostPlayedBetween]
+ * (`BETWEEN`-inclusive, results in `ORDER BY SUM(playtime) DESC`) -> (re)create the playlist
+ * and map each song in top order, so `SongPlaylistMap.position` becomes 0,1,2… — the
+ * "Rewind Top" snapshot read back by `sortSongsByPosition`. An empty window is a no-op:
+ * nothing is created or modified, the existing playlist is left intact, and 0 is returned
+ * so the caller shows no success feedback.
+ *
+ * @param name the language-neutral database name (`rewind-monthly:YYYYMM`, …)
+ * @param mode see [GenerateMode]
+ * @return the number of songs written into the playlist (0 = no-op / skipped)
+ */
+internal suspend fun generateRewindPlaylist(
+    name: String,
+    from: Long,
+    to: Long,
+    mode: GenerateMode,
+    isStillOwner: () -> Boolean = { true },
+): Int {
+    if (!isStillOwner()) return 0
+    val songs = Database.eventTable.findSongsMostPlayedBetween(from, to).first()
+    if (songs.isEmpty()) {
+        Timber.tag(TAG).i("Empty rewind window for \"$name\": nothing created or modified")
+        return 0
+    }
+    if (mode == GenerateMode.CreateIfMissing &&
+        Database.playlistTable.findByName(name).first() != null
+    ) {
+        Timber.tag(TAG).i("Rewind playlist \"$name\" already exists: skipping creation")
+        return 0
+    }
+    var written = 0
+    Database.transaction {
+        if (!isStillOwner()) return@transaction
+        // Recheck the row under the transaction in case another request created it.
+        val existing = playlistTable.getAll().firstOrNull {
+            it.name.trim().equals(name.trim(), ignoreCase = true)
+        }
+        if (existing != null) {
+            if (mode == GenerateMode.CreateIfMissing) return@transaction
+            playlistTable.delete(existing)
+        }
+        val playlistId = playlistTable.insert(Playlist(name = name))
+        songs.forEach { song ->
+            songTable.insertIgnore(song)
+            // `map` appends at MAX(position)+1 -> positions 0..n-1 in top order
+            songPlaylistMapTable.map(song.id, playlistId)
+        }
+        written = songs.size
+    }
+    Timber.tag(TAG).i("Wrote $written songs into rewind playlist \"$name\" (mode=$mode)")
+    return written
+}

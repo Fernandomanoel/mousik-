@@ -1,0 +1,11 @@
+Bug Fixes:
+- Fixed menu showing incorrect song when opened from bottom player panel
+- Fixed app crash when swiping to delete songs from queue
+- Fixed app crash when scrolling lyrics or seeking during playback
+- Swipe right in queue now positions song to play next instead of playing immediately
+
+Improvements:
+- Queue menu now always displays the currently playing song
+
+Updated:
+- Some dependencies

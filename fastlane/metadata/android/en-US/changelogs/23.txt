@@ -1,0 +1,18 @@
+New:
+- New Logo (added N-Zik name)
+- New Settings UI, Changelogs UI, Update UI
+- Android 6+ (API 23) now minimum
+
+Changed:
+- Moved Update section to About
+- Quickpicks renamed to AI recommendations
+- Updated the logs and interface to use the N-Zik name
+
+Improved:
+- AutoUpdate and Beta updates enabled by default
+- Removed "no update available" message at startup
+- Enhanced dynamic theme; no restart needed
+
+Fixed:
+- Updater: 4-digit versions and minified builds fixed
+- Crash logs now working

@@ -1,0 +1,170 @@
+package app.n_zik.android.components.settings.data
+
+import app.n_zik.android.components.settings.common.settingsTopContentPadding
+
+import kotlin.math.roundToInt
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
+import kotlinx.coroutines.flow.first
+import app.n_zik.android.utils.pauseSearchHistoryKey
+import app.n_zik.android.utils.preferences
+import app.n_zik.android.utils.rememberPreference
+import app.n_zik.android.R
+import app.n_zik.android.colorPalette
+import app.n_zik.android.components.dialog.backup.ImportBackupDialog
+import app.n_zik.android.components.dialog.export.ExportBackupDialog
+import app.n_zik.android.components.search.SearchHistorySection
+import app.n_zik.android.components.search.SearchHistoryStore
+import app.n_zik.android.components.search.filterSearchHistory
+import app.n_zik.android.components.search.rememberSearchHistory
+import app.n_zik.android.components.settings.common.SettingsCardSlot
+import app.n_zik.android.components.settings.common.SettingsDescription
+import app.n_zik.android.components.settings.common.rememberSettingsSearchFocus
+import app.n_zik.android.components.settings.common.settingsSearchContent
+import app.n_zik.android.components.settings.common.settingsSearchDescription
+import app.n_zik.android.components.settings.common.settingsSearchTitle
+import app.n_zik.android.components.settings.common.visibleCardTitleRes
+import app.n_zik.android.components.tab.Search
+
+/** Coordinates the Data cards, page search and the existing history deep link. */
+@UnstableApi
+@Composable
+fun DataSettings(
+    navController: NavController,
+    focus: String = ""
+) {
+    val search = Search(initialVisible = true)
+    val searchFocus = rememberSettingsSearchFocus(search.isFocused, search.inputValue.isBlank())
+
+    val context = LocalContext.current
+
+    val isHistoryPaused by rememberPreference(pauseSearchHistoryKey, false)
+    val history = rememberSearchHistory(SearchHistoryStore.PAGE_SETTINGS_DATA, isHistoryPaused)
+    val historyMatches = filterSearchHistory(history.value, search.inputValue)
+    val historyVisible = search.isFocused && historyMatches.isNotEmpty()
+
+    fun recordSearchQuery(query: String = search.inputValue) {
+        history.value = SearchHistoryStore.record(context.preferences, SearchHistoryStore.PAGE_SETTINGS_DATA, query)
+    }
+    val scrollState = rememberScrollState()
+    var containerTopY by remember { mutableFloatStateOf(-1f) }
+    var historyCardTopY by remember { mutableFloatStateOf(-1f) }
+
+    LaunchedEffect(focus) {
+        if (focus != DataSettingTargets.HISTORY_FOCUS) return@LaunchedEffect
+        // Wait for measurement before scrolling to an off-screen card.
+        val offset = snapshotFlow {
+            if (historyCardTopY < 0f || containerTopY < 0f) -1f
+            else historyCardTopY - containerTopY + scrollState.value
+        }.first { it >= 0f }
+        scrollState.animateScrollTo(offset.roundToInt())
+    }
+
+    Column(
+        modifier = Modifier
+            .background(colorPalette().background0)
+            .fillMaxHeight()
+            .fillMaxWidth()
+            .verticalScroll(scrollState)
+            .onGloballyPositioned { containerTopY = it.positionInRoot().y }
+            .settingsTopContentPadding()
+    ) {
+
+        settingsSearchTitle(searchFocus, R.string.settings_data_title, R.drawable.server)
+
+        settingsSearchDescription(searchFocus) {
+            SettingsDescription(
+                text = stringResource(R.string.settings_data_page_description),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
+
+        search.SearchBar(this, barPadding = searchFocus.barPadding, onSearch = { recordSearchQuery() })
+
+        SearchHistorySection(
+            visible = historyVisible,
+            queries = historyMatches,
+            onQueryClick = { search.input = TextFieldValue(it); recordSearchQuery(it); search.isFocused = false },
+            onQueryDelete = {
+                history.value = SearchHistoryStore.delete(context.preferences, SearchHistoryStore.PAGE_SETTINGS_DATA, it)
+            },
+            onQueryDeleteAll = {
+                history.value = SearchHistoryStore.deleteAll(context.preferences, SearchHistoryStore.PAGE_SETTINGS_DATA)
+            }
+        )
+
+        val hasSearchResults = search.inputValue.isBlank() || visibleCardTitleRes(context, 4, search.inputValue).isNotEmpty()
+        LaunchedEffect(hasSearchResults) {
+            if (!hasSearchResults) scrollState.scrollTo(0)
+        }
+        DataSettingsContent(
+            search, navController,
+            onCardPosition = { _, y -> historyCardTopY = y },
+            cardsContainer = { cards -> settingsSearchContent(searchFocus, hasResults = hasSearchResults, query = search.inputValue) { cards() } }
+        )
+
+
+    }
+}
+
+@UnstableApi
+@Composable
+internal fun DataSettingsContent(
+    search: Search,
+    navController: NavController,
+    selectedCards: Set<Int>? = null,
+    cardModifier: @Composable (Int) -> Modifier = { Modifier },
+    onCardPosition: (String, Float) -> Unit = { _, _ -> },
+    cardsContainer: @Composable (@Composable () -> Unit) -> Unit = { it() },
+) {
+    val restartState = rememberSaveable { mutableStateOf(false) }
+    val context = LocalContext.current
+    ExportBackupDialog.Render()
+    ImportBackupDialog.Render()
+    cardsContainer {
+        if (R.string.settings_section_backup_and_restore_title in visibleCardTitleRes(context, 4, search.inputValue) &&
+            (selectedCards == null || R.string.settings_section_backup_and_restore_title in selectedCards)
+        ) {
+            SettingsCardSlot(R.string.settings_section_backup_and_restore_title, modifier = { cardModifier(R.string.settings_section_backup_and_restore_title) }) { DataBackupCard(search) }
+        }
+        if (R.string.storage_breakdown_title in visibleCardTitleRes(context, 4, search.inputValue) &&
+            (selectedCards == null || R.string.storage_breakdown_title in selectedCards)
+        ) {
+            SettingsCardSlot(
+                R.string.storage_breakdown_title,
+                modifier = { cardModifier(R.string.storage_breakdown_title) },
+            ) {
+                DataStorageCard(search, restartState)
+            }
+        }
+        if (selectedCards == null || R.string.library_history_title in selectedCards) {
+            SettingsCardSlot(R.string.library_history_title, modifier = { cardModifier(R.string.library_history_title) }) { DataHistoryCard(search, navController, restartState, Modifier.onGloballyPositioned { onCardPosition("history", it.positionInRoot().y) }) }
+        }
+        if (selectedCards == null || R.string.settings_reset in selectedCards) {
+            SettingsCardSlot(R.string.settings_reset, modifier = { cardModifier(R.string.settings_reset) }) { DataResetCard(search) }
+        }
+    }
+}

@@ -1,0 +1,17 @@
+Added:
+- New stream clients, settings toggle
+- Sort menu customization for screens
+- Local Playlist toolbar customization
+
+Changed:
+- Beta tag changed from -b to -beta
+- Default favorites sort: DateLiked ascending
+
+Improved:
+- Dialog height increased to 80%
+- StatsForNerds scrollable with live data
+
+Fixed:
+- Inverted sort queries across 6 tables
+- Empty playlists in sort results
+- History DATE sort double reversal

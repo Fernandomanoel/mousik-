@@ -1,0 +1,9 @@
+New:
+- New Crowdin updates by @NEVARLeVrai in #24 and #31
+
+Improvements
+- Consistent loading animation: all content types now show placeholder items during loading.
+- Header stays visible during loading.
+
+Search UI:
+- Unified shimmer/loading placeholders across songs, albums, artists, videos, playlists, featured, and podcasts.

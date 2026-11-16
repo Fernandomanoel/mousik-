@@ -1,0 +1,96 @@
+package app.n_zik.android.components.search
+
+import android.app.Application
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.res.stringResource
+import app.n_zik.android.R
+import org.robolectric.RuntimeEnvironment
+import androidx.compose.ui.unit.dp
+import app.n_zik.android.enums.FontType
+import app.n_zik.android.ui.styling.Appearance
+import app.n_zik.android.ui.styling.DefaultDarkColorPalette
+import app.n_zik.android.ui.styling.LocalAppearance
+import app.n_zik.android.ui.styling.typographyOf
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33], application = Application::class, qualifiers = "w360dp-h640dp")
+class SearchNoResultsTest {
+    @get:Rule val composeRule = createComposeRule()
+
+    @Test
+    fun messageTracksTheAvailableAreaWhenTheHeaderAndKeyboardChange() {
+        val header = mutableStateOf(120.dp)
+        val height = mutableStateOf(560.dp)
+        val appearance = Appearance(
+            colorPalette = DefaultDarkColorPalette,
+            typography = typographyOf(Color.White, true, false, FontType.Rubik),
+            thumbnailShape = CircleShape,
+            uiRoundnessShape = CircleShape,
+            artistThumbnailShape = CircleShape,
+        )
+        composeRule.setContent {
+            CompositionLocalProvider(LocalAppearance provides appearance) {
+                Box(Modifier.size(320.dp, height.value).padding(top = header.value, bottom = 48.dp)) {
+                    Box(Modifier.fillMaxSize().testTag("available_results")) {
+                        SearchNoResults(text = "No results found")
+                    }
+                }
+            }
+        }
+        fun assertCentered() {
+            val available = composeRule.onNodeWithTag("available_results").fetchSemanticsNode().boundsInRoot
+            val text = composeRule.onNodeWithTag("search_no_results_text").fetchSemanticsNode().boundsInRoot
+            assertEquals(available.center.x, text.center.x, 1f)
+            assertEquals(available.center.y, text.center.y, 1f)
+        }
+        assertCentered()
+        composeRule.runOnIdle { header.value = 64.dp; height.value = 360.dp }
+        assertCentered()
+    }
+    @Test
+    fun collectionExplanationsStayInlineAndSearchSpaceHasNoText() {
+        val emptySearch = mutableStateOf(false)
+        val messageId = mutableStateOf(R.string.common_empty_items)
+        val appearance = Appearance(
+            colorPalette = DefaultDarkColorPalette,
+            typography = typographyOf(Color.White, true, false, FontType.Rubik),
+            thumbnailShape = CircleShape,
+            uiRoundnessShape = CircleShape,
+            artistThumbnailShape = CircleShape,
+        )
+        composeRule.setContent {
+            CompositionLocalProvider(LocalAppearance provides appearance) {
+                if (emptySearch.value) SearchEmptySpace()
+                else SearchNoResults(text = stringResource(messageId.value))
+            }
+        }
+        composeRule.onNodeWithTag("search_no_results_text").assertTextEquals(
+            RuntimeEnvironment.getApplication().getString(R.string.common_empty_items)
+        )
+        composeRule.runOnIdle { messageId.value = R.string.album_no_alternative_version }
+        composeRule.onNodeWithTag("search_no_results_text").assertTextEquals(
+            RuntimeEnvironment.getApplication().getString(R.string.album_no_alternative_version)
+        )
+        composeRule.runOnIdle { emptySearch.value = true }
+        composeRule.onNodeWithTag("search_no_results_text").assertDoesNotExist()
+    }
+
+}

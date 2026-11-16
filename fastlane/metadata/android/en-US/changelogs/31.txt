@@ -1,0 +1,14 @@
+New:
+- Revamped Listen On, Sleep Timer, and AlbumItems UI app-wide
+
+Improved:
+- Better floating bar logic and player performance
+- Clearer settings labels and icons
+- Harmonized thumbnails and grids on Home and Artist
+
+Fixed:
+- Fixed presets, wavy timeline and player transparency
+- Monthly playlist tab visible; hidden playlists hidden from Library
+- Fixed grid issues on Home and Artist
+- Home screen no longer resets on navigation
+- Fixed Home Artist crash and persist-tag data corruption

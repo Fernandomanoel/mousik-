@@ -1,0 +1,69 @@
+Mnohojazyčné YouTube hudební rozhraní pro Android, zaměřené na výkon, UI/UX vylepšení, rozšíření funkcí a dlouhodobou podporu.
+
+<b>N-Zik</b> je open-source fork <a href="https://github.com/knighthat/Kreate">Kreate</a>.
+
+<b>Poznámka:</b> N-Zik začal jako postranní projekt. Pro dospělé alternativy se podívejte na <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>nebo <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
+
+<b>Využití AI:</b> Používám generativní AI pro kód (prostřednictvím <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD metoda</a>) zkontrolováno a testováno před odesláním.
+
+✨ <b>CO N-ZIK?</b> Žádné reklamy, přehrávání pozadí, offline ukládání do mezipaměti, přizpůsobitelné uživatelské rozhraní - vždy, zdarma.
+
+🎨 <b>Upravitelné uživatelské rozhraní</b>
+- Jetpack vytvořit rozhraní
+- Motivy: AMOLED, hluboké tmavé, Crisp Light + tónované zvýraznění
+- 3D kolotočový přehrávač, domácí widgety, sjednocené hráče a mini-přehrávač
+- Profily umělce, objevování a nálady, sbalitelné hlavičky domů
+
+:bubliny: <b>skleněný efekt (BETA, volitelné)</b>
+Zakázáno při čerstvých instalacích. Povolit v nastavení: nativní, pouze pro vzhled nebo sklo podle kategorií, s nastavitelnou kvalitou. Může zvýšit vykreslování a využití baterie; snížit kvalitu nebo v případě potřeby vypnout.
+Skleněné kredity: Square / Convx projekt (GPL-3.0); Kyant0 AndroidLiquidGlass / Backdrop (Apache-2.0).
+
+🎵 <b>Audio Experience</b>
+- Prémiová kvalita přes YouTube Music Premium, automaticky aplikována
+- Synchronizované texty s úpravami a překlady v reálném čase
+- rozpoznávání skladeb (Shazam-like), hlasové vyhledávání, zvukový vizualizér
+- Pro ovládání: rychlost, posuv, normalizace, křížení, zvýšení hlasitosti, přívržení, zvrácení
+- Panel s vlnovým tvarem zvukového panelu pro přesnou navigaci
+
+💾 <b>Offline, Metadata & Privacy</b>
+- Chytré ukládání do mezipaměti a stahování pro skladby a skladby s volitelnou kvalitou stahování
+- export na FFmpeg-powered s úplnými metadaty (ke stažení při prvním použití; není dostupný na 32bitových x86 zařízeních)
+- Editor metadat v aplikaci (AAC/Opus, obálka)
+- Místní statistiky poslech a historie
+- Automatická záloha s vlastními intervaly a uchováním
+
+🔗 <b>integrace</b>
+- Přihlášení k YouTube pro doporučení a přehrávání videa, plus experimentální obousměrný synchronizační modul
+- Last.fm scrobbling s láskou/nemilovnou
+- Zhlédnutí umělce a alba MusicBrainz
+- Discord Rich Presence, včetně pokročilého režimu s živým náhledem
+- Neviditelná integrace pro alternativní YouTube streamování
+- import/export playlistu: RiPlay, Spotify, YouTube Music, N-Zik
+
+👥 <b>Poslechněte společně</b>
+- Připojte se nebo hostte živé poslech s ostatními uživateli prostřednictvím kódu nebo odkazu pozvánky
+
+🗓️ <b>Znovu</b>
+- Roční a měsíční poslech obnoví automaticky generované seznamy skladeb
+
+📱 <b>Play Anywhere:</b> Android Auto, Automotive, TV a tablety
+
+🛠️ <b>Funkce uživatele</b>
+- Vícenásobný profil: izolovaná databáze a nastavení podle profilu
+- Automatické obnovení při připojení Bluetooth, trvalé frontě, automatickém vyplňování fronty
+- Chytrý koš, skryté skladby, bez chutného systému, rodičovské ovládání
+- Proxy podpora, úprava kvality sítě, export protokolu
+- Záchranné centrum, obrazovka údržby, zapojení, zkratky aplikací
+- OTA aktualizace z GitHubu, časovače spánku, přehrávání na pozadí
+
+📦 <b>Dostupné sestavení</b>
+- Release64/Beta64 (`com.nevar.nzik`): Pouze kompletní sestavení, 64bitová zařízení
+- Release32/Beta32 (`com.nevar.nzik`): Pouze kompletní 32-bitová zařízení
+- Minified64 (`com.nevar.nzik`): lehká R8 postavená pro nízkokoncová zařízení (64-bit)
+- Minified32 (`com.nevar.nzik`): Lightweight R8 build (32-bit)
+- FOSS (`com.nevar.nzik.foss`): bez auto-updateru pro F-Droid (všechny architektury)
+- Dev64/Dev32 (`com.nevar.nzik.dev`): Vývojové sestavení, pouze testovací
+
+Žádné balíčky sestavení FFmpeg: je to rozšíření ke stažení (nainstalované při prvním použití, řízené v Nastavení → Rozšíření). Pouze FOSS je na F-Droid.
+
+Historické kredity projektu zahrnují ViMusic.

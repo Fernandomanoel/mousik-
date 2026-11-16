@@ -1,0 +1,9 @@
+Hotfix & Features:
+- Warning dialog to back up your database and settings before updating
+- Inline change cover dialog for songs and videos
+- Fixed back button in the "Add to Playlist" menu
+- Fixed drag-and-drop reordering (blocked when sort is Descending)
+- Fixed sync of all songs in private YouTube playlists
+- Refactored player menus; updated Chinese translations
+- YouTube Music logo indicators fixed for synced playlists
+- Modern player: person icon for a single artist

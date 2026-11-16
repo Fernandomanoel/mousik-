@@ -1,0 +1,100 @@
+package app.n_zik.android.components.settings.ui
+
+import app.n_zik.android.components.settings.common.settingsSearchTarget
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import app.n_zik.android.components.dialog.settings.HistorySortSettingsDialog
+import app.n_zik.android.components.dialog.settings.HomeAlbumsSortSettingsDialog
+import app.n_zik.android.components.dialog.settings.HomeArtistsSortSettingsDialog
+import app.n_zik.android.components.dialog.settings.HomeLibrarySortSettingsDialog
+import app.n_zik.android.components.dialog.settings.HomeSongsSortSettingsDialog
+import app.n_zik.android.components.dialog.settings.LocalPlaylistSortSettingsDialog
+import app.n_zik.android.components.settings.common.OtherSettingsEntry
+import app.n_zik.android.components.settings.common.settingsCardEnter
+import app.n_zik.android.components.settings.common.settingsCardExit
+import app.n_zik.android.components.settings.common.SettingsSectionCard
+import app.n_zik.android.components.tab.Search
+import app.n_zik.android.R
+
+/** Owns the sort menu customization actions. */
+@Composable
+internal fun UiSortMenusCard(search: Search) {
+    val sortMenuSearchContextMatch = search.inputValue.isBlank() ||
+        "sort".contains(search.inputValue, true) ||
+        stringResource(R.string.library_songs_title).contains(search.inputValue, true) ||
+        stringResource(R.string.library_artists_title).contains(search.inputValue, true) ||
+        stringResource(R.string.library_albums_title).contains(search.inputValue, true) ||
+        stringResource(R.string.library_playlists_title).contains(search.inputValue, true) ||
+        stringResource(R.string.library_history_title).contains(search.inputValue, true)
+
+    AnimatedVisibility(
+        visible = sortMenuSearchContextMatch,
+        enter = settingsCardEnter,
+        exit = settingsCardExit
+    ) {
+        SettingsSectionCard(
+            modifier = Modifier.testTag("ui.card.sort-menus"),
+            title = stringResource(R.string.library_sort_menu),
+            icon = R.drawable.arrow_up,
+            content = {
+                if (search.inputValue.isBlank() || stringResource(R.string.library_songs_title).contains(search.inputValue, true) || stringResource(R.string.library_sort_menu).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.sort_menu.songs"),
+                        title = stringResource(R.string.library_songs_title),
+                        text = stringResource(R.string.settings_library_sort_options_description),
+                        onClick = { HomeSongsSortSettingsDialog.showDialog() },
+                        icon = R.drawable.musical_notes
+                    )
+                }
+                if (search.inputValue.isBlank() || stringResource(R.string.library_artists_title).contains(search.inputValue, true) || stringResource(R.string.library_sort_menu).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.sort_menu.artists"),
+                        title = stringResource(R.string.library_artists_title),
+                        text = stringResource(R.string.settings_library_sort_options_description),
+                        onClick = { HomeArtistsSortSettingsDialog.showDialog() },
+                        icon = R.drawable.people
+                    )
+                }
+                if (search.inputValue.isBlank() || stringResource(R.string.library_albums_title).contains(search.inputValue, true) || stringResource(R.string.library_sort_menu).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.sort_menu.albums"),
+                        title = stringResource(R.string.library_albums_title),
+                        text = stringResource(R.string.settings_library_sort_options_description),
+                        onClick = { HomeAlbumsSortSettingsDialog.showDialog() },
+                        icon = R.drawable.album
+                    )
+                }
+                if (search.inputValue.isBlank() || stringResource(R.string.library_playlists_title).contains(search.inputValue, true) || stringResource(R.string.library_sort_menu).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.sort_menu.playlists"),
+                        title = stringResource(R.string.library_playlists_title),
+                        text = stringResource(R.string.settings_library_sort_options_description),
+                        onClick = { HomeLibrarySortSettingsDialog.showDialog() },
+                        icon = R.drawable.library
+                    )
+                }
+                if (search.inputValue.isBlank() || stringResource(R.string.library_playlists_title).contains(search.inputValue, true) || stringResource(R.string.library_sort_menu).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.sort_menu.local_playlist_sort"),
+                        title = stringResource(R.string.settings_local_playlist_title),
+                        text = stringResource(R.string.settings_library_sort_options_description),
+                        onClick = { LocalPlaylistSortSettingsDialog.showDialog() },
+                        icon = R.drawable.playlist
+                    )
+                }
+                if (search.inputValue.isBlank() || stringResource(R.string.library_history_title).contains(search.inputValue, true) || stringResource(R.string.library_sort_menu).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.sort_menu.history"),
+                        title = stringResource(R.string.library_history_title),
+                        text = stringResource(R.string.settings_library_sort_options_description),
+                        onClick = { HistorySortSettingsDialog.showDialog() },
+                        icon = R.drawable.time
+                    )
+                }
+            }
+        )
+    }
+}

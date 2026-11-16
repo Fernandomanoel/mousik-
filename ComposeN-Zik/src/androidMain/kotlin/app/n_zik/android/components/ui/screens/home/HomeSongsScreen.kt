@@ -1,0 +1,883 @@
+package app.n_zik.android.components.ui.screens.home
+
+import app.n_zik.android.components.settings.appearance.preview.LocalThemePreview
+
+
+import androidx.compose.ui.platform.LocalContext
+import app.n_zik.android.playback.services.isLocal
+import app.n_zik.android.appTextResources
+import app.n_zik.android.components.navigation.FloatingActionSiblingSpace
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
+import app.n_zik.android.enums.*
+import app.n_zik.android.models.Playlist
+import app.n_zik.android.models.Song
+import app.n_zik.android.components.glass.GlassToolbarButtons
+import app.n_zik.android.ui.components.tab.TabHeader
+import app.n_zik.android.ui.components.tab.toolbar.Button
+import app.n_zik.android.ui.components.themed.*
+import app.n_zik.android.utils.*
+import app.n_zik.android.components.dialog.common.DialogPresence
+import app.n_zik.android.components.settings.accounts.isYouTubeSyncEnabled
+import app.n_zik.android.enums.FilterBy
+import app.n_zik.android.components.menu.FilterMenu
+import app.n_zik.android.utils.filterByKey
+import app.n_zik.android.uiRoundnessShape
+import app.n_zik.android.components.ui.screens.home.HomeSongs
+import app.n_zik.android.ui.components.LocalMenuState
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.clickable
+import app.n_zik.android.utils.importYTMLikedSongs
+import app.n_zik.android.utils.autoSyncToolbutton
+import app.n_zik.android.utils.autosyncLikesKey
+import app.n_zik.android.utils.removeYTMLikedSongs
+import app.n_zik.android.core.utils.Toaster
+import org.json.JSONArray
+import app.n_zik.android.components.ui.screens.home.onDevice.OnDeviceSong
+import app.n_zik.android.LocalPlayerServiceBinder
+import app.n_zik.android.R
+import app.n_zik.android.LocalTopBarOffset
+import app.n_zik.android.appContext
+import app.n_zik.android.colorPalette
+import app.n_zik.android.components.glass.GlassFloatingActions
+import app.n_zik.android.components.glass.glassFloatingActionContent
+import app.n_zik.android.components.glass.rememberGlassFloatingActionBackdrop
+import app.n_zik.android.components.tab.*
+import app.n_zik.android.components.dialog.export.ExportSongsToCSVDialog
+import app.n_zik.android.components.dialog.export.ExportCacheDialog
+import app.n_zik.android.components.dialog.export.CachedLyricsExport
+import app.n_zik.android.components.dialog.export.CachedLyricsExportDialog
+import app.n_zik.android.core.database.Database
+import app.n_zik.android.core.network.OfflineMode
+import app.n_zik.android.typography
+import app.n_zik.android.utils.coroutines.NzikDispatchers
+import app.n_zik.android.utils.getAlbumVersionFromVideoGlobal
+import app.n_zik.android.utils.player.addNextOffMain
+import app.n_zik.android.utils.player.enqueueOffMain
+import app.n_zik.innertube.Innertube
+import app.n_zik.innertube.requests.playlistPage
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
+import timber.log.Timber
+import app.n_zik.android.components.dialog.common.FfmpegPreparation
+import app.n_zik.android.modules.ModuleState
+import app.n_zik.android.components.dialog.common.InProgressDialog
+import app.n_zik.android.components.dialog.common.ConfirmationDialog
+import app.n_zik.android.components.dialog.search.MatchResultsDialog
+import app.n_zik.android.components.dialog.media.YouTubeLinkImportDialog
+import app.n_zik.android.components.tab.ImportPlaylistsMenu
+import app.n_zik.android.components.tab.ImportSongsFromServices
+import app.n_zik.android.core.database.ImportSong
+import app.n_zik.android.playback.services.LOCAL_KEY_PREFIX
+import app.n_zik.android.components.Sort
+import app.n_zik.android.themed.n_zik.component.playlist.PositionLock
+import app.n_zik.android.components.dialog.settings.HomeSongsToolbarSettingsDialog
+import app.n_zik.android.components.dialog.tab.DownloadAllSongsDialog
+import app.n_zik.android.components.dialog.tab.DeleteAllDownloadedSongsDialog
+import app.n_zik.android.components.dialog.song.UpdateSongDialog
+import app.n_zik.android.components.song.PeriodSelector
+import app.n_zik.android.components.ui.InlineCircularLoader
+import app.n_zik.android.ui.components.tab.toolbar.MenuIcon
+import app.n_zik.android.enums.SongSortBy
+import app.n_zik.android.utils.homeSongsDownloadedToolbarOrderKey
+import app.n_zik.android.utils.homeSongsToolbarOrderKey
+import app.n_zik.android.utils.homeSongsFavoritesToolbarOrderKey
+import app.n_zik.android.utils.homeSongsOnDeviceToolbarOrderKey
+import app.n_zik.android.core.ondevice.deviceLibraryEnabled
+import app.n_zik.android.ui.components.tab.toolbar.Descriptive
+import app.n_zik.android.utils.homeSongsTopToolbarOrderKey
+import app.n_zik.android.utils.homeSongsOfflineToolbarOrderKey
+import app.n_zik.android.utils.excludeDislikedSongsKey
+import app.n_zik.android.enums.DislikeMode
+import java.util.concurrent.atomic.AtomicInteger
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+
+@RequiresApi(Build.VERSION_CODES.O)
+@UnstableApi
+@ExperimentalMaterial3Api
+@ExperimentalAnimationApi
+@ExperimentalFoundationApi
+@Composable
+fun HomeSongsScreen(navController: NavController, topContentInsetProvider: () -> androidx.compose.ui.unit.Dp = { 0.dp }, scrollContentInsetProvider: () -> androidx.compose.ui.unit.Dp = topContentInsetProvider) {
+    val isThemePreview = LocalThemePreview.current != null
+    val context = LocalContext.current
+    val binder = LocalPlayerServiceBinder.current
+    val lazyListState = rememberLazyListState()
+
+    // Full offline mode (spec-full-offline-mode): network toolbar actions are
+    // removed from the layout; local actions stay live.
+    val offlineMode by OfflineMode.rememberEnabled()
+
+    var builtInPlaylist by rememberPreference( builtInPlaylistKey, BuiltInPlaylist.All )
+    val onDeviceTabEnabled by rememberPreference(showOnDevicePlaylistKey, true)
+    val showOnDeviceChip = deviceLibraryEnabled() && onDeviceTabEnabled
+    LaunchedEffect(showOnDeviceChip, builtInPlaylist) {
+        if (!showOnDeviceChip && builtInPlaylist == BuiltInPlaylist.OnDevice) {
+            builtInPlaylist = BuiltInPlaylist.All
+        }
+    }
+    var isRecommendationEnabled by remember { mutableStateOf(false) }
+    var recommendationCount by remember { mutableStateOf(0) }
+    var isRecommendationsLoading by remember { mutableStateOf(false) }
+
+    var showConfirmMatchAllDialog by remember { mutableStateOf(false) }
+    var showMatchingProgressDialog by remember { mutableStateOf(false) }
+    var cancelMatch by remember { mutableStateOf(false) }
+    var matchRunning by remember { mutableStateOf(false) }
+    var matchJob by remember { mutableStateOf<Job?>(null) }
+    var totalSongsToMatch by remember { mutableStateOf(0) }
+    var songsMatched by remember { mutableStateOf(0) }
+    var retryMatchMode by remember { mutableStateOf(false) }
+    var retryMatchSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
+
+    var showMatchResultsDialog by remember { mutableStateOf(false) }
+    var matchResultsMatched by remember { mutableStateOf(0) }
+    var matchResultsFailed by remember { mutableStateOf(0) }
+    var matchResultsMerged by remember { mutableStateOf(0) }
+    var matchResultsFailedSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
+    var matchRefreshKey by remember { mutableIntStateOf(0) }
+
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var deleteDialogTitle by remember { mutableStateOf("") }
+    var deleteDialogAction by remember { mutableStateOf({}) }
+
+    val itemsOnDisplayState = remember { mutableStateListOf<Song>() }
+
+    val itemSelector = ItemSelector<Song>()
+    fun getSongs() = itemSelector.ifEmpty { itemsOnDisplayState }
+        .filter { it.isLocal == (builtInPlaylist == BuiltInPlaylist.OnDevice) }
+    fun getMediaItems() = getSongs().map( Song::asMediaItem )
+
+    val search = Search(lazyListState)
+    val locator = Locator( lazyListState, ::getSongs )
+    val import = ImportSongsFromCSV(sourceSuffix = "HOMESONGS", likeImported = builtInPlaylist == BuiltInPlaylist.Favorites, onImportComplete = {
+        val prefs = appContext().preferences
+        val key = if (builtInPlaylist == BuiltInPlaylist.Favorites) Preference.HOME_SONGS_FAVORITES_SORT_BY.key else Preference.HOME_SONGS_SORT_BY.key
+        prefs.edit().putString(key, SongSortBy.Custom.name).apply()
+    })
+    val importSpotify = ImportSongsFromServices.init(source = "SPOTIFY_IMPORT_HOMESONGS", likeImported = builtInPlaylist == BuiltInPlaylist.Favorites, onImportComplete = {
+        val prefs = appContext().preferences
+        val key = if (builtInPlaylist == BuiltInPlaylist.Favorites) Preference.HOME_SONGS_FAVORITES_SORT_BY.key else Preference.HOME_SONGS_SORT_BY.key
+        prefs.edit().putString(key, SongSortBy.Custom.name).apply()
+    })
+    val importRiplay = ImportSongsFromServices.init(source = "RIPLAY_IMPORT_HOMESONGS", likeImported = builtInPlaylist == BuiltInPlaylist.Favorites, onImportComplete = {
+        val prefs = appContext().preferences
+        val key = if (builtInPlaylist == BuiltInPlaylist.Favorites) Preference.HOME_SONGS_FAVORITES_SORT_BY.key else Preference.HOME_SONGS_SORT_BY.key
+        prefs.edit().putString(key, SongSortBy.Custom.name).apply()
+    })
+    val exportDialog = ExportSongsToCSVDialog(
+        playlistBrowseId = "",
+        playlistName = builtInPlaylist.name,
+        songs = ::getSongs
+    )
+
+    var showExportCacheConfirmDialog by remember { mutableStateOf(false) }
+    var showExportCacheLyricsDialog by remember { mutableStateOf(false) }
+    var exportCacheLyricsChoice by remember { mutableStateOf(CachedLyricsExport.None) }
+    val ffmpegPreparation = remember { FfmpegPreparation() }
+    DisposableEffect(ffmpegPreparation) {
+        onDispose { ffmpegPreparation.dispose() }
+    }
+    var isExportingCache by remember { mutableStateOf(false) }
+    var exportCacheProgress by remember { mutableIntStateOf(0) }
+    var exportCacheTotal by remember { mutableIntStateOf(0) }
+
+    val exportCacheFolderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { folderUri: Uri? ->
+        folderUri ?: return@rememberLauncherForActivityResult
+        val currentBinder = binder ?: return@rememberLauncherForActivityResult
+        val songs = getSongs()
+        if (songs.isEmpty()) return@rememberLauncherForActivityResult
+
+        try {
+            val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+            appContext().contentResolver.takePersistableUriPermission(folderUri, takeFlags)
+        } catch (e: Exception) {
+            Timber.tag("HomeSongsScreen").w(e, "Failed to take persistable URI permission")
+        }
+
+        exportCacheTotal = songs.size
+        exportCacheProgress = 0
+
+        ExportCacheDialog.batchExport(
+            folderUri = folderUri,
+            songs = songs,
+            binder = currentBinder,
+            lyricsChoice = exportCacheLyricsChoice,
+            prepareFfmpeg = {
+                withContext(NzikDispatchers.UI) {
+                    ffmpegPreparation.awaitReady().also { state ->
+                        if (state == ModuleState.READY) isExportingCache = true
+                    }
+                }
+            },
+            onProgress = { current, _, _ ->
+                exportCacheProgress = current
+            },
+            onComplete = { successCount, failCount ->
+                isExportingCache = false
+                if (successCount > 0) Toaster.done()
+                else Toaster.e(R.string.export_cached_songs_failed, appTextResources().getString(R.string.export_no_songs))
+            }
+        )
+    }
+    val coroutineScope = rememberCoroutineScope()
+
+    var showYouTubeLinkDialog by remember { mutableStateOf(false) }
+    DialogPresence(visible = showYouTubeLinkDialog) {
+        YouTubeLinkImportDialog(
+            onImport = { urlPlaylistId ->
+                coroutineScope.launch(NzikDispatchers.DATA) {
+                    val browseId = if (urlPlaylistId.startsWith("VL")) urlPlaylistId else "VL$urlPlaylistId"
+                    Innertube.playlistPage(browseId = browseId)?.getOrNull()?.let { playlistPage ->
+                        val playlistName = playlistPage.title ?: appTextResources().getString(R.string.playlist_youtube_title)
+                        val playlist = Playlist(name = playlistName, browseId = browseId)
+                        val playlistRowId = Database.playlistTable.insert(playlist)
+                        val isFavoriteTab = builtInPlaylist == BuiltInPlaylist.Favorites
+                        val songs = playlistPage.songsPage?.items?.mapNotNull {
+                            it.asSong.copy(
+                                totalPlayTimeMs = 1L,
+                                likedAt = if (isFavoriteTab) System.currentTimeMillis() else null
+                            )
+                        }
+                        if (songs != null) {
+                            val basePos = Database.songPlaylistMapTable.getMaxPosition(playlistRowId)
+                            Database.asyncTransaction {
+                                songs.forEachIndexed { index, song ->
+                                    songTable.upsert(listOf(song))
+                                    songPlaylistMapTable.mapAtPosition(song.id, playlistRowId, basePos + 1 + index)
+                                }
+                            }
+                            val prefs = appContext().preferences
+                            val key = if (builtInPlaylist == BuiltInPlaylist.Favorites) Preference.HOME_SONGS_FAVORITES_SORT_BY.key else Preference.HOME_SONGS_SORT_BY.key
+                            prefs.edit().putString(key, SongSortBy.Custom.name).apply()
+                            Toaster.done()
+                        }
+                    }
+                }
+            },
+            onDismiss = { showYouTubeLinkDialog = false }
+        )
+    }
+
+    DialogPresence(visible = showConfirmMatchAllDialog) {
+        ConfirmationDialog(
+            title = stringResource(R.string.song_matching_dialog_title),
+            confirmText = stringResource(R.string.song_matching_dialog_title),
+            text = stringResource(R.string.song_matching_all_confirmation, getSongs().count { it.id.length != 11 || (it.durationText == "00:00" && it.totalPlayTimeMs == 1L) }),
+            onDismiss = { showConfirmMatchAllDialog = false },
+            onConfirm = {
+                showConfirmMatchAllDialog = false
+                retryMatchMode = false
+                retryMatchSongs = emptyList()
+                showMatchingProgressDialog = true
+                cancelMatch = false
+                matchRunning = true
+            }
+        )
+    }
+
+    DialogPresence(visible = showDeleteConfirmDialog) {
+        ConfirmationDialog(
+            title = stringResource(R.string.song_delete_dialog_title),
+            confirmText = stringResource(R.string.common_action_delete),
+            text = deleteDialogTitle,
+            onDismiss = { showDeleteConfirmDialog = false },
+            onConfirm = {
+                showDeleteConfirmDialog = false
+                deleteDialogAction()
+            }
+        )
+    }
+
+    DialogPresence(visible = showMatchingProgressDialog) {
+        InProgressDialog(
+            total = totalSongsToMatch,
+            done = songsMatched,
+            text = stringResource(R.string.song_matching_progress_title),
+            message = stringResource(R.string.song_matching_running_message),
+            onDismiss = {
+                cancelMatch = true
+                showMatchingProgressDialog = false
+                matchJob?.cancel()
+            }
+        )
+    }
+
+    DialogPresence(visible = showMatchResultsDialog) {
+        MatchResultsDialog(
+            matched = matchResultsMatched,
+            failed = matchResultsFailed,
+            merged = matchResultsMerged,
+            failedSongs = matchResultsFailedSongs,
+            onRetry = if (matchResultsFailed > 0) {{
+                showMatchResultsDialog = false
+                retryMatchMode = true
+                retryMatchSongs = matchResultsFailedSongs
+                showMatchingProgressDialog = true
+                cancelMatch = false
+                matchRunning = true
+            }} else null,
+            onDismiss = { showMatchResultsDialog = false }
+        )
+    }
+
+    LaunchedEffect(matchRunning) {
+        if (!matchRunning) return@LaunchedEffect
+        val mergedCounter = AtomicInteger(0)
+        val job = launch(NzikDispatchers.DATA) {
+            try {
+                val unmatched = if (retryMatchMode && retryMatchSongs.isNotEmpty()) {
+                    retryMatchSongs
+                } else {
+                    getSongs().filter { (it.id.length != 11 || (it.durationText == "00:00" && it.totalPlayTimeMs == 1L)) && !it.id.startsWith(LOCAL_KEY_PREFIX) }
+                }
+                totalSongsToMatch = unmatched.size
+                songsMatched = 0
+
+                val jobs = mutableListOf<Job>()
+                unmatched.forEachIndexed { index, song ->
+                    ensureActive()
+                    jobs.add(launch(NzikDispatchers.DATA) {
+                        var wasCancelled = false
+                        try {
+                            if (cancelMatch) return@launch
+                            getAlbumVersionFromVideoGlobal(song, mergedCounter)
+                        } catch (e: CancellationException) {
+                            wasCancelled = true
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.tag("HomeSongsScreen").e(e, "Failed to match song to album version")
+                        } finally {
+                            if (!wasCancelled) songsMatched++
+                        }
+                    })
+                    delay(800)
+                }
+                jobs.forEach { it.join() }
+            } catch (e: CancellationException) {
+            } finally {
+                withContext(NonCancellable) {
+                    delay(1500)
+                    var failedCount = 0
+                    val allEntries = Database.importSongTable.getAllEntries()
+                    val failedEntries = mutableListOf<ImportSong>()
+                    for (entry in allEntries) {
+                        val count = Database.songTable.countById(entry.originalId)
+                        val isYouTubeId = entry.originalId.length == 11 && !entry.originalId.startsWith(LOCAL_KEY_PREFIX)
+                        if (count > 0) {
+                            if (isYouTubeId) {
+                                val song = Database.songTable.findById(entry.originalId).first()
+                                if (song != null && song.durationText == "00:00") {
+                                    failedCount++
+                                    failedEntries.add(entry)
+                                } else {
+                                    Database.importSongTable.deleteByOriginalId(entry.originalId)
+                                }
+                            } else {
+                                failedCount++
+                                failedEntries.add(entry)
+                            }
+                        } else {
+                            Database.importSongTable.deleteByOriginalId(entry.originalId)
+                        }
+                    }
+
+                    matchRefreshKey++
+                    val matchedCount = maxOf(0, totalSongsToMatch - failedCount)
+                    matchResultsMatched = matchedCount
+                    matchResultsFailed = failedCount
+                    matchResultsMerged = mergedCounter.get()
+                    val failedOriginalIds = failedEntries.map { it.originalId }.toSet()
+                    val failedSongsList = getSongs().filter { it.id in failedOriginalIds }
+                    matchResultsFailedSongs = failedSongsList
+                    showMatchResultsDialog = true
+                }
+                showMatchingProgressDialog = false
+                retryMatchMode = false
+                retryMatchSongs = emptyList()
+                matchRunning = false
+                cancelMatch = false
+                matchJob = null
+            }
+        }
+        matchJob = job
+        job.join()
+    }
+
+    val importMenu = remember(builtInPlaylist) {
+        ImportPlaylistsMenu(
+            onImportNzik = { import.onShortClick() },
+            onImportSpotify = { importSpotify.onShortClick() },
+            onImportRiplay = { importRiplay.onShortClick() },
+            onImportYoutubeLink = { showYouTubeLinkDialog = true },
+            // Mixed action (spec-full-offline-mode): the button stays visible,
+            // the dialog prunes the network choices (CSV/NZik local import only).
+            networkOptionsEnabled = { !offlineMode }
+        )
+    }
+
+    val shuffle = SongShuffler(::getSongs)
+    val smartShuffle = SmartShuffle(
+        isRecommendationEnabled = { isRecommendationEnabled },
+        isRecommendationsLoading = { isRecommendationsLoading },
+        onToggleRecommendation = { isRecommendationEnabled = !isRecommendationEnabled }
+    )
+    val playNext = PlayNext {
+        val songsToAdd = getSongs().toList()
+        itemSelector.isActive = false
+        coroutineScope.launch {
+            val mediaItems = withContext( NzikDispatchers.DATA ) { songsToAdd.map( Song::asMediaItem ) }
+            binder?.player?.addNextOffMain( mediaItems, appContext() )
+        }
+    }
+    val enqueue = Enqueue {
+        val songsToAdd = getSongs().toList()
+        itemSelector.isActive = false
+        coroutineScope.launch {
+            val mediaItems = withContext( NzikDispatchers.DATA ) { songsToAdd.map( Song::asMediaItem ) }
+            binder?.player?.enqueueOffMain( mediaItems, appContext() )
+        }
+    }
+    val addToFavorite = LikeComponent(::getSongs)
+    val addToPlaylist = PlaylistsMenu.init(
+        navController = navController,
+        mediaItems = { _ -> getMediaItems() },
+        onFailure = { throwable, preview ->
+            Timber.tag("HomeSongsScreen").e(throwable, "Failed to add songs to playlist ${preview.playlist.name}")
+        },
+        finalAction = { itemSelector.isActive = false }
+    )
+    val smartTrash = SmartTrash(
+        builtInPlaylist = { builtInPlaylist },
+        getSongs = ::getSongs,
+        itemsOnDisplay = { itemsOnDisplayState }
+    )
+
+    val songSort = when( builtInPlaylist ) {
+        BuiltInPlaylist.Favorites -> Sort( Preference.HOME_SONGS_FAVORITES_SORT_BY, Preference.HOME_SONGS_FAVORITES_SORT_ORDER, homeSongsFavoritesSortMenuOrderKey, "favs" )
+        BuiltInPlaylist.Offline -> Sort( Preference.HOME_SONGS_OFFLINE_SORT_BY, Preference.HOME_SONGS_OFFLINE_SORT_ORDER, homeSongsCachedSortMenuOrderKey, "off" )
+        BuiltInPlaylist.Downloaded -> Sort( Preference.HOME_SONGS_DOWNLOADED_SORT_BY, Preference.HOME_SONGS_DOWNLOADED_SORT_ORDER, homeSongsDownloadedSortMenuOrderKey, "dl" )
+        BuiltInPlaylist.Top -> Sort( Preference.HOME_SONGS_TOP_SORT_BY, Preference.HOME_SONGS_TOP_SORT_ORDER, homeSongsTopSortMenuOrderKey, "top" )
+        BuiltInPlaylist.OnDevice -> Sort( Preference.HOME_ON_DEVICE_SONGS_SORT_BY, Preference.HOME_ON_DEVICE_SONGS_SORT_ORDER, homeSongsOnDeviceSortMenuOrderKey, "dev" )
+        BuiltInPlaylist.Disliked -> Sort( Preference.HOME_SONGS_DISLIKED_SORT_BY, Preference.HOME_SONGS_DISLIKED_SORT_ORDER, homeSongsDislikedSortMenuOrderKey, "disliked" )
+        else -> Sort( Preference.HOME_SONGS_SORT_BY, Preference.HOME_SONGS_SORT_ORDER, homeSongsAllSortMenuOrderKey, "all" )
+    }
+    val positionLock = remember( songSort.sortOrder ) { PositionLock(songSort.sortOrder) }
+    val topPlaylists = PeriodSelector( Preference.HOME_SONGS_TOP_PLAYLIST_PERIOD, homeSongsTopSortMenuOrderKey, "top" )
+    val downloadAllDialog = DownloadAllSongsDialog( ::getSongs )
+    val deleteDownloadsDialog = DeleteAllDownloadedSongsDialog( ::getSongs )
+    val updateSongsDialog = UpdateSongDialog( batchTargets = ::getSongs )
+
+    val hasUnmatchedSongs by remember {
+        derivedStateOf {
+            itemsOnDisplayState.any { (it.id.length != 11 || (it.durationText == "00:00" && it.totalPlayTimeMs == 1L)) && !it.id.startsWith(LOCAL_KEY_PREFIX) }
+        }
+    }
+
+    val sync = object : MenuIcon, Descriptive {
+        override val iconId: Int = R.drawable.sync
+        override val messageId: Int = R.string.sync_likes
+        @get:Composable override val menuIconTitle: String get() = stringResource(messageId)
+        override fun onShortClick() {
+            coroutineScope.launch(NzikDispatchers.DATA) { importYTMLikedSongs(force = true) }
+        }
+        override fun onLongClick() {
+            coroutineScope.launch(NzikDispatchers.DATA) { removeYTMLikedSongs() }
+        }
+    }
+
+    val localMatchButton = remember {
+        object : MenuIcon, Descriptive {
+            override val iconId: Int = R.drawable.alert
+            override val messageId: Int = R.string.song_matching_action_open
+            @get:Composable override val menuIconTitle: String get() = stringResource(messageId)
+            override fun onShortClick() { showConfirmMatchAllDialog = true }
+            override fun onLongClick() {}
+        }
+    }
+
+    val homeSongsToolbarOrderPrefAll by rememberPreference( homeSongsToolbarOrderKey, "" )
+    val homeSongsToolbarOrderPrefFavorites by rememberPreference( homeSongsFavoritesToolbarOrderKey, "" )
+    val homeSongsToolbarOrderPrefOffline by rememberPreference( homeSongsOfflineToolbarOrderKey, "" )
+    val homeSongsToolbarOrderPrefDownloaded by rememberPreference( homeSongsDownloadedToolbarOrderKey, "" )
+    val homeSongsToolbarOrderPrefTop by rememberPreference( homeSongsTopToolbarOrderKey, "" )
+    val homeSongsToolbarOrderPrefOnDevice by rememberPreference( homeSongsOnDeviceToolbarOrderKey, "" )
+    val homeSongsToolbarOrderPrefDisliked by rememberPreference( homeSongsDislikedToolbarOrderKey, "" )
+
+    val currentToolbarOrderPref = when(builtInPlaylist) {
+        BuiltInPlaylist.All -> homeSongsToolbarOrderPrefAll
+        BuiltInPlaylist.Favorites -> homeSongsToolbarOrderPrefFavorites
+        BuiltInPlaylist.Offline -> homeSongsToolbarOrderPrefOffline
+        BuiltInPlaylist.Downloaded -> homeSongsToolbarOrderPrefDownloaded
+        BuiltInPlaylist.Top -> homeSongsToolbarOrderPrefTop
+        BuiltInPlaylist.OnDevice -> homeSongsToolbarOrderPrefOnDevice
+        BuiltInPlaylist.Disliked -> homeSongsToolbarOrderPrefDisliked
+    }
+
+    val defaultToolbarOrder = HomeSongsToolbarSettingsDialog.tabAvailableIds[builtInPlaylist] ?: HomeSongsToolbarSettingsDialog.allButtonIds
+    val order = try {
+        if (currentToolbarOrderPref.isBlank()) defaultToolbarOrder else {
+            val arr = JSONArray(currentToolbarOrderPref)
+            val savedIds = (0 until arr.length()).map { arr.getString(it) }.distinct()
+            val available = defaultToolbarOrder.toSet()
+            val filtered = savedIds.filter { it in available }
+            val missing = defaultToolbarOrder.filter { it !in filtered }
+            filtered + missing
+        }
+    } catch (_: Exception) { defaultToolbarOrder }
+
+    val buttons = mutableListOf<Button>().apply {
+        order.forEach { id ->
+            // Check toggle state - if disabled, skip this button
+            val toggleKey = "${when (builtInPlaylist) {
+                BuiltInPlaylist.All -> "all"
+                BuiltInPlaylist.Favorites -> "favs"
+                BuiltInPlaylist.Offline -> "off"
+                BuiltInPlaylist.Downloaded -> "dl"
+                BuiltInPlaylist.Top -> "top"
+                BuiltInPlaylist.OnDevice -> "dev"
+                BuiltInPlaylist.Disliked -> "disliked"
+                else -> "x"
+            }}_ts_$id"
+            val isEnabled = context.preferences.getBoolean(toggleKey, true)
+            if (!isEnabled) return@forEach
+
+            when (id) {
+                "sort" -> add( if( builtInPlaylist == BuiltInPlaylist.Top ) topPlaylists else songSort )
+                "position_lock" -> if ( builtInPlaylist != BuiltInPlaylist.Top && songSort.sortBy == SongSortBy.Custom ) add( positionLock )
+                "search" -> add( search )
+                "locator" -> add( locator )
+                "download_all" -> if (!offlineMode && builtInPlaylist != BuiltInPlaylist.OnDevice) add( downloadAllDialog )
+                "delete_downloads" -> if (builtInPlaylist != BuiltInPlaylist.OnDevice) add( deleteDownloadsDialog )
+                "update" -> if (!offlineMode && builtInPlaylist != BuiltInPlaylist.OnDevice) add( updateSongsDialog )
+                "shuffle" -> add( shuffle )
+                "smart_shuffle" -> if (!offlineMode) add( smartShuffle )
+                "item_selector" -> add( itemSelector )
+                "play_next" -> add( playNext )
+                "enqueue" -> add( enqueue )
+                "add_to_favorite" -> add( addToFavorite )
+                "add_to_playlist" -> add( addToPlaylist )
+                "import_menu" -> if (builtInPlaylist == BuiltInPlaylist.All || builtInPlaylist == BuiltInPlaylist.Favorites) add( importMenu )
+                "sync_ytm_likes" -> if (!offlineMode && builtInPlaylist == BuiltInPlaylist.Favorites && isYouTubeSyncEnabled()) add( sync )
+                "export_dialog" -> if (builtInPlaylist != BuiltInPlaylist.OnDevice) add( exportDialog )
+                // The FFmpeg gate is gone (spec-ffmpeg-extension-module): the module is
+                // downloaded on first use, so the export is always offered (Offline/Downloaded)
+                "export_cache" -> if (builtInPlaylist == BuiltInPlaylist.Offline || builtInPlaylist == BuiltInPlaylist.Downloaded) add(
+                    object : MenuIcon, Descriptive {
+                        override val iconId: Int = R.drawable.export_outline
+                        override val messageId: Int = R.string.export_cached_songs_action
+                        @get:Composable override val menuIconTitle: String get() = stringResource(messageId)
+                        override fun onShortClick() {
+                            val count = getSongs().size
+                            if (count > 0) showExportCacheConfirmDialog = true
+                        }
+                        override fun onLongClick() {}
+                    }
+                )
+                "smart_trash" -> if (builtInPlaylist != BuiltInPlaylist.OnDevice) add( smartTrash )
+                "match" -> if ( !isThemePreview && !offlineMode && hasUnmatchedSongs && builtInPlaylist != BuiltInPlaylist.OnDevice ) add( localMatchButton )
+            }
+        }
+    }
+
+    val header: @Composable (MutableFloatState, MutableIntState) -> Unit = { titleOffsetState, titleHeightState ->
+        Column {
+            CollapsibleTitleRow( titleOffsetState, titleHeightState ) {
+                TabHeader( R.string.library_songs_title ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                HeaderInfo( itemsOnDisplayState.size.toString(), R.drawable.musical_notes )
+                            }
+                            if (isRecommendationEnabled) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.smart_shuffle),
+                                        contentDescription = null,
+                                        tint = colorPalette().textSecondary,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    if (isRecommendationsLoading) {
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        InlineCircularLoader(
+                                            modifier = Modifier.size(12.dp),
+                                            strokeWidth = 1.5.dp,
+                                            color = colorPalette().textSecondary
+                                        )
+                                    } else if (recommendationCount > 0) {
+                                        BasicText(
+                                            text = recommendationCount.toString(),
+                                            style = TextStyle(
+                                                color = colorPalette().textSecondary,
+                                                fontStyle = typography().xxxs.semiBold.fontStyle,
+                                                fontWeight = typography().xxxs.semiBold.fontWeight,
+                                                fontSize = typography().xxxs.semiBold.fontSize
+                                            ),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.padding( start = 4.dp )
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                    importMenu.Render()
+                    exportDialog.Render()
+
+                    DialogPresence(visible = showExportCacheConfirmDialog) {
+                        val count = getSongs().size
+                        ConfirmationDialog(
+                            title = stringResource(R.string.export_cached_songs_action),
+                            confirmText = stringResource(R.string.export_cached_songs_action),
+                            text = pluralStringResource(R.plurals.library_export_cached_song_confirmation_count, count, count),
+                            onDismiss = { showExportCacheConfirmDialog = false },
+                            onConfirm = {
+                                showExportCacheConfirmDialog = false
+                                showExportCacheLyricsDialog = true
+                            }
+                        )
+                    }
+                    DialogPresence(visible = showExportCacheLyricsDialog) {
+                        CachedLyricsExportDialog(
+                            onDismiss = { showExportCacheLyricsDialog = false },
+                            onChoice = { choice ->
+                                exportCacheLyricsChoice = choice
+                                exportCacheFolderLauncher.launch(null)
+                            }
+                        )
+                    }
+                    ffmpegPreparation.Render()
+                    DialogPresence(visible = isExportingCache) {
+                        InProgressDialog(
+                            total = exportCacheTotal,
+                            done = exportCacheProgress,
+                            text = stringResource(R.string.export_running_status),
+                            onDismiss = null
+                        )
+                    }
+
+                    downloadAllDialog.Render()
+                    deleteDownloadsDialog.Render()
+                    updateSongsDialog.Render()
+                    smartTrash.Render()
+
+                    GlassToolbarButtons( buttons, disableAnimation = true )
+
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .padding( bottom = 8.dp )
+                            .fillMaxWidth()
+                    ) {
+                        Column {
+                            val showFavoritesPlaylist by rememberPreference( showFavoritesPlaylistKey, true )
+                            val showCachedPlaylist by rememberPreference( showCachedPlaylistKey, true )
+                            val showMyTopPlaylist by rememberPreference( showMyTopPlaylistKey, true )
+                            val showDownloadedPlaylist by rememberPreference( showDownloadedPlaylistKey, true )
+                            val showDislikedChip by rememberPreference( excludeDislikedSongsKey, DislikeMode.Enabled )
+                            val homeSongsOrderPref by rememberPreference( homeSongsOrderKey, "" )
+                            val chips = remember( showFavoritesPlaylist, showCachedPlaylist, showMyTopPlaylist, showDownloadedPlaylist, showOnDeviceChip, showDislikedChip, homeSongsOrderPref ) {
+                                val songsDefaultOrder = listOf("all", "favorites", "disliked", "cached", "downloaded", "top", "on_device")
+                                val toggleMap = mapOf(
+                                    "favorites" to showFavoritesPlaylist,
+                                    "cached" to showCachedPlaylist,
+                                    "downloaded" to showDownloadedPlaylist,
+                                    "top" to showMyTopPlaylist,
+                                    "on_device" to showOnDeviceChip,
+                                    "disliked" to showDislikedChip.isEnabled
+                                )
+                                val builtinMap = mapOf(
+                                    "all" to BuiltInPlaylist.All,
+                                    "favorites" to BuiltInPlaylist.Favorites,
+                                    "cached" to BuiltInPlaylist.Offline,
+                                    "downloaded" to BuiltInPlaylist.Downloaded,
+                                    "top" to BuiltInPlaylist.Top,
+                                    "on_device" to BuiltInPlaylist.OnDevice,
+                                    "disliked" to BuiltInPlaylist.Disliked
+                                )
+                                val order = try {
+                                    val arr = JSONArray(homeSongsOrderPref)
+                                    val parsed = (0 until arr.length()).map { arr.getString(it) }
+                                    val valid = parsed.filter { it in songsDefaultOrder }.toMutableList()
+                                    for (id in songsDefaultOrder) { if (id !in valid) valid.add(id) }
+                                    valid
+                                } catch (_: Exception) { songsDefaultOrder }
+                                buildList {
+                                    for (id in order) {
+                                        if (id == "all" || toggleMap[id] == true) {
+                                            builtinMap[id]?.let { add(it) }
+                                        }
+                                    }
+                                }
+                            }
+
+                            GlassHomeChips(
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 16.dp, end = 28.dp),
+                                chips = chips,
+                                currentValue = builtInPlaylist,
+                                onValueUpdate = { builtInPlaylist = it },
+                                modifier = Modifier
+                            )
+
+                            androidx.compose.animation.AnimatedVisibility(
+                                modifier = Modifier.padding(start = 16.dp),
+                                visible = isYouTubeSyncEnabled() && (builtInPlaylist == BuiltInPlaylist.Favorites || builtInPlaylist == BuiltInPlaylist.Disliked),
+                                enter = androidx.compose.animation.fadeIn(animationSpec = tween(200)) + androidx.compose.animation.expandVertically(animationSpec = tween(200)),
+                                exit = androidx.compose.animation.fadeOut(animationSpec = tween(200)) + androidx.compose.animation.shrinkVertically(animationSpec = tween(200))
+                            ) {
+                                val menuState = LocalMenuState.current
+                                var filterBy by rememberPreference(filterByKey, FilterBy.All)
+                                GlassHomeFilterChip(
+                                    label = {
+                                        Text(
+                                            text = when (filterBy) {
+                                                FilterBy.All -> stringResource(R.string.common_option_all)
+                                                FilterBy.Local -> stringResource(R.string.library_on_device_title)
+                                                FilterBy.YoutubeLibrary -> stringResource(R.string.library_youtube_music_title)
+                                            }
+                                        )
+                                    },
+                                    selected = true,
+                                    shape = uiRoundnessShape(),
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        containerColor = colorPalette().background1,
+                                        labelColor = colorPalette().text,
+                                        selectedContainerColor = colorPalette().accent,
+                                        selectedLabelColor = colorPalette().onAccent,
+                                    ),
+                                    onClick = {
+                                        menuState.display {
+                                            FilterMenu(
+                                                title = stringResource(R.string.library_filter_by_title),
+                                                onDismiss = menuState::hide,
+                                                onAll = { filterBy = FilterBy.All },
+                                                onYoutubeLibrary = { filterBy = FilterBy.YoutubeLibrary },
+                                                onLocal = { filterBy = FilterBy.Local }
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+
+                            val exoPlayerDiskCacheMaxSize by rememberPreference(app.n_zik.android.utils.exoPlayerDiskCacheMaxSizeKey, app.n_zik.android.enums.ExoPlayerDiskCacheMaxSize.`2GB`)
+                            val exoPlayerDiskDownloadCacheMaxSize by rememberPreference(app.n_zik.android.utils.exoPlayerDiskDownloadCacheMaxSizeKey, app.n_zik.android.enums.ExoPlayerDiskDownloadCacheMaxSize.`2GB`)
+
+                            val showCacheIndicator = when (builtInPlaylist) {
+                                BuiltInPlaylist.Offline -> exoPlayerDiskCacheMaxSize != app.n_zik.android.enums.ExoPlayerDiskCacheMaxSize.Unlimited
+                                BuiltInPlaylist.Downloaded -> exoPlayerDiskDownloadCacheMaxSize != app.n_zik.android.enums.ExoPlayerDiskDownloadCacheMaxSize.Unlimited
+                                else -> false
+                            }
+
+                            androidx.compose.animation.AnimatedVisibility(
+                                modifier = Modifier.padding(start = 16.dp),
+                                visible = showCacheIndicator
+                            ) {
+                                CacheSpaceIndicator(
+                                    cacheType = when (builtInPlaylist) {
+                                        BuiltInPlaylist.Downloaded -> CacheType.DownloadedSongs
+                                        BuiltInPlaylist.Offline -> CacheType.CachedSongs
+                                        else -> CacheType.CachedSongs
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    search.SearchBar( columnScope = this@Column )
+                }
+    }
+
+    val headerHeightState = remember { mutableIntStateOf(0) }
+    val headerHeight by headerHeightState
+    val headerOffsetState = remember { mutableFloatStateOf(0f) }
+    val headerOffset by headerOffsetState
+
+    val nestedScrollConnection = rememberHomeHeaderConnection(headerHeight, headerOffsetState, itemsOnDisplayState.isNotEmpty())
+
+    val floatingBackdrop = rememberGlassFloatingActionBackdrop()
+
+    Box(
+        modifier = Modifier.background( colorPalette().background0 )
+            .fillMaxHeight()
+            .fillMaxWidth()
+            .nestedScroll(nestedScrollConnection)
+    ) {
+        HomeChromeLayout(Modifier.fillMaxSize(), header = {
+            HomeCollapsingHeader(
+                headerOffset = headerOffsetState,
+                headerHeight = headerHeightState,
+                topContentInset = topContentInsetProvider,
+            ) { header(headerOffsetState, headerHeightState) }
+        }) {
+            Column( Modifier.fillMaxSize().glassFloatingActionContent(floatingBackdrop) ) {
+                val headerPadding = with(androidx.compose.ui.platform.LocalDensity.current) { headerHeight.toDp() }
+                when( builtInPlaylist ) {
+                    BuiltInPlaylist.OnDevice -> OnDeviceSong( navController, lazyListState, itemSelector, search, buttons, itemsOnDisplayState, ::getSongs, headerPadding, scrollContentInsetProvider )
+                    BuiltInPlaylist.Downloaded -> DownloadsHub( ::getSongs, headerPadding ) { pad ->
+                        HomeSongs( navController, builtInPlaylist, lazyListState, itemSelector, search, buttons, itemsOnDisplayState, ::getSongs, matchButton = null, onRecommendationCountChange = { count -> recommendationCount = count }, onRecommendationsLoadingChange = { loading -> isRecommendationsLoading = loading }, isRecommendationEnabled = isRecommendationEnabled, refreshKey = matchRefreshKey, onMatchClick = { showConfirmMatchAllDialog = true }, headerPadding = pad, topContentInsetProvider = scrollContentInsetProvider )
+                    }
+                    else                     -> HomeSongs( navController, builtInPlaylist, lazyListState, itemSelector, search, buttons, itemsOnDisplayState, ::getSongs, matchButton = null, onRecommendationCountChange = { count -> recommendationCount = count }, onRecommendationsLoadingChange = { loading -> isRecommendationsLoading = loading }, isRecommendationEnabled = isRecommendationEnabled, refreshKey = matchRefreshKey, onMatchClick = { showConfirmMatchAllDialog = true }, headerPadding = headerPadding, topContentInsetProvider = scrollContentInsetProvider )
+                }
+            }
+        }
+        GlassFloatingActions(floatingBackdrop) {
+            val showFloatingIcon by rememberPreference( showFloatingIconKey, false )
+            val barsToggle = app.n_zik.android.components.navigation.sideAwareLandscapeBarsToggleButton()
+            FloatingActionsContainerWithScrollToTop(
+                reservedEndSpace = if (showFloatingIcon) FloatingActionSiblingSpace else 0.dp,
+                lazyListState = lazyListState,
+                iconId = barsToggle?.iconId,
+                onClick = barsToggle?.onClick
+            )
+
+            if( showFloatingIcon )
+                MultiFloatingActionsContainer(
+                    iconId = R.drawable.search,
+                    onClick = { navController.navigate(NavRoutes.search.name) },
+                    onClickSettings = { navController.navigate(NavRoutes.settings.name) },
+                    onClickSearch = { navController.navigate(NavRoutes.search.name) }
+                )
+        }
+    }
+}
+
+

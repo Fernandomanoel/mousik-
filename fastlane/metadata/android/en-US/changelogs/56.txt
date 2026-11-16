@@ -1,0 +1,11 @@
+Added:
+- Grid and list view for the lyrics menu
+- Karaoke lyrics view with word-level syncing
+- Global offset dialog from Lyrics settings to correct sync
+- Recenter button when manually scrolling lyrics
+- "Information" action button on video menus
+- Monthly listener count in Artist headers
+Fixed:
+- Stuttering on long karaoke lines and translations
+- Fallback to synced lyrics (LrcLib) when BetterLyrics returns unsynced LRCs
+- Playback crashes, tiny player thumbnail, modern player buttons

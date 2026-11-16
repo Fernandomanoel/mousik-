@@ -1,0 +1,16 @@
+New:
+- Discord Rich Presence "Browsing" status
+- YouTube login restored
+- New Appearance settings UI
+
+Improved:
+- Optimized Discord RPC, better login and playback
+
+Fixed:
+- Fixed Discord RPC logout, timestamps
+- Fixed ExoPlayer cookie handling
+- Fixed crash on first login
+- Fixed Quick Picks and playback logged out
+- Fixed PoToken and 400 errors
+- Streams auto-refresh on HTTP 403
+- Fixed status bar color on sheets

@@ -1,0 +1,69 @@
+Android için hızlı, özelleştirilebilir ve uzun süre desteklenen çok dilli YouTube Music uygulaması.
+
+<b>N-Zik</b>, <a href="https://github.com/knighthat/Kreate">Kreate</a>'nin açık kaynaklı bir çatalıdır.
+
+<b>Not:</b> N-Zik bir yan proje olarak başladı. Daha olgun alternatifler için <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a> veya <a href="https://github.com/fast4x/RiPlay">RiPlay</a>'e göz atın.
+
+<b>AI Kullanımı:</b> Kod için üretken AI kullanıyorum (<a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD Method</a> aracılığıyla), her şey yayına alınmadan önce incelenir ve test edilir.
+
+✨ <b>NEDEN N-ZIK?</b> Reklam yok, arka planda oynatma, çevrimdışı önbellekleme, özelleştirilebilir kullanıcı arayüzü – her zaman ücretsiz.
+
+🎨 <b>Ayarlanabilir Arayüz</b>
+- Jetpack Compose kullanıcı arayüzü
+- Temalar: AMOLED, Derin Karanlık, Net Işık + renkli vurgular
+- 3D Karusel Oynatıcı, ana sayfa widget'ları, birleştirilmiş oynatıcı ve mini oynatıcı
+- Sanatçı profilleri, Keşif/ruh halleri, katlanabilir ana ekran başlıkları
+
+🫧 <b>Cam efekti (BETA, isteğe bağlı)</b>
+Yeni kurulumlarda kapalıdır. Ayarlarda kategoriye göre yerel, yalnızca kenar veya Cam ve kalite seçilir. İşleme yükünü ve pil tüketimini artırabilir; kaliteyi düşürün veya kapatın.
+Cam katkıları: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / Backdrop (Apache-2.0).
+
+🎵 <b>Ses Deneyimi</b>
+- YouTube Music Premium aracılığıyla premium ses, otomatik uygulanır
+- Düzenleme ve gerçek zamanlı çeviri özellikleriyle senkronize şarkı sözleri
+- Şarkı tanıma (Shazam benzeri), sesli arama, görselleştirici
+- Hız, perde, normalizasyon, çapraz geçiş, ses ve bas artırma, yankı
+- Hassas gezinme için Ses Çubuğu waveform kaydırma çubuğu
+
+💾 <b>Çevrimdışı, Meta Veri ve Gizlilik</b>
+- Parçalar ve listeler için akıllı önbellekleme/indirme, seçilebilir indirme kalitesi
+- Tam meta verili FFmpeg dışa aktarımı, 32 bit x86 hariç
+- Uygulama içi meta veri düzenleyici (AAC/Opus, kapak resmi)
+- Yerel dinleme istatistikleri ve geçmişi
+- Özel aralıklı ve saklama süreli otomatik yedekleme
+
+🔗 <b>Entegrasyonlar</b>
+- Öneriler ve video için YouTube oturumu, deneysel çift yönlü eşitleme
+- Şimdi Çalıyor ve beğenme/beğenme seçenekleriyle Last.fm'e kaydetme
+- MusicBrainz sanatçı ve albüm bilgileri
+- Discord Zengin Varlık, canlı önizlemeli gelişmiş mod dahil
+- Alternatif YouTube akışı için Invidious entegrasyonu
+- Çalma listesi içe/dışa aktarma: RiPlay, Spotify, YouTube Music, N-Zik
+
+👥 <b>Birlikte Dinleyin</b>
+- Kod veya davet bağlantısıyla canlı oturum başlatın ya da katılın
+
+🗓️ <b>Geri Sarma</b>
+- Otomatik Geri Sarma listeleriyle yıllık/aylık dinleme özetleri
+
+📱 <b>Her Yerde Oynatın:</b> Android Auto, Araç Sistemi, TV ve Tabletler
+
+🛠️ <b>Gelişmiş Kullanıcı Özellikleri</b>
+- Çoklu profil: profil başına izole veritabanı ve ayarlar
+- Bluetooth bağlantısında otomatik devam, kalıcı kuyruk, otomatik doldurma
+- Akıllı çöp kutusu, gizli şarkılar, beğenmeme sistemi, ebeveyn denetimi
+- Proxy desteği, ağ kalitesi uyarlama, günlük dışa aktarma
+- Kurtarma Merkezi, bakım ekranı, ilk kullanım kılavuzu, uygulama kısayolları
+- GitHub'dan OTA güncellemeleri, uyku zamanlayıcısı, arka plan oynatma
+
+📦 <b>Mevcut Yapılar</b>
+- Release64/Beta64 (`com.nevar.nzik`): Tam yapı, yalnızca 64-bit cihazlar
+- Release32/Beta32 (`com.nevar.nzik`): Tam yapı, yalnızca 32-bit cihazlar
+- Minified64 (`com.nevar.nzik`): Hafif R8 yapı, düşük özellikli cihazlar için (64-bit)
+- Minified32 (`com.nevar.nzik`): Hafif R8 yapı (32-bit)
+- FOSS (`com.nevar.nzik.foss`): Otomatik güncelleyicisiz, F-Droid için (tüm mimariler)
+- Dev64/Dev32 (`com.nevar.nzik.dev`): Geliştirme yapıları, yalnızca test için
+
+Hiçbir yapı FFmpeg içermez: indirilebilir bir eklentidir (ilk kullanımda kurulur, Ayarlar → Eklentiler içinde yönetilir). F-Droid'de yalnızca FOSS var.
+
+Geçmiş proje kredileri arasında ViMusic yer almaktadır.

@@ -1,0 +1,6 @@
+Hotfix:
+- Fixes for inconveniences from v7.2.5
+
+Fixed:
+- Discord token silently dropped during export (Keystore rate-limiting)
+- Integer settings skipped during import

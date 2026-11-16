@@ -1,0 +1,12 @@
+Added:
+- Playback settings menu (speed, pitch, volume, bass boost) via long-press on play
+- Waveform cover gradient (M3E Morphing) now default for new installs
+
+Changed:
+- PlaybackParamsDialog replaced by inline PlaybackSettingsMenu
+
+Fixed:
+- Crash on minified builds
+- Infinite buffering on stream decoding
+- Playlists/albums over 100 songs not loading fully
+- Lyrics menu layout and refetch fixes

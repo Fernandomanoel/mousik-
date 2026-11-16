@@ -1,0 +1,28 @@
+files:
+  - source: /ComposeN-Zik/src/androidMain/localization/source/*.xml
+    translation: /ComposeN-Zik/src/androidMain/localization/translations/%two_letters_code%/%original_file_name%
+    languages_mapping:
+      two_letters_code:
+        pt-BR: pt-rBR
+        sr: sr
+        sr-CS: sr-rCS
+        zh-CN: zh-rCN
+        zh-TW: zh-rTW
+
+  - source: /fastlane/source/*.txt
+    translation: /fastlane/metadata/android/%locale%/%original_file_name%
+    languages_mapping:
+      locale:
+        af: af
+        ar: ar
+        bn: bn
+        ca: ca
+        es-ES: es
+        et: et
+        fil: fil
+        id: id
+        it: it
+        pt-PT: pt
+        ro: ro
+        tr: tr
+        vi: vi

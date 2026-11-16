@@ -1,0 +1,69 @@
+Ein mehrsprachiges YouTube Music Frontend für Android, fokussiert auf Leistung, UI/UX, Erweiterungen und langfristigen Support.
+
+<b>N-Zik</b> ist ein Open-Source-Fork von <a href="https://github.com/knighthat/Kreate">Kreate</a>.
+
+<b>Hinweis:</b> N-Zik begann als Nebenprojekt. Für reifere Alternativen sieh dir <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a> oder <a href="https://github.com/fast4x/RiPlay">RiPlay</a> an.
+
+<b>KI-Nutzung:</b> Ich nutze generative KI für Code (über die <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD Method</a>), geprüft und getestet vor der Veröffentlichung.
+
+✨ <b>WARUM N-ZIK?</b> Keine Werbung, Hintergrundwiedergabe, Offline-Caching, anpassbare UI - kostenlos, immer.
+
+🎨 <b>Anpassbare UI</b>
+- Jetpack Compose Schnittstelle
+- Themes: AMOLED, Deep Dark, Crisp Light + eingefärbte Akzente
+- 3D Carousel Player, Home-Widgets, einheitlicher Player und Mini-Player
+- Künstlerprofile, Discovery und Moods, einklappbare Home-Header
+
+<b>Optionales Glass (BETA)</b>
+Bei Neuinstallation aus; in Einstellungen aktivieren. Je Kategorie: nativ, nur Konturen oder Glass; Qualität einstellbar. Kann Rendering-Aufwand und Akkuverbrauch erhöhen; Qualität senken oder deaktivieren.
+Danksagung: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / Backdrop (Apache-2.0).
+
+🎵 <b>Audioerlebnis</b>
+- Premium-Qualität über YouTube Music Premium, automatisch übernommen
+- Synchronisierte Songtexte mit Bearbeitung und Echtzeit-Übersetzung
+- Musikerkennung (Shazam-artig), Sprachsuche, Audio-Visualizer
+- Pro-Steuerung: Tempo, Tonhöhe, Normalisierung, Crossfade, Lautstärke-Boost, Bass-Boost, Hall
+- Audio Bar-Wellenform-Seekbar für präzise Navigation
+
+💾 <b>Offline, Metadaten & Privatsphäre</b>
+- Intelligentes Caching und Downloads für Titel und Playlists, mit wählbarer Download-Qualität
+- FFmpeg-gestützter Export mit vollständigen Metadaten (nur Standard-Builds)
+- In-App-Metadaten-Editor (AAC/Opus, Cover)
+- Lokale Hörstatistiken und Verlauf
+- Automatische Backups mit eigenen Intervallen und Aufbewahrung
+
+🔗 <b>Integrationen</b>
+- YouTube-Anmeldung für Empfehlungen und Videowiedergabe, plus experimentelle Zwei-Wege-Sync
+- Last.fm-Scrobbling mit Now Playing und love/unlove
+- MusicBrainz-Künstler- und Album-Infos
+erweitertem Modus mit Live-Vorschau
+- Invidious-Integration für alternatives YouTube-Streaming
+- Playlist-Import/Export: RiPlay, Spotify, YouTube Music, N-Zik
+
+👥 <b>Gemeinsam hören</b>
+- Live-Hör-Sessions mit anderen Nutzern beitreten oder selbst hosten, per Code oder Einladungslink
+
+🗓️ <b>Rewind</b>
+- Jahres- und Monatsbilanzen mit automatisch generierten Rewind-Playlists
+
+📱 <b>Überall abspielen:</b> Android Auto, Automotive, TV und Tablets
+
+🛠️ <b>Power-User-Funktionen</b>
+- Multi-Profile: eigene Datenbank und Einstellungen pro Profil
+- Auto-Fortsetzen bei Bluetooth-Verbindung, persistente Queue, Auto-Fill-Queue
+- Smart Trash, ausgeblendete Songs, Dislike-System, Jugendschutz
+- Proxy-Support, Anpassung an Netzwerkqualität, Log-Export
+- Rescue Center, Wartungsbildschirm, Onboarding, App-Shortcuts
+- OTA-Updates von GitHub, Sleep-Timer, Hintergrundwiedergabe
+
+📦 <b>Verfügbare Builds</b>
+- Release64/Beta64 (`com.nevar.nzik`): Vollständiger Build, nur 64-Bit-Geräte
+- Release32/Beta32 (`com.nevar.nzik`): Vollständiger Build, nur 32-Bit-Geräte
+- Minified64 (`com.nevar.nzik`): Leichtgewichtiger R8-Build, für schwächere Geräte (64-Bit)
+- Minified32 (`com.nevar.nzik`): Leichtgewichtiger R8-Build (32-Bit)
+- FOSS (`com.nevar.nzik.foss`): Ohne Auto-Updater, für F-Droid (alle Architekturen)
+- Dev64/Dev32 (`com.nevar.nzik.dev`): Entwicklungs-Builds, nur zum Testen
+
+Kein Build bündelt FFmpeg: er ist eine herunterladbare Erweiterung (wird bei Erstverwendung installiert, verwaltet unter Einstellungen → Erweiterungen). Nur FOSS ist auf F-Droid.
+
+Historische Projektkredite sind u. a. ViMusic.

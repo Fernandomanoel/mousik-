@@ -1,0 +1,11 @@
+Added:
+- Real-time audio wave visualization in the seekbar
+- Static waveform timeline for cached songs
+- Long-click menus for songs, albums, playlists, videos and artists in Home
+- Change covers for songs and videos
+- Custom reordering of songs in local playlists and Home
+Fixed:
+- Crash on background playback
+- Songs unclickable across the app
+- Downloading a song no longer overwrites its position, likes and playtime
+- Lag when reordering with custom sort

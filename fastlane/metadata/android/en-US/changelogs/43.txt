@@ -1,0 +1,13 @@
+New:
+- Dice icon in Home Quick Picks to play random songs
+- Play and Shuffle buttons on the Artist page
+- Option to clear history in Data Settings
+Improved:
+- Floating arrow and search bar no longer overlap the mini player
+- Empty state messages on History and Home pages
+- Artist picture and better thumbnails in Android Auto
+Fixed:
+- Parental controls fixed
+- Explicit unicode char in artist name on Stats page
+- Wrong timestamps for local songs in Android Auto
+- Toast when a download fails

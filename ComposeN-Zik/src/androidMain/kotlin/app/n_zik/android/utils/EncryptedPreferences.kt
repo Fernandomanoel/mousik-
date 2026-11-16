@@ -1,0 +1,159 @@
+package app.n_zik.android.utils
+
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.SnapshotMutationPolicy
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.edit
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import timber.log.Timber
+
+var encryptedPreferencesUpdateTrigger by mutableStateOf(0)
+
+@Volatile
+private var cachedEncryptedPreferences: Pair<String, SharedPreferences>? = null
+
+@Synchronized
+private fun getOrCreateEncryptedPreferences(context: Context): SharedPreferences {
+    val app = context.applicationContext
+    val profile = getActiveProfile(app)
+    cachedEncryptedPreferences?.takeIf { it.first == profile }?.let { return it.second }
+    val preferences = app.getEncryptedSharedPreferencesResult(profile).onFailure {
+        Timber.tag("EncryptedPreferences").w(it, "Could not open encrypted preferences; preserving the stored credentials")
+    }.getOrThrow()
+    cachedEncryptedPreferences = profile to preferences
+    return preferences
+}
+
+const val discordPersonalAccessTokenKey = "DiscordPersonalAccessToken"
+const val isDiscordPresenceEnabledKey = "isDiscordPresenceEnabled"
+const val isDiscordBrowsingEnabledKey = "isDiscordBrowsingEnabled"
+
+const val enableYouTubeLoginKey = "enableYoutubeLogin"
+const val enableYouTubeSyncKey = "enableYoutubeSync"
+const val useYtLoginOnlyForBrowseKey = "useYtLoginOnlyForBrowse"
+const val ytAccountNameKey = "ytAccountName"
+const val ytAccountEmailKey = "ytAccountEmail"
+const val ytVisitorDataKey = "ytVisitorData"
+const val ytCookieKey = "ytCookie"
+const val ytAccountChannelHandleKey = "ytAccountChannelHandle"
+const val ytAccountThumbnailKey = "ytAccountThumbnail"
+const val discordAvatarKey = "discord_avatar"
+const val discordUsernameKey = "discord_username"
+const val ytDataSyncIdKey = "ytDataSyncId"
+const val ytAuthUserKey = "ytAuthUser"
+const val ytCookieExpiredKey = "ytCookieExpired"
+
+// Proxy password encrypted key (migrated from regular preferences)
+const val proxyPasswordEncryptedKey = "proxyPasswordEncrypted"
+const val proxyPasswordMigratedKey = "proxyPasswordMigrated"
+
+fun clearEncryptedPreferencesCache() {
+    cachedEncryptedPreferences = null
+}
+
+inline fun <reified T : Enum<T>> EncryptedSharedPreferences.getEnum(
+    key: String,
+    defaultValue: T
+): T =
+    getString(key, null)?.let {
+        try {
+            enumValueOf<T>(it)
+        } catch (e: IllegalArgumentException) {
+            null
+        }
+    } ?: defaultValue
+
+
+
+val Context.encryptedPreferences: SharedPreferences
+    get() = getOrCreateEncryptedPreferences(this)
+
+fun Context.getEncryptedSharedPreferencesResult(
+    profile: String = getActiveProfile(applicationContext),
+): Result<SharedPreferences> = runCatching {
+    val app = applicationContext
+    val suffix = if (profile == DEFAULT_PROFILE_ID) "" else "_$profile"
+    EncryptedSharedPreferences.create(
+        app,
+        "secure_preferences$suffix",
+        MasterKey.Builder(app, MasterKey.DEFAULT_MASTER_KEY_ALIAS).setKeyScheme(MasterKey.KeyScheme.AES256_GCM).build(),
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+    )
+}
+
+@Composable
+fun rememberEncryptedPreference(key: String, defaultValue: Boolean): MutableState<Boolean> {
+    val context = LocalContext.current
+    return remember {
+        mutableStateEncryptedPreferenceOf(context.encryptedPreferences.getBoolean(key, defaultValue)) {
+            context.encryptedPreferences.edit { putBoolean(key, it) }
+        }
+    }
+}
+
+@Composable
+fun rememberEncryptedPreference(key: String, defaultValue: Int): MutableState<Int> {
+    val context = LocalContext.current
+    return remember {
+        mutableStateEncryptedPreferenceOf(context.encryptedPreferences.getInt(key, defaultValue)) {
+            context.encryptedPreferences.edit { putInt(key, it) }
+        }
+    }
+}
+
+
+
+@Composable
+fun rememberEncryptedPreference(key: String, defaultValue: Float): MutableState<Float> {
+    val context = LocalContext.current
+    return remember {
+        mutableStateEncryptedPreferenceOf(context.encryptedPreferences.getFloat(key, defaultValue)) {
+            context.encryptedPreferences.edit { putFloat(key, it) }
+        }
+    }
+}
+
+@Composable
+fun rememberEncryptedPreference(key: String, defaultValue: String): MutableState<String> {
+    val context = LocalContext.current
+    return remember {
+        mutableStateEncryptedPreferenceOf(context.encryptedPreferences.getString(key, null) ?: defaultValue) {
+            context.encryptedPreferences.edit { putString(key, it) }
+        }
+    }
+}
+
+@Composable
+inline fun <reified T : Enum<T>> rememberEncryptedPreference(key: String, defaultValue: T): MutableState<T> {
+    val context = LocalContext.current
+    return remember {
+        mutableStateEncryptedPreferenceOf(context.encryptedPreferences.getEnum(key, defaultValue)) {
+            context.encryptedPreferences.edit { putEnum(key, it) }
+        }
+    }
+}
+
+inline fun <T> mutableStateEncryptedPreferenceOf(
+    value: T,
+    crossinline onStructuralInequality: (newValue: T) -> Unit
+) =
+    mutableStateOf(
+        value = value,
+        policy = object : SnapshotMutationPolicy<T> {
+            override fun equivalent(a: T, b: T): Boolean {
+                val areEquals = a == b
+                if (!areEquals) onStructuralInequality(b)
+                return areEquals
+            }
+        })
+
+

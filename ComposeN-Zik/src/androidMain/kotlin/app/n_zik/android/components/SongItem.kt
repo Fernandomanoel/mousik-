@@ -1,0 +1,493 @@
+@file:kotlin.OptIn(ExperimentalMaterial3ExpressiveApi::class)
+package app.n_zik.android.components
+
+import app.n_zik.android.components.settings.appearance.preview.LocalThemePreview
+import app.n_zik.android.components.glass.glassGlobalIndication
+
+import app.n_zik.android.core.database.*
+import app.n_zik.android.uiRoundnessShape
+import androidx.compose.ui.res.stringResource
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.ui.graphics.drawscope.Stroke
+import app.n_zik.android.utils.getDownloadProgress
+import app.n_zik.android.utils.DOWNLOAD_INDICATOR_SIZE_NORMAL
+import app.n_zik.android.utils.DOWNLOAD_INDICATOR_STROKE_WIDTH
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import app.n_zik.android.components.glass.explicitBadgeIconId
+import app.n_zik.android.components.glass.glassExplicitBadgeBackground
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.offline.Download
+import androidx.navigation.NavController
+import app.n_zik.android.R
+import app.n_zik.android.core.database.Database
+import app.n_zik.android.EXPLICIT_PREFIX
+import app.n_zik.android.hasExplicitPrefix
+import app.n_zik.android.LocalPlayerServiceBinder
+import app.n_zik.android.LocalDownloadStatesMap
+import app.n_zik.android.cleanPrefix
+import app.n_zik.android.colorPalette
+import app.n_zik.android.enums.DownloadedStateMedia
+import app.n_zik.android.enums.NavRoutes
+import app.n_zik.android.models.Song
+import app.n_zik.android.download.utils.MyDownloadHelper
+import app.n_zik.android.playback.services.isLocal
+import app.n_zik.android.typography
+import app.n_zik.android.ui.components.tab.toolbar.Clickable
+import app.n_zik.android.ui.components.tab.toolbar.Descriptive
+import app.n_zik.android.ui.components.tab.toolbar.Icon
+import app.n_zik.android.ui.components.themed.HeaderIconButton
+import app.n_zik.android.ui.components.themed.IconButton
+import app.n_zik.android.ui.components.themed.NowPlayingSongIndicator
+import app.n_zik.android.ui.styling.Dimensions
+import app.n_zik.android.ui.styling.favoritesIcon
+import app.n_zik.android.ui.styling.favoritesOverlay
+import app.n_zik.android.utils.conditional
+import app.n_zik.android.utils.disableScrollingTextKey
+import app.n_zik.android.utils.downloadedStateMedia
+import app.n_zik.android.utils.getDownloadState
+import app.n_zik.android.utils.getLikedIcon
+import app.n_zik.android.utils.getDislikedIcon
+import app.n_zik.android.utils.currentMediaItemIdAsState
+import app.n_zik.android.utils.medium
+import app.n_zik.android.utils.playlistindicatorKey
+import app.n_zik.android.utils.rememberPreference
+import app.n_zik.android.utils.secondary
+import app.n_zik.android.utils.semiBold
+import app.n_zik.android.utils.coroutines.NzikDispatchers
+import app.n_zik.android.core.coil.ImageCacheFactory
+import app.n_zik.android.components.menu.song.SongItemMenu
+import app.n_zik.android.components.tab.ItemSelector
+import app.n_zik.android.components.song.rememberSongDisplayMetadata
+import app.n_zik.android.components.glass.GlassSongRowSurface
+import app.n_zik.android.uiRoundnessShape
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.material3.ripple
+import androidx.compose.material3.Icon
+import app.n_zik.android.MODIFIED_PREFIX
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+
+
+private interface SongIndicator: Icon {
+    override val sizeDp: Dp
+        get() = 18.dp
+    override val color: Color
+        @Composable
+        get() = colorPalette().accent
+
+    override fun onShortClick() { /* Does nothing */ }
+
+    @OptIn(ExperimentalFoundationApi::class)
+    @Composable
+    override fun ToolBarButton() {
+        if (iconId == R.drawable.explicit) {
+            app.n_zik.android.components.ExplicitBadge(
+                color = if (isEnabled) color else color.copy(alpha = 0.5f),
+                modifier = this.modifier.size(sizeDp),
+            )
+            Spacer(Modifier.padding(horizontal = 3.dp))
+            return
+        }
+        val interactionSource = remember { MutableInteractionSource() }
+        Box(
+            modifier = this.modifier
+                .size(sizeDp)
+                .then(if (iconId == R.drawable.explicit) Modifier.glassExplicitBadgeBackground() else Modifier)
+                .clip(uiRoundnessShape())
+                .combinedClickable(
+                    interactionSource = interactionSource,
+                    indication = glassGlobalIndication(ripple(
+                        bounded = false,
+                        radius = 20.dp
+                    )),
+                    enabled = isEnabled,
+                    onClick = ::onShortClick,
+                    onLongClick = {
+                        if (this is Clickable)
+                            this.onLongClick()
+                    }
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(if (iconId == R.drawable.explicit) explicitBadgeIconId() else iconId),
+                contentDescription = null,
+                modifier = Modifier.size(sizeDp),
+                tint = if (isEnabled) color else color.copy(alpha = 0.5f)
+            )
+        }
+
+        Spacer( Modifier.padding(horizontal = 3.dp) )
+    }
+}
+
+@Composable
+fun SongText(
+    text: String,
+    style: TextStyle,
+    overflow: TextOverflow = TextOverflow.Ellipsis,
+    modifier: Modifier = Modifier
+) = BasicText(
+    text = text,
+    style = style,
+    maxLines = 1,
+    overflow = overflow,
+    modifier = modifier
+)
+
+/**
+ * Displays a song row.
+ *
+ * @param navController Optional: detects whether the current location is a playlist to hide the
+ *        playlist indicator.
+ * @param showThumbnail Whether to fetch/show the thumbnail; [thumbnailOverlay] is shown
+ *        regardless of this value.
+ * @param onLongClick Overrides the song's menu when the user holds the item.
+ */
+@UnstableApi
+@ExperimentalFoundationApi
+@Composable
+fun SongItem(
+    song: Song,
+    itemSelector: ItemSelector<Song>? = null,
+    navController: NavController? = null,
+    isRecommended: Boolean = false,
+    isLiked: Boolean? = null,
+    inPlaylist: Boolean? = null,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = colorPalette().background0,
+    showThumbnail: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+    trailingContent: @Composable (RowScope.() -> Unit)? = null,
+    thumbnailOverlay: @Composable BoxScope.() -> Unit = {},
+    onClick: () -> Unit = {}
+) {
+    // Essentials
+    val preview = LocalThemePreview.current
+    val context = LocalContext.current
+    val binder = LocalPlayerServiceBinder.current
+    val disableScrollingText by rememberPreference( disableScrollingTextKey, false )
+    val hapticFeedback = LocalHapticFeedback.current
+
+    val colorPalette = colorPalette()
+    val playerGeneration by binder?.playerUpdateTrigger?.collectAsStateWithLifecycle(0)
+        ?: remember { mutableStateOf(0) }
+    // Crossfade swaps the player without replacing the binder. Reset the remembered ID too.
+    val player = remember(binder, playerGeneration, preview) { preview?.player ?: binder?.player }
+    val currentMediaId by (player?.currentMediaItemIdAsState(player) ?: remember { mutableStateOf<String?>(null) })
+    val isPlaying = currentMediaId == song.id
+    val rowShape = uiRoundnessShape()
+
+    val storedSongs = remember(song.id, preview) {
+        if (preview != null) kotlinx.coroutines.flow.flowOf(null) else Database.songTable.findById(song.id).distinctUntilChanged()
+    }
+    val displaySong = rememberSongDisplayMetadata(song, storedSongs)
+
+    val menu = if( preview == null && navController != null && onLongClick == null ) SongItemMenu( navController, displaySong ) else null
+    GlassSongRowSurface(backgroundColor, if (isPlaying) colorPalette.favoritesOverlay else null, rowShape) { rowBackground ->
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy( 12.dp ),
+        modifier = modifier.fillMaxWidth()
+                           .clip( rowShape )
+                           .then( rowBackground )
+                           // This component must be placed before padding to prevent
+                           // ripple effect to only highlight padded area
+                           .clip(uiRoundnessShape()).combinedClickable(
+                               onClick = onClick,
+                               onLongClick = {
+                                   hapticFeedback.performHapticFeedback( HapticFeedbackType.LongPress )
+
+                                   onLongClick?.invoke()
+                                   menu?.openMenu()
+                               }
+                           )
+                           .padding(
+                               vertical = Dimensions.itemsVerticalPadding,
+                               horizontal = 16.dp
+                           )
+    )
+ {
+        // Song's thumbnail
+        Box(
+            Modifier.size( Dimensions.thumbnails.song )
+        ) {
+            // Actual thumbnail (from cache or fetch from url)
+            if( showThumbnail ) {
+                // Check if the image is in local cache
+                val isCached = remember(displaySong.thumbnailUrl) {
+                    ImageCacheFactory.isImageCached(displaySong.thumbnailUrl)
+                }
+                
+                val isCustomImage = displaySong.thumbnailUrl?.let {
+                    it.startsWith("file://") || it.contains("app_covers") || it.startsWith(MODIFIED_PREFIX)
+                } == true
+
+                ImageCacheFactory.Thumbnail(
+                    thumbnailUrl = displaySong.thumbnailUrl,
+                    contentScale = if (isCustomImage) ContentScale.Crop else ContentScale.FillHeight
+                )
+            }
+
+            if( isPlaying )
+                NowPlayingSongIndicator(
+                    mediaId = displaySong.id,
+                    player = player
+                )
+
+            thumbnailOverlay()
+
+            // Use pre-computed like state if provided, otherwise query database
+            val likeState by if (preview != null || isLiked != null) {
+                remember(isLiked) { mutableStateOf(isLiked) }
+            } else {
+                remember( displaySong.id ) {
+                    Database.songTable
+                        .likeState( displaySong.id )
+                        .distinctUntilChanged()
+                }.collectAsStateWithLifecycle(null, context = NzikDispatchers.DATA)
+            }
+
+            // Only show icon for liked (true) or disliked (false), NEVER for neutral (null)
+            if ( likeState != null )
+                HeaderIconButton(
+                    onClick = {},
+                    icon = if (likeState == true) getLikedIcon() else getDislikedIcon(),
+                    color = if (likeState == false) colorPalette().red else colorPalette().favoritesIcon,
+                    iconSize = 12.dp,
+                    placementModifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .absoluteOffset( x = (-8).dp )
+                )
+        }
+
+        // Song's information
+        Column(
+            horizontalAlignment = Alignment.Start,
+            verticalArrangement = Arrangement.spacedBy( 4.dp ),
+            modifier = Modifier.weight( 1f )
+        ) {
+            Row( verticalAlignment = Alignment.CenterVertically ) {
+                // Show icon if song is recommended by the algorithm
+                if( isRecommended )
+                    object: SongIndicator {
+                        override val iconId: Int = R.drawable.smart_shuffle
+                    }.ToolBarButton()
+
+                val showInPlaylistIndicator by rememberPreference( playlistindicatorKey,false )
+                val isInPlaylistScreen = navController != null && NavRoutes.localPlaylist.isHere( navController )
+                // Show icon if song belongs to a playlist,
+                // except when in playlist.
+                if( preview == null && showInPlaylistIndicator && !isInPlaylistScreen ) {
+
+                    // Use pre-computed playlist state if provided, otherwise query database
+                    val isExistedInAPlaylist by if (inPlaylist != null) {
+                        remember(inPlaylist) { mutableStateOf(inPlaylist) }
+                    } else {
+                        remember( displaySong.id ) {
+                            Database.songPlaylistMapTable.isMapped( displaySong.id )
+                        }.collectAsStateWithLifecycle(initialValue = false, context = NzikDispatchers.DATA)
+                    }
+
+                    if( isExistedInAPlaylist )
+                        object: SongIndicator {
+                            override val iconId: Int = R.drawable.playlist
+                        }.ToolBarButton()
+                }
+
+                if( displaySong.title.hasExplicitPrefix() )
+                    object: SongIndicator {
+                        override val iconId: Int = R.drawable.explicit
+                    }.ToolBarButton()
+
+                val safeTitle = if (displaySong.title.isBlank() || displaySong.title == "null") stringResource(R.string.metadata_unknown_title) else displaySong.title
+                // Song's name
+                SongText(
+                    text = cleanPrefix( safeTitle ),
+                    style = typography().xs.semiBold,
+                    modifier = Modifier.weight( 1f )
+                                       .conditional( !disableScrollingText ) {
+                                           basicMarquee( iterations = Int.MAX_VALUE )
+                                       }
+                )
+            }
+
+            Row( verticalAlignment = Alignment.CenterVertically ) {
+                val artistsText = displaySong.cleanArtistsText()
+                val safeArtists = if (artistsText.isBlank() || artistsText == "null") stringResource(R.string.metadata_unknown_artist) else artistsText
+                // Song's author
+                SongText(
+                    text = safeArtists,
+                    style = typography().xs.semiBold.secondary,
+                    overflow = TextOverflow.Clip,
+                    modifier = Modifier.weight( 1f )
+                                       .conditional( !disableScrollingText ) {
+                                           basicMarquee( iterations = Int.MAX_VALUE )
+                                       }
+                )
+
+                /*
+                    Song's duration
+                    If it's "null", show --:-- instead of leaving it empty
+                 */
+                SongText(
+                    text = displaySong.durationText ?: "--:--",
+                    style = typography().xxs.secondary.medium,
+                    modifier = Modifier.padding( top = 4.dp, start = 5.dp  )
+                )
+
+                Spacer( Modifier.padding(horizontal = 4.dp) )
+
+                if (song.isLocal) {
+                    Icon(
+                        painter = painterResource(R.drawable.folder),
+                        contentDescription = stringResource(R.string.library_on_device_title),
+                        tint = colorPalette.textSecondary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                } else {
+                    val downloadStatesMap = LocalDownloadStatesMap.current
+                    val cacheState = downloadStatesMap[song.id] ?: downloadedStateMedia( song.id )
+                    val downloadState = getDownloadState( song.id )
+
+                    val color = when( cacheState ) {
+                        DownloadedStateMedia.NOT_CACHED_OR_DOWNLOADED -> colorPalette().textDisabled
+                        else                                          -> colorPalette().text
+                    }
+
+                    if (downloadState == Download.STATE_DOWNLOADING) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(uiRoundnessShape()).clickable {
+                                    binder?.cache?.removeResource( song.id )
+                                    Database.asyncTransaction {
+                                        formatTable.deleteBySongId( song.id )
+                                    }
+                                    MyDownloadHelper.handleDownload( context, displaySong, true )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val progress = getDownloadProgress(song.id)
+                            if (progress > 0.01f && downloadState == Download.STATE_DOWNLOADING) {
+                                CircularWavyProgressIndicator(
+                                    progress = { progress },
+                                    color = colorPalette().accent,
+                                    trackColor = colorPalette().textDisabled,
+                                    modifier = Modifier.size(DOWNLOAD_INDICATOR_SIZE_NORMAL.dp),
+                                    stroke = Stroke(width = with(LocalDensity.current) { DOWNLOAD_INDICATOR_STROKE_WIDTH.dp.toPx() }),
+                                    trackStroke = Stroke(width = with(LocalDensity.current) { DOWNLOAD_INDICATOR_STROKE_WIDTH.dp.toPx() })
+                                )
+                            } else {
+                                CircularWavyProgressIndicator(
+                                    color = colorPalette().accent,
+                                    trackColor = colorPalette().textDisabled,
+                                    modifier = Modifier.size(DOWNLOAD_INDICATOR_SIZE_NORMAL.dp),
+                                    stroke = Stroke(width = with(LocalDensity.current) { DOWNLOAD_INDICATOR_STROKE_WIDTH.dp.toPx() }),
+                                    trackStroke = Stroke(width = with(LocalDensity.current) { DOWNLOAD_INDICATOR_STROKE_WIDTH.dp.toPx() })
+                                )
+                            }
+                        }
+                    } else {
+                        val icon = when( downloadState ) {
+                            Download.STATE_REMOVING     -> R.drawable.download
+                            Download.STATE_QUEUED       -> R.drawable.download_progress
+                            Download.STATE_RESTARTING   -> R.drawable.download_progress
+                            else                        -> cacheState.iconId
+                        }
+                        IconButton(
+                            icon = icon,
+                            color = color,
+                            modifier = Modifier.size( 20.dp ),
+                            onClick = {
+                                binder?.cache?.removeResource( song.id )
+                                Database.asyncTransaction {
+                                    formatTable.deleteBySongId( song.id )
+                                }
+                                MyDownloadHelper.handleDownload( context, displaySong, true )
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        if( itemSelector != null ) {
+            // It must watch for [selectedItems.size] for changes
+            // Otherwise, state will stay the same
+            val checkedState = remember( itemSelector.size ) {
+                mutableStateOf( song in itemSelector )
+            }
+
+            if( itemSelector.isActive )
+                Icon(
+                    painter = painterResource(if (checkedState.value) R.drawable.checked_filled else R.drawable.unchecked_outline),
+                    contentDescription = null,
+                    tint = if (checkedState.value) colorPalette().accent else colorPalette().text,
+                    modifier = Modifier
+                        .scale( 0.8f )
+                        .clickable(
+                            indication = glassGlobalIndication(null),
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            val newValue = !checkedState.value
+                            checkedState.value = newValue
+                            if (newValue) itemSelector.add(song) else itemSelector.remove(song)
+                        }
+                        .padding(8.dp)
+                )
+        }
+
+        trailingContent?.invoke( this )
+    }
+    }
+}
+
+
+
+
+
+
+

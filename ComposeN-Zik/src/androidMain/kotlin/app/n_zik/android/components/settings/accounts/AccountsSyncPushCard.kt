@@ -1,0 +1,84 @@
+package app.n_zik.android.components.settings.accounts
+
+import app.n_zik.android.components.settings.common.settingsSearchTarget
+import androidx.compose.ui.Modifier
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import app.n_zik.android.utils.rememberPreference
+import app.n_zik.android.utils.syncPushAlbumBookmarkKey
+import app.n_zik.android.utils.syncPushArtistFollowKey
+import app.n_zik.android.utils.syncPushEpisodeKey
+import app.n_zik.android.utils.syncPushHistoryKey
+import app.n_zik.android.utils.syncPushPlaylistKey
+import app.n_zik.android.utils.syncPushSongLikeKey
+import app.n_zik.android.R
+import app.n_zik.android.components.settings.common.OtherSwitchSettingEntry
+import app.n_zik.android.components.settings.common.SettingsSectionCard
+
+/** Owns the SyncPushCard controls. */
+@Composable
+internal fun AccountsSyncPushCard() {
+    SettingsSectionCard(
+        title = stringResource(R.string.sync_push_to_youtube),
+        icon = R.drawable.arrow_up,
+        content = {
+            var syncPushSongLike by rememberPreference(syncPushSongLikeKey, false)
+            var syncPushAlbumBookmark by rememberPreference(syncPushAlbumBookmarkKey, false)
+            var syncPushArtistFollow by rememberPreference(syncPushArtistFollowKey, false)
+            var syncPushPlaylist by rememberPreference(syncPushPlaylistKey, false)
+            var syncPushHistory by rememberPreference(syncPushHistoryKey, false)
+
+            OtherSwitchSettingEntry(
+                modifier = Modifier.settingsSearchTarget("accounts.sync_push_to_youtube.sync_push_history"),
+                title = stringResource(R.string.sync_push_history),
+                text = stringResource(R.string.sync_push_history_description),
+                isChecked = syncPushHistory,
+                onCheckedChange = { syncPushHistory = it },
+                icon = R.drawable.history
+            )
+            OtherSwitchSettingEntry(
+                modifier = Modifier.settingsSearchTarget("accounts.sync_push_to_youtube.sync_push_song_like"),
+                title = stringResource(R.string.sync_push_song_like),
+                text = stringResource(R.string.sync_push_song_like_description),
+                isChecked = syncPushSongLike,
+                onCheckedChange = { syncPushSongLike = it },
+                icon = R.drawable.heart
+            )
+            OtherSwitchSettingEntry(
+                modifier = Modifier.settingsSearchTarget("accounts.sync_push_to_youtube.sync_push_album_bookmark"),
+                title = stringResource(R.string.sync_push_album_bookmark),
+                text = stringResource(R.string.sync_push_album_bookmark_description),
+                isChecked = syncPushAlbumBookmark,
+                onCheckedChange = { syncPushAlbumBookmark = it },
+                icon = R.drawable.album
+            )
+            OtherSwitchSettingEntry(
+                modifier = Modifier.settingsSearchTarget("accounts.sync_push_to_youtube.sync_push_artist_follow"),
+                title = stringResource(R.string.sync_push_artist_follow),
+                text = stringResource(R.string.sync_push_artist_follow_description),
+                isChecked = syncPushArtistFollow,
+                onCheckedChange = { syncPushArtistFollow = it },
+                icon = R.drawable.people
+            )
+            OtherSwitchSettingEntry(
+                modifier = Modifier.settingsSearchTarget("accounts.sync_push_to_youtube.sync_push_playlist"),
+                title = stringResource(R.string.sync_push_playlist),
+                text = stringResource(R.string.sync_push_playlist_description),
+                isChecked = syncPushPlaylist,
+                onCheckedChange = { syncPushPlaylist = it },
+                icon = R.drawable.playlist
+            )
+            var syncPushEpisode by rememberPreference(syncPushEpisodeKey, false)
+            OtherSwitchSettingEntry(
+                modifier = Modifier.settingsSearchTarget("accounts.sync_push_to_youtube.sync_push_episode"),
+                title = stringResource(R.string.sync_push_episode),
+                text = stringResource(R.string.sync_push_episode_description),
+                isChecked = syncPushEpisode,
+                onCheckedChange = { syncPushEpisode = it },
+                icon = R.drawable.podcast
+            )
+        }
+    )
+}

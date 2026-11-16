@@ -1,0 +1,388 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Maintenance -->
+    <plurals name="maintenance_systems_need_attention">
+        <item quantity="zero">تحتاج أنظمة %d إلى الاهتمام</item>
+        <item quantity="one">%d system needs attention</item>
+        <item quantity="two">تحتاج أنظمة %d إلى الاهتمام</item>
+        <item quantity="few">تحتاج أنظمة %d إلى الاهتمام</item>
+        <item quantity="many">تحتاج أنظمة %d إلى الاهتمام</item>
+        <item quantity="other">تحتاج أنظمة %d إلى الاهتمام</item>
+    </plurals>
+    <plurals name="sync_detail_songs_liked">
+        <item quantity="zero">%1$d songs liked</item>
+        <item quantity="one">أحببت أغنية %1$d</item>
+        <item quantity="two">%1$d songs liked</item>
+        <item quantity="few">%1$d songs liked</item>
+        <item quantity="many">%1$d songs liked</item>
+        <item quantity="other">%1$d songs liked</item>
+    </plurals>
+    <plurals name="sync_detail_playlists_synced">
+        <item quantity="zero">%1$d قوائم تشغيل مزامنة</item>
+        <item quantity="one">%1$d قائمة تشغيل مزامنة</item>
+        <item quantity="two">%1$d قوائم تشغيل مزامنة</item>
+        <item quantity="few">%1$d قوائم تشغيل مزامنة</item>
+        <item quantity="many">%1$d قوائم تشغيل مزامنة</item>
+        <item quantity="other">%1$d قوائم تشغيل مزامنة</item>
+    </plurals>
+    <plurals name="sync_detail_songs_imported">
+        <item quantity="zero">تم استيراد %1$d أغنية</item>
+        <item quantity="one">تم استيراد %1$d أغنية</item>
+        <item quantity="two">تم استيراد %1$d أغنية</item>
+        <item quantity="few">تم استيراد %1$d أغنية</item>
+        <item quantity="many">تم استيراد %1$d أغنية</item>
+        <item quantity="other">تم استيراد %1$d أغنية</item>
+    </plurals>
+    <plurals name="sync_detail_albums_imported">
+        <item quantity="zero">%1$d ألبومات مستوردة</item>
+        <item quantity="one">تم استيراد ألبوم %1$d</item>
+        <item quantity="two">%1$d ألبومات مستوردة</item>
+        <item quantity="few">%1$d ألبومات مستوردة</item>
+        <item quantity="many">%1$d ألبومات مستوردة</item>
+        <item quantity="other">%1$d ألبومات مستوردة</item>
+    </plurals>
+    <plurals name="sync_detail_episodes">
+        <item quantity="zero">%1$d حلقات</item>
+        <item quantity="one">حلقة %1$d</item>
+        <item quantity="two">%1$d حلقات</item>
+        <item quantity="few">%1$d حلقات</item>
+        <item quantity="many">%1$d حلقات</item>
+        <item quantity="other">%1$d حلقات</item>
+    </plurals>
+    <plurals name="library_song_count">
+        <item quantity="zero">%1$d songs</item>
+        <item quantity="one">أغنية %1$d</item>
+        <item quantity="two">%1$d songs</item>
+        <item quantity="few">%1$d songs</item>
+        <item quantity="many">%1$d songs</item>
+        <item quantity="other">%1$d songs</item>
+    </plurals>
+    <plurals name="about_translator_count">
+        <item quantity="zero">مترجمون %1$d</item>
+        <item quantity="one">مترجم %1$d</item>
+        <item quantity="two">مترجمون %1$d</item>
+        <item quantity="few">مترجمون %1$d</item>
+        <item quantity="many">مترجمون %1$d</item>
+        <item quantity="other">مترجمون %1$d</item>
+    </plurals>
+    <plurals name="about_developer_designer_count">
+        <item quantity="zero">%1$d مطورين / مصممين</item>
+        <item quantity="one">%1$d مطور / مصمم</item>
+        <item quantity="two">%1$d مطورين / مصممين</item>
+        <item quantity="few">%1$d مطورين / مصممين</item>
+        <item quantity="many">%1$d مطورين / مصممين</item>
+        <item quantity="other">%1$d مطورين / مصممين</item>
+    </plurals>
+    <plurals name="statistics_songs_heard_count">
+        <item quantity="zero">أسمع %1$d أغنية</item>
+        <item quantity="one">سمعت أغنية %1$d</item>
+        <item quantity="two">أسمع %1$d أغنية</item>
+        <item quantity="few">أسمع %1$d أغنية</item>
+        <item quantity="many">أسمع %1$d أغنية</item>
+        <item quantity="other">أسمع %1$d أغنية</item>
+    </plurals>
+    <plurals name="history_delete_search_query_count">
+        <item quantity="zero">حذف استعلامات البحث %1$d</item>
+        <item quantity="one">حذف استعلام البحث %1$d</item>
+        <item quantity="two">حذف استعلامات البحث %1$d</item>
+        <item quantity="few">حذف استعلامات البحث %1$d</item>
+        <item quantity="many">حذف استعلامات البحث %1$d</item>
+        <item quantity="other">حذف استعلامات البحث %1$d</item>
+    </plurals>
+    <plurals name="history_delete_playback_event_count">
+        <item quantity="zero">حذف أحداث تشغيل %1$d</item>
+        <item quantity="one">حذف حدث تشغيل %1$d</item>
+        <item quantity="two">حذف أحداث تشغيل %1$d</item>
+        <item quantity="few">حذف أحداث تشغيل %1$d</item>
+        <item quantity="many">حذف أحداث تشغيل %1$d</item>
+        <item quantity="other">حذف أحداث تشغيل %1$d</item>
+    </plurals>
+    <plurals name="podcast_episode_count_with_duration">
+        <item quantity="zero">%1$d حلقات · %2$s</item>
+        <item quantity="one">%1$d حلقة · %2$s</item>
+        <item quantity="two">%1$d حلقات · %2$s</item>
+        <item quantity="few">%1$d حلقات · %2$s</item>
+        <item quantity="many">%1$d حلقات · %2$s</item>
+        <item quantity="other">%1$d حلقات · %2$s</item>
+    </plurals>
+    <plurals name="sync_youtube_playlist_songs_adding">
+        <item quantity="zero">إضافة أغاني %1$d إلى قائمة تشغيل اليوتيوب</item>
+        <item quantity="one">إضافة أغنية %1$d إلى قائمة تشغيل اليوتيوب</item>
+        <item quantity="two">إضافة أغاني %1$d إلى قائمة تشغيل اليوتيوب</item>
+        <item quantity="few">إضافة أغاني %1$d إلى قائمة تشغيل اليوتيوب</item>
+        <item quantity="many">إضافة أغاني %1$d إلى قائمة تشغيل اليوتيوب</item>
+        <item quantity="other">إضافة أغاني %1$d إلى قائمة تشغيل اليوتيوب</item>
+    </plurals>
+    <plurals name="sync_youtube_playlist_songs_added">
+        <item quantity="zero">أضيفت %1$d أغنية إلى قائمة تشغيل اليوتيوب</item>
+        <item quantity="one">تم إضافة أغنية %1$d إلى قائمة تشغيل اليوتيوب</item>
+        <item quantity="two">أضيفت %1$d أغنية إلى قائمة تشغيل اليوتيوب</item>
+        <item quantity="few">أضيفت %1$d أغنية إلى قائمة تشغيل اليوتيوب</item>
+        <item quantity="many">أضيفت %1$d أغنية إلى قائمة تشغيل اليوتيوب</item>
+        <item quantity="other">أضيفت %1$d أغنية إلى قائمة تشغيل اليوتيوب</item>
+    </plurals>
+    <plurals name="backup_import_profile_state_complete_count">
+        <item quantity="zero">حالة الملف الشخصي المستورد: %1$d ملفات شخصية</item>
+        <item quantity="one">تم استيراد حالة الملف الشخصي: %1$d</item>
+        <item quantity="two">حالة الملف الشخصي المستورد: %1$d ملفات شخصية</item>
+        <item quantity="few">حالة الملف الشخصي المستورد: %1$d ملفات شخصية</item>
+        <item quantity="many">حالة الملف الشخصي المستورد: %1$d ملفات شخصية</item>
+        <item quantity="other">حالة الملف الشخصي المستورد: %1$d ملفات شخصية</item>
+    </plurals>
+    <plurals name="library_export_cached_song_confirmation_count">
+        <item quantity="zero">تصدير %1$d أغاني تم تنزيلها مؤقتاً؟</item>
+        <item quantity="one">تصدير أغنية %1$d مؤقتاً/تم تنزيلها؟</item>
+        <item quantity="two">تصدير %1$d أغاني تم تنزيلها مؤقتاً؟</item>
+        <item quantity="few">تصدير %1$d أغاني تم تنزيلها مؤقتاً؟</item>
+        <item quantity="many">تصدير %1$d أغاني تم تنزيلها مؤقتاً؟</item>
+        <item quantity="other">تصدير %1$d أغاني تم تنزيلها مؤقتاً؟</item>
+    </plurals>
+    <plurals name="downloads_stale_startup_removed_count">
+        <item quantity="zero">%1$d أغاني تم تنزيلها مفقودة وتم إزالتها. الرجاء تنزيلها مرة أخرى.</item>
+        <item quantity="one">%1$d أغنية تم تنزيلها مفقودة تم إزالتها. الرجاء تنزيلها مرة أخرى.</item>
+        <item quantity="two">%1$d أغاني تم تنزيلها مفقودة وتم إزالتها. الرجاء تنزيلها مرة أخرى.</item>
+        <item quantity="few">%1$d أغاني تم تنزيلها مفقودة وتم إزالتها. الرجاء تنزيلها مرة أخرى.</item>
+        <item quantity="many">%1$d أغاني تم تنزيلها مفقودة وتم إزالتها. الرجاء تنزيلها مرة أخرى.</item>
+        <item quantity="other">%1$d أغاني تم تنزيلها مفقودة وتم إزالتها. الرجاء تنزيلها مرة أخرى.</item>
+    </plurals>
+    <plurals name="recommendations_quick_picks_song_count">
+        <item quantity="zero">%1$d recommended songs</item>
+        <item quantity="one">%1$d أغنية موصى بها</item>
+        <item quantity="two">%1$d recommended songs</item>
+        <item quantity="few">%1$d recommended songs</item>
+        <item quantity="many">%1$d recommended songs</item>
+        <item quantity="other">%1$d recommended songs</item>
+    </plurals>
+    <plurals name="listen_together_blocked_user_count">
+        <item quantity="zero">تم حظر %1$d مستخدمين</item>
+        <item quantity="one">تم حظر المستخدم %1$d</item>
+        <item quantity="two">تم حظر %1$d مستخدمين</item>
+        <item quantity="few">تم حظر %1$d مستخدمين</item>
+        <item quantity="many">تم حظر %1$d مستخدمين</item>
+        <item quantity="other">تم حظر %1$d مستخدمين</item>
+    </plurals>
+    <plurals name="maintenance_pass_cleaned_count">
+        <item quantity="zero">تم تنظيف العناصر %1$d</item>
+        <item quantity="one">تم تنظيف العنصر %1$d</item>
+        <item quantity="two">تم تنظيف العناصر %1$d</item>
+        <item quantity="few">تم تنظيف العناصر %1$d</item>
+        <item quantity="many">تم تنظيف العناصر %1$d</item>
+        <item quantity="other">تم تنظيف العناصر %1$d</item>
+    </plurals>
+    <plurals name="maintenance_pass_deferred_count">
+        <item quantity="zero">تم تأجيل العناصر %1$d</item>
+        <item quantity="one">تم تأجيل العنصر %1$d</item>
+        <item quantity="two">تم تأجيل العناصر %1$d</item>
+        <item quantity="few">تم تأجيل العناصر %1$d</item>
+        <item quantity="many">تم تأجيل العناصر %1$d</item>
+        <item quantity="other">تم تأجيل العناصر %1$d</item>
+    </plurals>
+    <plurals name="maintenance_pass_skipped_count">
+        <item quantity="zero">تم تخطي العناصر %1$d</item>
+        <item quantity="one">تم تخطي العنصر %1$d</item>
+        <item quantity="two">تم تخطي العناصر %1$d</item>
+        <item quantity="few">تم تخطي العناصر %1$d</item>
+        <item quantity="many">تم تخطي العناصر %1$d</item>
+        <item quantity="other">تم تخطي العناصر %1$d</item>
+    </plurals>
+    <plurals name="maintenance_dedup_flagged_count">
+        <item quantity="zero">الصفوف المعلمة %1$d</item>
+        <item quantity="one">تم تعليم صفين %1$d</item>
+        <item quantity="two">الصفوف المعلمة %1$d</item>
+        <item quantity="few">الصفوف المعلمة %1$d</item>
+        <item quantity="many">الصفوف المعلمة %1$d</item>
+        <item quantity="other">الصفوف المعلمة %1$d</item>
+    </plurals>
+    <plurals name="maintenance_dedup_merged_count">
+        <item quantity="zero">تم دمج صفوف %1$d</item>
+        <item quantity="one">دمج صفين %1$d</item>
+        <item quantity="two">تم دمج صفوف %1$d</item>
+        <item quantity="few">تم دمج صفوف %1$d</item>
+        <item quantity="many">تم دمج صفوف %1$d</item>
+        <item quantity="other">تم دمج صفوف %1$d</item>
+    </plurals>
+    <plurals name="recovery_profile_deleted_count">
+        <item quantity="zero">تم حذف ملفات %1$d</item>
+        <item quantity="one">تم حذف الملف الشخصي %1$d</item>
+        <item quantity="two">تم حذف ملفات %1$d</item>
+        <item quantity="few">تم حذف ملفات %1$d</item>
+        <item quantity="many">تم حذف ملفات %1$d</item>
+        <item quantity="other">تم حذف ملفات %1$d</item>
+    </plurals>
+    <plurals name="recovery_profile_reset_count">
+        <item quantity="zero">إعادة تعيين الملف الشخصي %1$d . إعادة تشغيل التطبيق</item>
+        <item quantity="one">إعادة تعيين الملف الشخصي %1$d . إعادة تشغيل التطبيق</item>
+        <item quantity="two">إعادة تعيين الملف الشخصي %1$d . إعادة تشغيل التطبيق</item>
+        <item quantity="few">إعادة تعيين الملف الشخصي %1$d . إعادة تشغيل التطبيق</item>
+        <item quantity="many">إعادة تعيين الملف الشخصي %1$d . إعادة تشغيل التطبيق</item>
+        <item quantity="other">إعادة تعيين الملف الشخصي %1$d . إعادة تشغيل التطبيق</item>
+    </plurals>
+    <plurals name="recovery_profile_restored_count">
+        <item quantity="zero">استعادة ملفات %1$d الشخصية: إعادة تشغيل التطبيق</item>
+        <item quantity="one">استعادة الملف الشخصي %1$d : إعادة تشغيل التطبيق</item>
+        <item quantity="two">استعادة ملفات %1$d الشخصية: إعادة تشغيل التطبيق</item>
+        <item quantity="few">استعادة ملفات %1$d الشخصية: إعادة تشغيل التطبيق</item>
+        <item quantity="many">استعادة ملفات %1$d الشخصية: إعادة تشغيل التطبيق</item>
+        <item quantity="other">استعادة ملفات %1$d الشخصية: إعادة تشغيل التطبيق</item>
+    </plurals>
+    <plurals name="album_loading_song_count">
+        <item quantity="zero">تحميل %1$d أغنية…</item>
+        <item quantity="one">تحميل أغنية %1$d…</item>
+        <item quantity="two">تحميل %1$d أغنية…</item>
+        <item quantity="few">تحميل %1$d أغنية…</item>
+        <item quantity="many">تحميل %1$d أغنية…</item>
+        <item quantity="other">تحميل %1$d أغنية…</item>
+    </plurals>
+    <plurals name="artist_deduplication_result_count">
+        <item quantity="zero">دمج الفنانين المكررة %1$d مع الفنان المناسب</item>
+        <item quantity="one">دمج الفنان %1$d المكرر مع الفنان الأيمن</item>
+        <item quantity="two">دمج الفنانين المكررة %1$d مع الفنان المناسب</item>
+        <item quantity="few">دمج الفنانين المكررة %1$d مع الفنان المناسب</item>
+        <item quantity="many">دمج الفنانين المكررة %1$d مع الفنان المناسب</item>
+        <item quantity="other">دمج الفنانين المكررة %1$d مع الفنان المناسب</item>
+    </plurals>
+    <plurals name="artist_link_cleanup_result_count">
+        <item quantity="zero">إزالة روابط الفنان %1$d غير صحيحة</item>
+        <item quantity="one">إزالة رابط الفنان %1$d غير صحيح</item>
+        <item quantity="two">إزالة روابط الفنان %1$d غير صحيحة</item>
+        <item quantity="few">إزالة روابط الفنان %1$d غير صحيحة</item>
+        <item quantity="many">إزالة روابط الفنان %1$d غير صحيحة</item>
+        <item quantity="other">إزالة روابط الفنان %1$d غير صحيحة</item>
+    </plurals>
+    <plurals name="library_song_count_with_duration">
+        <item quantity="zero">%1$d أغنية • %2$s</item>
+        <item quantity="one">%1$d أغنية %2$s</item>
+        <item quantity="two">%1$d أغنية • %2$s</item>
+        <item quantity="few">%1$d أغنية • %2$s</item>
+        <item quantity="many">%1$d أغنية • %2$s</item>
+        <item quantity="other">%1$d أغنية • %2$s</item>
+    </plurals>
+    <plurals name="metadata_musicbrainz_rating_vote_count">
+        <item quantity="zero">(%1$d صوت)</item>
+        <item quantity="one">( صوت%1$d)</item>
+        <item quantity="two">(%1$d صوت)</item>
+        <item quantity="few">(%1$d صوت)</item>
+        <item quantity="many">(%1$d صوت)</item>
+        <item quantity="other">(%1$d صوت)</item>
+    </plurals>
+    <plurals name="metadata_musicbrainz_rating_vote_count_attribution">
+        <item quantity="zero">صوت %1$d على MusicBrainz</item>
+        <item quantity="one">صوت %1$d على MusicBrainz</item>
+        <item quantity="two">صوت %1$d على MusicBrainz</item>
+        <item quantity="few">صوت %1$d على MusicBrainz</item>
+        <item quantity="many">صوت %1$d على MusicBrainz</item>
+        <item quantity="other">صوت %1$d على MusicBrainz</item>
+    </plurals>
+    <plurals name="playlist_delete_all_confirmation_count">
+        <item quantity="zero">هل أنت متأكد من أنك تريد حذف جميع قوائم التشغيل %1$d؟</item>
+        <item quantity="one">هل أنت متأكد من أنك تريد حذف قائمة التشغيل الوحيدة (%1$d)؟</item>
+        <item quantity="two">هل أنت متأكد من أنك تريد حذف جميع قوائم التشغيل %1$d؟</item>
+        <item quantity="few">هل أنت متأكد من أنك تريد حذف جميع قوائم التشغيل %1$d؟</item>
+        <item quantity="many">هل أنت متأكد من أنك تريد حذف جميع قوائم التشغيل %1$d؟</item>
+        <item quantity="other">هل أنت متأكد من أنك تريد حذف جميع قوائم التشغيل %1$d؟</item>
+    </plurals>
+    <plurals name="playlist_delete_selected_confirmation_count">
+        <item quantity="zero">هل أنت متأكد من أنك تريد حذف قائمة التشغيل %1$d هذه؟</item>
+        <item quantity="one">هل أنت متأكد من أنك تريد حذف قائمة التشغيل هذه (%1$d)؟</item>
+        <item quantity="two">هل أنت متأكد من أنك تريد حذف قائمة التشغيل %1$d هذه؟</item>
+        <item quantity="few">هل أنت متأكد من أنك تريد حذف قائمة التشغيل %1$d هذه؟</item>
+        <item quantity="many">هل أنت متأكد من أنك تريد حذف قائمة التشغيل %1$d هذه؟</item>
+        <item quantity="other">هل أنت متأكد من أنك تريد حذف قائمة التشغيل %1$d هذه؟</item>
+    </plurals>
+    <plurals name="playlist_positions_shuffled_count">
+        <item quantity="zero">تملأ المواقع %1$d</item>
+        <item quantity="one">تم خلط المنصب %1$d</item>
+        <item quantity="two">تملأ المواقع %1$d</item>
+        <item quantity="few">تملأ المواقع %1$d</item>
+        <item quantity="many">تملأ المواقع %1$d</item>
+        <item quantity="other">تملأ المواقع %1$d</item>
+    </plurals>
+    <plurals name="song_metadata_updated_song_count">
+        <item quantity="zero">تم تحديث %1$d أغنية</item>
+        <item quantity="one">تم تحديث أغنية %1$d</item>
+        <item quantity="two">تم تحديث %1$d أغنية</item>
+        <item quantity="few">تم تحديث %1$d أغنية</item>
+        <item quantity="many">تم تحديث %1$d أغنية</item>
+        <item quantity="other">تم تحديث %1$d أغنية</item>
+    </plurals>
+    <plurals name="rewind_home_year_play_count">
+        <item quantity="zero">%1$s · %2$s العاب</item>
+        <item quantity="one">%1$s · %2$s تشغيل</item>
+        <item quantity="two">%1$s · %2$s العاب</item>
+        <item quantity="few">%1$s · %2$s العاب</item>
+        <item quantity="many">%1$s · %2$s العاب</item>
+        <item quantity="other">%1$s · %2$s العاب</item>
+    </plurals>
+    <plurals name="rewind_listening_day_count_without">
+        <item quantity="zero">%1$s days without listening.</item>
+        <item quantity="one">%1$s day without listening.</item>
+        <item quantity="two">%1$s days without listening.</item>
+        <item quantity="few">%1$s days without listening.</item>
+        <item quantity="many">%1$s days without listening.</item>
+        <item quantity="other">%1$s days without listening.</item>
+    </plurals>
+    <plurals name="rewind_loader_status_day_count">
+        <item quantity="zero">%1$s أيام مميزة</item>
+        <item quantity="one">%1$s يوم محدد</item>
+        <item quantity="two">%1$s أيام مميزة</item>
+        <item quantity="few">%1$s أيام مميزة</item>
+        <item quantity="many">%1$s أيام مميزة</item>
+        <item quantity="other">%1$s أيام مميزة</item>
+    </plurals>
+    <plurals name="rewind_loader_status_minute_count">
+        <item quantity="zero">دفعات %1$s</item>
+        <item quantity="one">مباريات %1$s</item>
+        <item quantity="two">دفعات %1$s</item>
+        <item quantity="few">دفعات %1$s</item>
+        <item quantity="many">دفعات %1$s</item>
+        <item quantity="other">دفعات %1$s</item>
+    </plurals>
+    <plurals name="rewind_loader_status_play_count">
+        <item quantity="zero">%1$s لاعب</item>
+        <item quantity="one">%1$s لعبة</item>
+        <item quantity="two">%1$s لاعب</item>
+        <item quantity="few">%1$s لاعب</item>
+        <item quantity="many">%1$s لاعب</item>
+        <item quantity="other">%1$s لاعب</item>
+    </plurals>
+    <plurals name="rewind_loader_status_song_count">
+        <item quantity="zero">%1$s أغنية غير موجودة</item>
+        <item quantity="one">%1$s مجمع غير معروف</item>
+        <item quantity="two">%1$s أغنية غير موجودة</item>
+        <item quantity="few">%1$s أغنية غير موجودة</item>
+        <item quantity="many">%1$s أغنية غير موجودة</item>
+        <item quantity="other">%1$s أغنية غير موجودة</item>
+    </plurals>
+    <plurals name="rewind_meta_song_count">
+        <item quantity="zero">اغانيunnamed@@0 %1$s</item>
+        <item quantity="one">أغنية %1$s</item>
+        <item quantity="two">اغانيunnamed@@0 %1$s</item>
+        <item quantity="few">اغانيunnamed@@0 %1$s</item>
+        <item quantity="many">اغانيunnamed@@0 %1$s</item>
+        <item quantity="other">اغانيunnamed@@0 %1$s</item>
+    </plurals>
+    <plurals name="rewind_play_count_label">
+        <item quantity="zero">تشغيل %1$s</item>
+        <item quantity="one">تشغيل %1$s</item>
+        <item quantity="two">تشغيل %1$s</item>
+        <item quantity="few">تشغيل %1$s</item>
+        <item quantity="many">تشغيل %1$s</item>
+        <item quantity="other">تشغيل %1$s</item>
+    </plurals>
+    <plurals name="rewind_top_song_teaser_count">
+        <item quantity="zero">%1$d تغيّرات.\nانتصرت فقط.</item>
+        <item quantity="one">%1$d SONG.\nفقط ربح.</item>
+        <item quantity="two">%1$d تغيّرات.\nانتصرت فقط.</item>
+        <item quantity="few">%1$d تغيّرات.\nانتصرت فقط.</item>
+        <item quantity="many">%1$d تغيّرات.\nانتصرت فقط.</item>
+        <item quantity="other">%1$d تغيّرات.\nانتصرت فقط.</item>
+    </plurals>
+    <plurals name="maintenance_abnormal_job_count">
+        <item quantity="zero">وظائف %1$d لم تنته</item>
+        <item quantity="one">لم ينته العمل %1$d</item>
+        <item quantity="two">وظائف %1$d لم تنته</item>
+        <item quantity="few">وظائف %1$d لم تنته</item>
+        <item quantity="many">وظائف %1$d لم تنته</item>
+        <item quantity="other">وظائف %1$d لم تنته</item>
+    </plurals>
+</resources>

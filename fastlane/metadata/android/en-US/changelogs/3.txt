@@ -1,0 +1,13 @@
+Optimizations:
+- View mode is now remembered across tabs.
+- Smoother scrolling in grid and list views.
+- Reduced UI flicker in search results.
+
+Bug Fixes:
+- Fixed crash when opening the album context menu.
+- Fixed inconsistent icon in the view mode toggle button.
+- Fixed layout glitches during view mode transitions.
+
+Technical Updates:
+- New Crowdin translation updates by @NEVARLeVrai.
+- Integrated upstream changes by @NEVARLeVrai.

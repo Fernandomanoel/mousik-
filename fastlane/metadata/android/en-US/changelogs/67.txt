@@ -1,0 +1,17 @@
+Hotfix:
+- Fixes from v7.1.0
+
+Added:
+- Playback settings menu (speed, pitch, volume, bass boost) via long-press on play
+- Preferred stream client dialog (Web Remix / Android VR)
+
+Changed:
+- Stream settings moved to Network Settings
+- Auto image compression on import
+
+Fixed:
+- Crash on minified builds
+- Infinite buffering on stream decoding
+- Playlists/albums over 100 songs not loading fully
+- Memory leak with local images
+- Minor lyrics, UI and translation fixes

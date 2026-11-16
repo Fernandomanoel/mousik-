@@ -1,0 +1,15 @@
+NEW:
+- New UI for Ask related to updater
+
+Improved:
+- AutoUpdate is now enabled by default
+- Beta builds now have Beta updates enabled by default (can be disabled)
+- Removed the "no update available" message at startup
+- Update popup now shows BETA or STABLE
+
+Fixed:
+- Various known bugs
+- General tabs now display the correct values
+- Fixed changelog icon on Android versions below 12
+- Fixed updater not handling 4-digit versions (now pads with 0)
+- Minified build have updater working now

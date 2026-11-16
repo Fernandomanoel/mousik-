@@ -1,0 +1,15 @@
+Added:
+- Batch export cached songs with full metadata and lyrics
+- Pause on headphone disconnect setting
+- Top playlist period selector with custom order/visibility
+
+Improved:
+- Stream resolution: fixed infinite retry
+- Cookie expiry toast on startup
+- Download All skips existing downloads
+
+Fixed:
+- Quick picks empty on non-English devices (locale isolation)
+- Swapped download/delete toolbar icons (#587)
+- Multi-select respects active selection
+- Queue shuffle/delete no longer crashes

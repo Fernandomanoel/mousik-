@@ -1,0 +1,15 @@
+Changed:
+- Remember visualizer and lyrics states
+- Checkbox tap & hold to enable now selects all
+- Long tap now supported in menus
+
+Optimizations:
+- Improved Discord RPC handling (play, pause, kill)
+- Enhanced Video UI
+
+Bug Fixes:
+- Visualizer color button working correctly
+- "On Device" folders now visible again
+- Discord RPC no longer spams errors when disabled
+- Fixed local songs not playing in Android Auto
+- Fixed crash with (swipe to) play next in queue; now plays correct song

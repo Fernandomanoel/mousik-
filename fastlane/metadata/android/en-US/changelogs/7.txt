@@ -1,0 +1,15 @@
+Changed:
+- New N-Zik icons (Monochrome, Main, Material You)
+- Integrated upstream fixes to improve stability
+- Timeline taps (single/double/long) to forward/rewind
+- More albums on the artist page
+- Documentation website and social media links in About
+
+Optimization:
+- System language now prioritized
+
+Bug Fixes:
+- Fixed crashes: language change, YT logout
+- Fixed cover, backdrop, "modified:" in media controls
+- Fixed play time and like state resetting on each play
+- Fixed local songs on older Android

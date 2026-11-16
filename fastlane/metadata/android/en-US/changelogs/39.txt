@@ -1,0 +1,17 @@
+New:
+- OTA updates directly inside NZik
+- Automatic update installation (with permission)
+- Wavy loader on the Update screen
+- "Download again" and "GitHub" buttons
+
+Improved:
+- Startup changelog popup removed
+- Better handling of unknown statuses
+
+Fixed:
+- Fixed Explicit badge on Android Auto
+- Fixed notification player "e: e:" text
+- Fixed stuck update downloads
+- Fixed "Clear Cache" not forcing re-download
+- Fixed wrong changelog after reinstall
+- Fixed "Major Update" warning on install

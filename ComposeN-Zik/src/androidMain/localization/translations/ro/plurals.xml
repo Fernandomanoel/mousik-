@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Maintenance -->
+    <plurals name="maintenance_systems_need_attention">
+        <item quantity="one">Sistemul %d are nevoie de atenție</item>
+        <item quantity="few">Sistemele %d au nevoie de atenție</item>
+        <item quantity="other">Sistemele %d au nevoie de atenție</item>
+    </plurals>
+    <plurals name="sync_detail_songs_liked">
+        <item quantity="one">Cântecului %1$d îi place</item>
+        <item quantity="few">Cântecelor %1$d le place</item>
+        <item quantity="other">Cântecelor %1$d le place</item>
+    </plurals>
+    <plurals name="sync_detail_playlists_synced">
+        <item quantity="one">Listă de redare %1$d sincronizată</item>
+        <item quantity="few">Liste de redare %1$d sincronizate</item>
+        <item quantity="other">Liste de redare %1$d sincronizate</item>
+    </plurals>
+    <plurals name="sync_detail_songs_imported">
+        <item quantity="one">%1$d melodie importată</item>
+        <item quantity="few">%1$d melodii importate</item>
+        <item quantity="other">%1$d melodii importate</item>
+    </plurals>
+    <plurals name="sync_detail_albums_imported">
+        <item quantity="one">%1$d album imported</item>
+        <item quantity="few">Albume %1$d importate</item>
+        <item quantity="other">Albume %1$d importate</item>
+    </plurals>
+    <plurals name="sync_detail_episodes">
+        <item quantity="one">Episod %1$d</item>
+        <item quantity="few">Episoade %1$d</item>
+        <item quantity="other">Episoade %1$d</item>
+    </plurals>
+    <plurals name="library_song_count">
+        <item quantity="one">Melodie %1$d</item>
+        <item quantity="few">%1$d melodii</item>
+        <item quantity="other">%1$d melodii</item>
+    </plurals>
+    <plurals name="about_translator_count">
+        <item quantity="one">Traducător %1$d</item>
+        <item quantity="few">Traducători %1$d</item>
+        <item quantity="other">Traducători %1$d</item>
+    </plurals>
+    <plurals name="about_developer_designer_count">
+        <item quantity="one">Dezvoltator %1$d / designer</item>
+        <item quantity="few">Dezvoltatori %1$d / designeri</item>
+        <item quantity="other">Dezvoltatori %1$d / designeri</item>
+    </plurals>
+    <plurals name="statistics_songs_heard_count">
+        <item quantity="one">%1$d melodie auzită</item>
+        <item quantity="few">%1$d melodii auzite</item>
+        <item quantity="other">%1$d melodii auzite</item>
+    </plurals>
+    <plurals name="history_delete_search_query_count">
+        <item quantity="one">Șterge interogarea de căutare %1$d</item>
+        <item quantity="few">Șterge interogările %1$d</item>
+        <item quantity="other">Șterge interogările %1$d</item>
+    </plurals>
+    <plurals name="history_delete_playback_event_count">
+        <item quantity="one">Șterge evenimentul de redare %1$d</item>
+        <item quantity="few">Șterge evenimentele de redare %1$d</item>
+        <item quantity="other">Șterge evenimentele de redare %1$d</item>
+    </plurals>
+    <plurals name="podcast_episode_count_with_duration">
+        <item quantity="one">%1$d episod · %2$s</item>
+        <item quantity="few">%1$d episoade · %2$s</item>
+        <item quantity="other">%1$d episoade · %2$s</item>
+    </plurals>
+    <plurals name="sync_youtube_playlist_songs_adding">
+        <item quantity="one">Adăugare melodie %1$d la playlist YouTube</item>
+        <item quantity="few">Adăugarea de melodii %1$d la lista de redare YouTube</item>
+        <item quantity="other">Adăugarea de melodii %1$d la lista de redare YouTube</item>
+    </plurals>
+    <plurals name="sync_youtube_playlist_songs_added">
+        <item quantity="one">S-a adăugat o melodie %1$d la lista de redare YouTube</item>
+        <item quantity="few">Melodii %1$d adăugate la lista de redare YouTube</item>
+        <item quantity="other">Melodii %1$d adăugate la lista de redare YouTube</item>
+    </plurals>
+    <plurals name="backup_import_profile_state_complete_count">
+        <item quantity="one">Stare profil importat: %1$d profil</item>
+        <item quantity="few">Starea profilului importat: %1$d profiluri</item>
+        <item quantity="other">Starea profilului importat: %1$d profiluri</item>
+    </plurals>
+    <plurals name="library_export_cached_song_confirmation_count">
+        <item quantity="one">Exportă melodia cache/descărcată %1$d?</item>
+        <item quantity="few">Exportă melodiile cache/descărcate %1$d?</item>
+        <item quantity="other">Exportă melodiile cache/descărcate %1$d?</item>
+    </plurals>
+    <plurals name="downloads_stale_startup_removed_count">
+        <item quantity="one">Melodia descărcată %1$d îi lipsește fișierul și a fost eliminată. Vă rugăm să o descărcați din nou.</item>
+        <item quantity="few">%1$d melodii descărcate le lipsesc fișierele și au fost eliminate. Vă rugăm să le descărcați din nou.</item>
+        <item quantity="other">%1$d melodii descărcate le lipsesc fișierele și au fost eliminate. Vă rugăm să le descărcați din nou.</item>
+    </plurals>
+    <plurals name="recommendations_quick_picks_song_count">
+        <item quantity="one">%1$d a recomandat melodia</item>
+        <item quantity="few">%1$d a recomandat melodii</item>
+        <item quantity="other">%1$d a recomandat melodii</item>
+    </plurals>
+    <plurals name="listen_together_blocked_user_count">
+        <item quantity="one">%1$d utilizator blocat</item>
+        <item quantity="few">%1$d utilizatori blocați</item>
+        <item quantity="other">%1$d utilizatori blocați</item>
+    </plurals>
+    <plurals name="maintenance_pass_cleaned_count">
+        <item quantity="one">%1$d element curățat</item>
+        <item quantity="few">%1$d articole curățate</item>
+        <item quantity="other">%1$d articole curățate</item>
+    </plurals>
+    <plurals name="maintenance_pass_deferred_count">
+        <item quantity="one">%1$d element amânat</item>
+        <item quantity="few">%1$d elemente amânate</item>
+        <item quantity="other">%1$d elemente amânate</item>
+    </plurals>
+    <plurals name="maintenance_pass_skipped_count">
+        <item quantity="one">%1$d element omis</item>
+        <item quantity="few">%1$d elemente omise</item>
+        <item quantity="other">%1$d elemente omise</item>
+    </plurals>
+    <plurals name="maintenance_dedup_flagged_count">
+        <item quantity="one">Linie marcată %1$d</item>
+        <item quantity="few">Rânduri marcate %1$d</item>
+        <item quantity="other">Rânduri marcate %1$d</item>
+    </plurals>
+    <plurals name="maintenance_dedup_merged_count">
+        <item quantity="one">Îmbinat rândul %1$d</item>
+        <item quantity="few">Rânduri unite %1$d</item>
+        <item quantity="other">Rânduri unite %1$d</item>
+    </plurals>
+    <plurals name="recovery_profile_deleted_count">
+        <item quantity="one">Profil %1$d șters</item>
+        <item quantity="few">Profiluri %1$d șterse</item>
+        <item quantity="other">Profiluri %1$d șterse</item>
+    </plurals>
+    <plurals name="recovery_profile_reset_count">
+        <item quantity="one">Resetați %1$d profil. Relansați aplicația</item>
+        <item quantity="few">Resetați %1$d profiluri. Relansați aplicația</item>
+        <item quantity="other">Resetați %1$d profiluri. Relansați aplicația</item>
+    </plurals>
+    <plurals name="recovery_profile_restored_count">
+        <item quantity="one">Restaurare profil %1$d : relansați aplicația</item>
+        <item quantity="few">Restaurat %1$d profiluri: relansați aplicația</item>
+        <item quantity="other">Restaurat %1$d profiluri: relansați aplicația</item>
+    </plurals>
+    <plurals name="album_loading_song_count">
+        <item quantity="one">Se încarcă melodia %1$d…</item>
+        <item quantity="few">Se încarcă melodiile %1$d…</item>
+        <item quantity="other">Se încarcă melodiile %1$d…</item>
+    </plurals>
+    <plurals name="artist_deduplication_result_count">
+        <item quantity="one">A îmbinat %1$d duplicat artistul cu artistul drept</item>
+        <item quantity="few">A îmbinat %1$d duplicat artiști cu artistul drept</item>
+        <item quantity="other">A îmbinat %1$d duplicat artiști cu artistul drept</item>
+    </plurals>
+    <plurals name="artist_link_cleanup_result_count">
+        <item quantity="one">S-a eliminat link-ul artistic incorect %1$d</item>
+        <item quantity="few">S-a eliminat %1$d link-uri artistice incorecte</item>
+        <item quantity="other">S-a eliminat %1$d link-uri artistice incorecte</item>
+    </plurals>
+    <plurals name="library_song_count_with_duration">
+        <item quantity="one">%1$d melodie • %2$s</item>
+        <item quantity="few">%1$d melodii • %2$s</item>
+        <item quantity="other">%1$d melodii • %2$s</item>
+    </plurals>
+    <plurals name="metadata_musicbrainz_rating_vote_count">
+        <item quantity="one">(votul%1$d)</item>
+        <item quantity="few">(%1$d votes)</item>
+        <item quantity="other">(%1$d votes)</item>
+    </plurals>
+    <plurals name="metadata_musicbrainz_rating_vote_count_attribution">
+        <item quantity="one">%1$d votează MusicBrainz</item>
+        <item quantity="few">%1$d votes on MusicBrainz</item>
+        <item quantity="other">%1$d votes on MusicBrainz</item>
+    </plurals>
+    <plurals name="playlist_delete_all_confirmation_count">
+        <item quantity="one">Ești sigur că vrei să ștergi singura listă de redare (%1$d)?</item>
+        <item quantity="few">Ești sigur că vrei să ștergi TOATE playlist-urile %1$d?</item>
+        <item quantity="other">Ești sigur că vrei să ștergi TOATE playlist-urile %1$d?</item>
+    </plurals>
+    <plurals name="playlist_delete_selected_confirmation_count">
+        <item quantity="one">Ești sigur că vrei să ștergi această listă de redare (%1$d)?</item>
+        <item quantity="few">Ești sigur că vrei să ștergi aceste liste de redare %1$d?</item>
+        <item quantity="other">Ești sigur că vrei să ștergi aceste liste de redare %1$d?</item>
+    </plurals>
+    <plurals name="playlist_positions_shuffled_count">
+        <item quantity="one">%1$d position shuffled</item>
+        <item quantity="few">%1$d positions shuffled</item>
+        <item quantity="other">%1$d positions shuffled</item>
+    </plurals>
+    <plurals name="song_metadata_updated_song_count">
+        <item quantity="one">Melodie %1$d actualizată</item>
+        <item quantity="few">Actualizat %1$d melodii</item>
+        <item quantity="other">Actualizat %1$d melodii</item>
+    </plurals>
+    <plurals name="rewind_home_year_play_count">
+        <item quantity="one">%1$s · Joc %2$s</item>
+        <item quantity="few">%1$s · %2$s joacă</item>
+        <item quantity="other">%1$s · %2$s joacă</item>
+    </plurals>
+    <plurals name="rewind_listening_day_count_without">
+        <item quantity="one">%1$s zi fără a asculta.</item>
+        <item quantity="few">%1$s zile fără a asculta.</item>
+        <item quantity="other">%1$s zile fără a asculta.</item>
+    </plurals>
+    <plurals name="rewind_loader_status_day_count">
+        <item quantity="one">%1$s ZI DE LISTENȚĂ</item>
+        <item quantity="few">%1$s ZILE DE LISTENȚĂ</item>
+        <item quantity="other">%1$s ZILE DE LISTENȚĂ</item>
+    </plurals>
+    <plurals name="rewind_loader_status_minute_count">
+        <item quantity="one">%1$s MINUTE</item>
+        <item quantity="few">%1$s MINUTE</item>
+        <item quantity="other">%1$s MINUTE</item>
+    </plurals>
+    <plurals name="rewind_loader_status_play_count">
+        <item quantity="one">%1$s JOACĂ</item>
+        <item quantity="few">%1$s JOACI</item>
+        <item quantity="other">%1$s JOACI</item>
+    </plurals>
+    <plurals name="rewind_loader_status_song_count">
+        <item quantity="one">SONGUL UNIC %1$s</item>
+        <item quantity="few">CÂȘTIGURI UNICE %1$s</item>
+        <item quantity="other">CÂȘTIGURI UNICE %1$s</item>
+    </plurals>
+    <plurals name="rewind_meta_song_count">
+        <item quantity="one">Cântec %1$s</item>
+        <item quantity="few">%1$s melodii</item>
+        <item quantity="other">%1$s melodii</item>
+    </plurals>
+    <plurals name="rewind_play_count_label">
+        <item quantity="one">Jucare %1$s</item>
+        <item quantity="few">Jucări %1$s</item>
+        <item quantity="other">Jucări %1$s</item>
+    </plurals>
+    <plurals name="rewind_top_song_teaser_count">
+        <item quantity="one">%1$d SONG.\nUNĂ VIZIUNĂ.</item>
+        <item quantity="few">%1$d SONGS.\nUNICĂ CÂȘTIGĂ.</item>
+        <item quantity="other">%1$d SONGS.\nUNICĂ CÂȘTIGĂ.</item>
+    </plurals>
+    <plurals name="maintenance_abnormal_job_count">
+        <item quantity="one">Sarcina %1$d nu a fost terminată</item>
+        <item quantity="few">%1$d lucrări nefinalizate</item>
+        <item quantity="other">%1$d lucrări nefinalizate</item>
+    </plurals>
+</resources>

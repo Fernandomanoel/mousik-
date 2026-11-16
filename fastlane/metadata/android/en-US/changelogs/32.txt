@@ -1,0 +1,15 @@
+Fixed:
+- Fixed crashes in album and podcast
+- Fixed audio/network quality not updating
+- Fixed player error spam; pauses while buffering
+- Fixed mini queue and stats not updating
+- Fixed Top Charts display and selection
+- Fixed Android Auto: source errors, sync, On-device play stuck in searching
+
+Improved:
+- Improved Android Auto: search tabs and better artist pages
+- Optimized image cache performance
+- Smooth mini queue transition
+
+Refactored:
+- Network logic and image cache reworked

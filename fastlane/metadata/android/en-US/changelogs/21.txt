@@ -1,0 +1,15 @@
+NEW:
+- New UI for Ask related to updater
+- Android 6+ (API 23) is now the minimum version
+
+Improved:
+- AutoUpdate and Beta updates now enabled by default
+- Removed the "no update available" message at startup
+- Enhanced dynamic theme with better color extraction
+
+Fixed:
+- Fixed changelog icon on Android below 12
+- Fixed updater for 4-digit versions
+- Minified build have updater working now
+- Fixed dynamic theme stuck on old colors
+- Fixed player and notification images (fallback to app logo)

@@ -1,0 +1,12 @@
+Hotfix:
+- Match dialog shows correct matched/failed/merged counts
+- Smart Trash now cleans import data and deletes playlists properly
+Added:
+- ImportSong table preserves import positions for the match system
+- Match: duplicate songs are merged instead of skipped
+- Match: increased delays to avoid YouTube rate limiting
+- Cancel now stops running jobs and shows a results dialog
+Changed:
+- Karaoke lyrics mode is now the default on fresh install
+Fixed:
+- Songs no longer shuffled after matching

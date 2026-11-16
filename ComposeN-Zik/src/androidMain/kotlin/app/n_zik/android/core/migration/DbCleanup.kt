@@ -1,0 +1,165 @@
+package app.n_zik.android.core.migration
+
+import android.content.Context
+import app.n_zik.android.playback.services.LOCAL_KEY_PREFIX
+import app.n_zik.android.core.ondevice.isDeviceArtistId
+import app.n_zik.android.MODIFIED_PREFIX
+import app.n_zik.android.cleanPrefix
+import app.n_zik.android.models.SongArtistMap
+import app.n_zik.android.R
+import app.n_zik.android.core.database.ArtistTable
+import app.n_zik.android.core.database.Database
+import app.n_zik.android.core.database.SongArtistMapTable
+import app.n_zik.android.core.database.SongTable
+import app.n_zik.android.core.maintenance.DbCleanupLinkRecord
+import app.n_zik.android.core.rewind.RewindPostImportRegenerationWorker
+import app.n_zik.android.utils.coroutines.NzikDispatchers
+import app.n_zik.android.core.utils.Toaster
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
+
+/**
+ * Cleanup of polluted artist↔song links, re-run on every app launch.
+ *
+ * The old mapping was add-only: YTM author lists vary by playback context (a channel
+ * playlist or radio credits the channel as an "author"), so `SongArtistMap` accumulated
+ * the union of every context ever seen — a channel-derived artist row could rank as a top
+ * artist in the Rewind deck. Playback-time reconciliation (see `Database.insertIgnore` /
+ * `Database.upsert`) now stops new pollution; this pass removes the remaining stale links,
+ * including ones that reappear through database imports.
+ *
+ * Rule: a (song, artist) link is stale when the artist's name does not appear in the song's
+ * stored artist list. Custom values are untouchable — a `modified:` artist name or a
+ * `modified:` song artist text is never judged, and a song without any artist text keeps all
+ * its links.
+ *
+ * Idempotent and cheap (one read pass over `SongArtistMap` + one cached name lookup per id,
+ * on [NzikDispatchers.DATA]): a clean database yields zero deletions, so a failed run heals
+ * itself on the next launch. Wired in [MainApplication] onCreate as the FIRST pass of the
+ * sequential artist-data boot chain (`DbCleanup` -> same-name dedup -> name convergence).
+ */
+object DbCleanup {
+    private const val TAG = "DbCleanup"
+
+    /** The outcome of one successful artist link cleanup pass: the number of stale links removed plus the per-link records the boot chain persists (the Maintenance sheet lists them in the expanded "Artist link cleanup" row). */
+    internal data class DbCleanupResult(
+        val removed: Int,
+        val removedLinks: List<DbCleanupLinkRecord>,
+    )
+
+    /**
+     * Schedules the cleanup on [NzikDispatchers.DATA] and logs failures.
+     * Runs on every launch, so a failed attempt retries on the next one.
+     */
+    fun run(context: Context) {
+        NzikDispatchers.fireAndForget(NzikDispatchers.DATA).launch {
+            runCatching { runPass(context) }
+                .onFailure { e ->
+                    Timber.tag(TAG).e(e, "Artist link cleanup failed (will retry on next launch)")
+                }
+        }
+    }
+
+    /**
+     * The cleanup pass, called from the sequential boot chain in [MainApplication]
+     * (`DbCleanup` -> same-name dedup -> name convergence) or from [run].
+     *
+     * @return the [DbCleanupResult] of the pass (removed counter + per-link records)
+     * so the boot chain can persist the last successful run
+     */
+    internal suspend fun runPass(context: Context): DbCleanupResult {
+        val result = runClean(Database.songTable, Database.artistTable, Database.songArtistMapTable)
+        if (result.removed > 0) {
+            // The mapping feeds the Rewind deck: recompute its playlists from the healed data
+            RewindPostImportRegenerationWorker.schedule(context)
+            withContext(NzikDispatchers.UI) {
+                // Format the message here: `Toaster.s(Int, Int)` would bind an Int
+                // count to the `duration` parameter of the no-vararg overload,
+//
+                // leaving the `%d` format specifier unfilled.
+                runCatching {
+                    Toaster.s(context.resources.getQuantityString(R.plurals.artist_link_cleanup_result_count, result.removed, result.removed))
+                }.onFailure { e ->
+                    Timber.tag(TAG).w(e, "Cleanup succeeded but toast failed")
+                }
+            }
+        }
+        return result
+    }
+
+    /**
+     * The cleanup core, parameterized by the DAOs so it can be exercised in
+     * unit tests with mocks.
+     *
+     * @return the [DbCleanupResult] of the sweep (removed counter + per-link records,
+     * empty when nothing matched)
+     */
+    internal suspend fun runClean(
+        songTable: SongTable,
+        artistTable: ArtistTable,
+        mapTable: SongArtistMapTable,
+    ): DbCleanupResult {
+        val pairs = mapTable.allPairsDirect()
+        if (pairs.isEmpty()) return DbCleanupResult(0, emptyList())
+
+        val songs = songTable.all().first().associateBy { it.id }
+        val artistNameCache = HashMap<String, String?>()
+        fun artistName(artistId: String): String? =
+            artistNameCache.getOrPut(artistId) { artistTable.findByIdDirect(artistId)?.name }
+
+        var removed = 0
+        val removedLinks = mutableListOf<DbCleanupLinkRecord>()
+        for (pair in pairs) {
+            if (pair.songId.startsWith(LOCAL_KEY_PREFIX) || isDeviceArtistId(pair.artistId)) continue
+            val song = songs[pair.songId] ?: continue // no stored artist list: nothing to judge against
+            val name = artistName(pair.artistId)
+            if (isSuspiciousArtistLink(name, song.artistsText)) {
+                Timber.tag(TAG).d(
+                    "stale link removed: song=%s \"%s\" artist=\"%s\" artistsText=\"%s\"",
+                    pair.songId, song.title, name, song.artistsText
+                )
+                mapTable.deletePairDirect(pair.songId, pair.artistId)
+                removed++
+                removedLinks += DbCleanupLinkRecord(song.title, name)
+            }
+        }
+
+        Timber.tag(TAG).i("Artist link cleanup: removed %d stale link(s)", removed)
+        return DbCleanupResult(removed, removedLinks)
+    }
+
+    /**
+     * Pure decision rule, testable without any database.
+     *
+     * @param artistName name of the mapped [Artist] row (may carry the `modified:` custom prefix)
+     * @param songArtistsText stored artist list of the [app.n_zik.android.models.Song]
+     * (may carry the `modified:` custom prefix)
+     * @return true when the link should be removed
+     */
+    internal fun isSuspiciousArtistLink(artistName: String?, songArtistsText: String?): Boolean {
+        // Custom values are untouchable: a user-modified artist name or a user-modified
+        // song artist text is not a YTM author list, so it cannot be used to judge links.
+        if (artistName?.startsWith(MODIFIED_PREFIX, true) == true) return false
+        if (songArtistsText?.startsWith(MODIFIED_PREFIX, true) == true) return false
+        // No source of truth for this song (no artist text) -> keep every link.
+        if (songArtistsText.isNullOrBlank()) return false
+        if (artistName.isNullOrBlank()) return false
+        val cleaned = cleanPrefix(songArtistsText)
+        // The artist name must appear in the stored list as a whole phrase delimited by
+        // non-letter characters (separators, punctuation, start/end of the string). The
+//
+        // previous split-based matching destroyed legitimate names ("COOL&CREATE" broke into
+        // ["COOL", "CREATE"]; "Grand Corps Malade" was cut at the "and" inside "Grand" —
+//
+        // device captures 2026-09-26), so both ends are pinned against Unicode letters
+        // (\p{L}): a raw substring would admit junk fragments, Java's \b does not exist
+//
+        // around CJK characters, and accented-name fragments ("gr" in "Grégoire") must not
+//
+        // match. Locale-independent — no localized conjunction list involved.
+        val phrase = Regex("(?<!\\p{L})" + Regex.escape(artistName) + "(?!\\p{L})", RegexOption.IGNORE_CASE)
+        return !phrase.containsMatchIn(cleaned)
+    }
+}

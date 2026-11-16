@@ -1,0 +1,3 @@
+Added: PC bridge 1.7.3 to 1.12.0 — live library, sort menus, toolbar + UI language to the PC, queue commands, locate, toasts, smart-shuffle; Discord RPC refresh interval slider.
+Changed: rewind filter defaults to All (was Month); bridge wire keeps only data + topN.
+Fixed: updater for 32-bit/dev builds (right release + label, no stale update), radio stop + queue (issue 880), dialog overflow (issue 896), Discord artwork re-upload, artist thumbnail roundness.

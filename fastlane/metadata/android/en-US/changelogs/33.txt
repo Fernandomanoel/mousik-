@@ -1,0 +1,15 @@
+New:
+- Material 3 Expressive design and floating nav bar
+- Revamped Listen On, Sleep Timer, AlbumItems UI
+- Artist video category, update warning dialogs
+
+Improved:
+- Adaptive image cache, quality controls
+- Modernized Settings UI with expressive loaders
+- Faster player, better Android Auto
+
+Fixed:
+- Fixed crashes and persist-tag data corruption
+- Fixed Pip mode, Home state, player transparency
+- Fixed Monthly playlists, Top Charts, mini queue
+- Fixed Android Auto sync and On-device play

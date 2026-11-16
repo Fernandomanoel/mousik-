@@ -1,0 +1,5 @@
+Fixed:
+- Crossfade between songs is now gapless with equal-power fades and no pause during transition
+- UI updates instantly during crossfade (thumbnails, mini player, palette)
+- Crossfade now cancels properly on manual skip/seek
+- Reversed text labels for Essential and Modern player UI types
