@@ -1,0 +1,38 @@
+package app.mousike.android.components.settings.network
+
+import app.mousike.android.components.settings.common.settingsSearchTarget
+import androidx.compose.ui.Modifier
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import app.mousike.android.R
+import app.mousike.android.utils.isConnectionMeteredEnabledKey
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.components.settings.common.SettingsSectionCard
+import app.mousike.android.components.settings.common.OtherSwitchSettingEntry
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
+@Composable
+internal fun NetworkConnectionCard(query: String) {
+    var isConnectionMeteredEnabled by rememberPreference(isConnectionMeteredEnabledKey, false)
+
+    SettingsSectionCard(
+        title = stringResource(R.string.network_settings),
+        icon = R.drawable.wifi,
+        content = {
+            if (query.isBlank() || stringResource(R.string.settings_network_data_saver_label).contains(query, true) || stringResource(R.string.settings_network_data_saver_description).contains(query, true)) {
+                OtherSwitchSettingEntry(
+                    modifier = Modifier.settingsSearchTarget("network.connection_settings.enable_connection_metered"),
+                    title = stringResource(R.string.settings_network_data_saver_label),
+                    text = stringResource(R.string.settings_network_data_saver_description),
+                    isChecked = isConnectionMeteredEnabled,
+                    onCheckedChange = {
+                        isConnectionMeteredEnabled = it
+                    },
+                    icon = R.drawable.wifi
+                )
+            }
+        }
+    )
+
+}

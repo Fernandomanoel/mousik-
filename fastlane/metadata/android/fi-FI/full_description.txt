@@ -1,8 +1,8 @@
 Monikielinen YouTube-musiikkikonsertti Androidille, joka keskittyy suorituskykyyn, UI/UX-ominaisuuksiin, laajenemiseen ja pitkäaikaiseen tukeen.
 
-<b>N-Zik</b> on <a href="https://github.com/knighthat/Kreate">Kreate</a> -luokan avoimen lähdekoodin haarukka.
+<b>mousike</b> on <a href="https://github.com/knighthat/Kreate">Kreate</a> -luokan avoimen lähdekoodin haarukka.
 
-<b>Huomautus:</b> N-Zik alkoi sivuprojektina. Jos haluat lisää kypsiä vaihtoehtoja, tarkista <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>, tai <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
+<b>Huomautus:</b> mousike alkoi sivuprojektina. Jos haluat lisää kypsiä vaihtoehtoja, tarkista <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>, tai <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
 
 <b>tekoälyn käyttö:</b> Käytän generatiivista tekoälyn koodin ( <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD-menetelmän</a>kautta), tarkistetaan ja testataan ennen toimitusta.
 
@@ -38,7 +38,7 @@ Lasiluotot: Neliö / Convx projekti (GPL-3.0); Kyant0 AndroidLiquidGlass / Backd
 - MusicBrainz-taiteilijan ja levyn oivalluksia
 - Discord Rich Presence, mukaan lukien edistynyt tila live esikatselu
 - Invidious integraatio vaihtoehtoiseen YouTube-suoratoistoon
-- Soittolistan tuonti/vienti: RiPlay, Spotify, YouTube Music, N-Zik
+- Soittolistan tuonti/vienti: RiPlay, Spotify, YouTube Music, mousike
 
 👥 <b>Kuuntele Yhdessä</b>
 - Liity tai isännöi live-kuunteluistuntoja muiden käyttäjien kanssa koodin tai kutsulinkin kautta
@@ -57,12 +57,12 @@ Lasiluotot: Neliö / Convx projekti (GPL-3.0); Kyant0 AndroidLiquidGlass / Backd
 - OTA päivitykset GitHubista, lepotilaajastin, taustasoiton
 
 📦 <b>Saatavilla Olevat Rakennukset</b>
-- Release64/Beta64 (`com.nevar.nzik`): Suorita rakennus, 64-bittiset laitteet vain
-- Release32/Beta32 (`com.nevar.nzik`): Vain 32-bittiset laitteet
-- Minified64 (`com.nevar.nzik`): Kevyt R8-rakennus, pieniulotteisille laitteille (64-bit)
-- Minified32 (`com.nevar.nzik`): Kevyt R8 versio (32-bit)
-- FOSS (`com.nevar.nzik.foss`): Ilman automaattista päivitystä, F-Droidille (kaikki arkkitehtuuri)
-- Dev64/Dev32 (`com.nevar.nzik.dev`): Kehitys rakentuu, vain testaus
+- Release64/Beta64 (`app.mousike`): Suorita rakennus, 64-bittiset laitteet vain
+- Release32/Beta32 (`app.mousike`): Vain 32-bittiset laitteet
+- Minified64 (`app.mousike`): Kevyt R8-rakennus, pieniulotteisille laitteille (64-bit)
+- Minified32 (`app.mousike`): Kevyt R8 versio (32-bit)
+- FOSS (`app.mousike.foss`): Ilman automaattista päivitystä, F-Droidille (kaikki arkkitehtuuri)
+- Dev64/Dev32 (`app.mousike.dev`): Kehitys rakentuu, vain testaus
 
 Ei rakentaa nippuja FFmpeg: se on ladattava lisäosa (asennettu ensimmäiseen käyttöön, hallitaan Asetukset → Lisäosat). Vain FOSS on F-Droidissa.
 

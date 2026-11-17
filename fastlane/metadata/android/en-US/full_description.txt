@@ -1,8 +1,8 @@
 A multilingual YouTube Music frontend for Android, focused on performance, UI/UX refinements, feature expansion, and long-term support.
 
-<b>N-Zik</b> is an open-source fork of <a href="https://github.com/knighthat/Kreate">Kreate</a>.
+<b>mousike</b> is an open-source fork of <a href="https://github.com/knighthat/Kreate">Kreate</a>.
 
-<b>Note:</b> N-Zik started as a side project. For more mature alternatives, check <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>, or <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
+<b>Note:</b> mousike started as a side project. For more mature alternatives, check <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>, or <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
 
 <b>AI Usage:</b> I use generative AI for code (via <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD Method</a>), reviewed and tested before shipping.
 
@@ -38,7 +38,7 @@ Glass credits: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / Bac
 - MusicBrainz artist and album insights
 - Discord Rich Presence, including advanced mode with live preview
 - Invidious integration for alternative YouTube streaming
-- Playlist import/export: RiPlay, Spotify, YouTube Music, N-Zik
+- Playlist import/export: RiPlay, Spotify, YouTube Music, mousike
 
 👥 <b>Listen Together</b>
 - Join or host live listening sessions with other users via code or invite link
@@ -57,12 +57,12 @@ Glass credits: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / Bac
 - OTA updates from GitHub, sleep timer, background playback
 
 📦 <b>Available Builds</b>
-- Release64/Beta64 (`com.nevar.nzik`): Complete build, 64-bit devices only
-- Release32/Beta32 (`com.nevar.nzik`): Complete build, 32-bit devices only
-- Minified64 (`com.nevar.nzik`): Lightweight R8 build, for low-end devices (64-bit)
-- Minified32 (`com.nevar.nzik`): Lightweight R8 build (32-bit)
-- FOSS (`com.nevar.nzik.foss`): Without auto-updater, for F-Droid (all architectures)
-- Dev64/Dev32 (`com.nevar.nzik.dev`): Development builds, testing only
+- Release64/Beta64 (`app.mousike`): Complete build, 64-bit devices only
+- Release32/Beta32 (`app.mousike`): Complete build, 32-bit devices only
+- Minified64 (`app.mousike`): Lightweight R8 build, for low-end devices (64-bit)
+- Minified32 (`app.mousike`): Lightweight R8 build (32-bit)
+- FOSS (`app.mousike.foss`): Without auto-updater, for F-Droid (all architectures)
+- Dev64/Dev32 (`app.mousike.dev`): Development builds, testing only
 
 No build bundles FFmpeg: it is a downloadable extension (installed on first use, managed in Settings → Extensions). Only FOSS is on F-Droid.
 

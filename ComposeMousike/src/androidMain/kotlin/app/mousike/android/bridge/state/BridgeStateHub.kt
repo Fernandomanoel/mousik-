@@ -1,0 +1,194 @@
+package app.mousike.android.bridge.state
+
+import app.mousike.android.bridge.AudioOutput
+
+/**
+ * Revisioned player state of one server run (contract §7). Pure: it only knows [PlayerSample]s
+ * and an injectable [clock]. Each sample becomes the §7.2 deltas in order `queueChanged`,
+ * `trackChanged`, `playbackChanged`, `modesChanged`, each at `revision + 1`; the revision
+ * starts at `0` with every server start (§1). Deltas, snapshots and heartbeats reach [Sink]s
+ * under one lock, so a heartbeat never overtakes the delta it reports; [Sink]s must not block.
+ *
+ * Since 1.4/1.5: [PlayerSample.isBuffering] and [PlayerSample.durationMs] travel with
+ * `trackChanged`, and a change of either alone emits a `playbackChanged` — a play after a
+ * pause enters buffering while `isPlaying` is still `false`, and a loaded track goes from
+ * `C.TIME_UNSET` to its duration (the phone's bar switching to the seek bar).
+ */
+internal class BridgeStateHub(private val clock: () -> Long = System::currentTimeMillis) {
+
+    /** Receives messages under the hub lock: must only enqueue, never block. */
+    fun interface Sink {
+        fun deliver(message: BridgeServerMessage)
+    }
+
+    private val lock = Any()
+    private var revision = 0L
+    private var current = PlayerSample.EMPTY
+    private var audioOutput = AudioOutput.PHONE
+    private val subscribers = LinkedHashSet<Subscription>()
+
+    val currentRevision: Long get() = synchronized(lock) { revision }
+
+    /** Audio output of this server run (contract §8.5); every run starts on the phone. */
+    val currentAudioOutput: AudioOutput get() = synchronized(lock) { audioOutput }
+
+    /**
+     * Records [sample] and publishes the deltas it implies. The position alone never makes
+     * a delta: only an explicit [seek] does (`playbackChanged`). [transition] reports a track
+     * transition that leaves the current track unchanged (repeat-one), still a `trackChanged`.
+     *
+     * @return the deltas published, in order
+     */
+    fun submit(sample: PlayerSample, seek: Boolean = false, transition: Boolean = false): List<DeltaMessage> =
+        synchronized(lock) {
+            val previous = current
+            current = sample
+            val now = clock()
+            val position = positionAt(sample, now)
+            val deltas = mutableListOf<DeltaMessage>()
+
+            val queueChanged = sample.queue != previous.queue
+            if (queueChanged) {
+                deltas += QueueChangedMessage(++revision, now, sample.queue, sample.currentIndex, sample.currentTrackId)
+            }
+            // An index shift caused by a queue edit around the same track is carried by queueChanged
+            val trackChanged = sample.currentTrackId != previous.currentTrackId ||
+                (!queueChanged && sample.currentIndex != previous.currentIndex) ||
+                transition
+            if (trackChanged) {
+                deltas += TrackChangedMessage(
+                    ++revision,
+                    now,
+                    sample.currentIndex,
+                    sample.currentTrackId,
+                    position,
+                    sample.isPlaying,
+                    sample.isBuffering,
+                    sample.durationMs,
+                    playWhenReady = sample.playWhenReady,
+                )
+            }
+            // trackChanged already carries the position and the playing state; a buffering-only
+            // change (since 1.4) or a duration-only change (since 1.5) still makes a playbackChanged
+            val playbackChanged = sample.speed != previous.speed ||
+                (!trackChanged && (sample.isPlaying != previous.isPlaying || sample.isBuffering != previous.isBuffering ||
+                    sample.playWhenReady != previous.playWhenReady ||
+                    sample.durationMs != previous.durationMs || seek))
+            if (playbackChanged) {
+                deltas += PlaybackChangedMessage(
+                    ++revision, now, sample.isPlaying, sample.isBuffering, sample.durationMs, sample.speed, position,
+                    playWhenReady = sample.playWhenReady,
+                )
+            }
+            if (sample.repeatMode != previous.repeatMode || sample.shuffle != previous.shuffle) {
+                deltas += ModesChangedMessage(++revision, now, sample.repeatMode, sample.shuffle)
+            }
+            deltas.forEach { delta -> subscribers.forEach { it.sink.deliver(delta) } }
+            deltas
+        }
+
+    /**
+     * Records the audio output (contract §8.5) and publishes its `outputChanged` delta at
+     * `revision + 1`, under the same lock as the player deltas.
+     *
+     * @return the delta published, `null` when [output] was already the current one
+     */
+    fun setAudioOutput(output: AudioOutput): OutputChangedMessage? = synchronized(lock) {
+        if (output == audioOutput) return null
+        audioOutput = output
+        OutputChangedMessage(++revision, clock(), output).also { delta ->
+            subscribers.forEach { it.sink.deliver(delta) }
+        }
+    }
+
+    /**
+     * Records a library change (contract §10.3, since 1.7.3, feature `library.live`) and
+     * publishes its `libraryChanged` delta at `revision + 1`, under the same lock as the player
+     * deltas. Every call emits — even the same `kind` twice: the client coalesces (§10.3).
+     *
+     * @param kind the changed entity: `"songs"`, `"albums"`, `"artists"` or `"playlists"`
+     * @return the delta published
+     */
+    fun submitLibraryChanged(kind: String): LibraryChangedMessage = synchronized(lock) {
+        LibraryChangedMessage(++revision, clock(), kind).also { delta ->
+            subscribers.forEach { it.sink.deliver(delta) }
+        }
+    }
+
+    /** Sends the non-revised [message] to every subscriber (contract §7.6), under the same lock as the deltas so it never splits a snapshot from its following deltas. */
+    fun broadcast(message: ErrorMessage) {
+        synchronized(lock) { subscribers.forEach { it.sink.deliver(message) } }
+    }
+
+    /** Sends the non-revised `toast` [message] to every subscriber (contract §7.9, since 1.10.0). */
+    fun broadcast(message: ToastMessage) {
+        synchronized(lock) { subscribers.forEach { it.sink.deliver(message) } }
+    }
+
+    /** Full state at the current revision, position at `serverTimeMs` (contract §7.1). */
+    fun snapshot(): SnapshotMessage = synchronized(lock) { buildSnapshot() }
+
+    /** Non-revised heartbeat at the current revision (contract §7.3). */
+    fun heartbeat(): HeartbeatMessage = synchronized(lock) { buildHeartbeat() }
+
+    /** Registers [sink] and delivers the current snapshot to it first (contract §6.1). */
+    fun subscribe(sink: Sink): Subscription = synchronized(lock) {
+        Subscription(sink).also {
+            sink.deliver(buildSnapshot())
+            subscribers += it
+        }
+    }
+
+    private fun buildSnapshot(): SnapshotMessage {
+        val now = clock()
+        val sample = current
+        return SnapshotMessage(
+            revision = revision,
+            serverTimeMs = now,
+            queue = sample.queue,
+            currentIndex = sample.currentIndex,
+            currentTrackId = sample.currentTrackId,
+            isPlaying = sample.isPlaying,
+            isBuffering = sample.isBuffering,
+            playWhenReady = sample.playWhenReady,
+            durationMs = sample.durationMs,
+            speed = sample.speed,
+            positionMs = positionAt(sample, now),
+            repeatMode = sample.repeatMode,
+            shuffle = sample.shuffle,
+            audioOutput = audioOutput,
+        )
+    }
+
+    private fun buildHeartbeat(): HeartbeatMessage {
+        val now = clock()
+        val sample = current
+        return HeartbeatMessage(revision, now, positionAt(sample, now), sample.isPlaying, sample.speed)
+    }
+
+    /** One session's registration; every call is a no-op once [cancel]led. */
+    inner class Subscription internal constructor(internal val sink: Sink) {
+        fun sendSnapshot() {
+            synchronized(lock) { if (this in subscribers) sink.deliver(buildSnapshot()) }
+        }
+
+        fun sendHeartbeat() {
+            synchronized(lock) { if (this in subscribers) sink.deliver(buildHeartbeat()) }
+        }
+
+        fun cancel() {
+            synchronized(lock) { subscribers -= this }
+        }
+    }
+
+    companion object {
+        /** Position of [sample] extrapolated to [nowMs]: `positionMs + elapsed × speed` while playing, never past the current track's duration when it is known. */
+        fun positionAt(sample: PlayerSample, nowMs: Long): Long {
+            if (!sample.isPlaying) return sample.positionMs
+            val elapsed = (nowMs - sample.sampledAtMs).coerceAtLeast(0L)
+            val extrapolated = sample.positionMs + (elapsed * sample.speed).toLong()
+            val durationMs = sample.queue.getOrNull(sample.currentIndex)?.durationMs ?: return extrapolated
+            return extrapolated.coerceAtMost(maxOf(durationMs, sample.positionMs))
+        }
+    }
+}

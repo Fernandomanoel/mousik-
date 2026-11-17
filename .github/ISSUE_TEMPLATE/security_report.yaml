@@ -1,5 +1,5 @@
 name: 🔒 Security Vulnerability
-description: Report a security vulnerability found in N-Zik
+description: Report a security vulnerability found in mousike
 title: "[SECURITY]: "
 labels: ["security"]
 assignees:
@@ -12,7 +12,7 @@ body:
         ****
         ### 🔒 READ BEFORE SUBMITTING 🔒
 
-        Thanks for helping keep N-Zik safe! Please report the vulnerability as soon as possible.
+        Thanks for helping keep mousike safe! Please report the vulnerability as soon as possible.
         You can also contact the developers directly on [Discord](https://discord.gg/bneHC7QRje).
 
         ⚠️ **Never** post real secrets (tokens, passwords, cookies, API keys) in this issue.
@@ -33,7 +33,7 @@ body:
     id: version-number
     attributes:
       label: 🏷️ App Version
-      description: Please specify the exact version of N-Zik affected.
+      description: Please specify the exact version of mousike affected.
       placeholder: "5.0.0-r64 Release64 / Release32"
     validations:
       required: true
@@ -52,7 +52,7 @@ body:
         - Beta32
         - Dev64
         - Dev32
-        - Foss (N-Zik-Foss, com.nevar.nzik.foss)
+        - Foss (mousike-Foss, app.mousike.foss)
     validations:
       required: true
 

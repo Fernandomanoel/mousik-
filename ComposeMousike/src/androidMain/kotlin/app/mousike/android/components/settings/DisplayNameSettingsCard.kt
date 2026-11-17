@@ -1,0 +1,449 @@
+package app.mousike.android.components.settings
+
+import app.mousike.android.components.dialog.common.DialogPresence
+import app.mousike.android.components.glass.GlassArea
+import app.mousike.android.components.ui.screens.profiles.ProfileAvatarFrame
+import app.mousike.android.components.settings.common.settingsSearchTarget
+
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import app.mousike.android.components.glass.PageIconButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import app.mousike.android.components.image.ProfilePhotoWriteQueue
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.cancelAndJoin
+import app.mousike.android.components.image.PickedImageEditor
+import app.mousike.android.components.image.keepsOriginalArtwork
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
+import app.mousike.android.components.dialog.common.ButtonRow
+import app.mousike.android.components.dialog.common.DefaultDialog
+import app.mousike.android.components.dialog.common.DialogButton
+import app.mousike.android.components.dialog.common.ValueSelectorDialog
+import app.mousike.android.components.settings.common.OtherSettingsEntry
+import app.mousike.android.components.settings.common.SettingsSectionCard
+import app.mousike.android.utils.center
+import app.mousike.android.utils.faceAvatarSource
+import app.mousike.android.utils.faceNameSource
+import app.mousike.android.utils.getActiveProfile
+import app.mousike.android.utils.isProfileNameValid
+import app.mousike.android.utils.medium
+import app.mousike.android.utils.profileDisplayName
+import app.mousike.android.utils.readProfileIds
+import app.mousike.android.utils.resolveProfileDisplayName
+import app.mousike.android.utils.saveFaceAvatarSource
+import app.mousike.android.utils.saveFaceNameSource
+import app.mousike.android.utils.currentProfileEntries
+import app.mousike.android.utils.saveProfileDisplayName
+import app.mousike.android.utils.writeProfileEntries
+import app.mousike.android.utils.takenProfileNames
+import app.mousike.android.R
+import app.mousike.android.colorPalette
+import app.mousike.android.components.dialog.settings.SettingsInputDialog
+import app.mousike.android.components.ui.screens.profiles.profileAvatarSource
+import app.mousike.android.components.ui.screens.profiles.AccountLoginState
+import app.mousike.android.components.ui.screens.profiles.ProfileFaceAvatar
+import app.mousike.android.components.ui.screens.profiles.profileFaceUpdateTrigger
+import app.mousike.android.components.ui.screens.profiles.removeProfileAvatarFile
+import app.mousike.android.components.ui.screens.profiles.saveProfileAvatarFromUri
+import app.mousike.android.components.ui.screens.profiles.faceSourceIcon
+import app.mousike.android.components.ui.screens.profiles.faceSourceLabel
+import app.mousike.android.components.ui.screens.profiles.loadAccountLoginState
+import app.mousike.android.typography
+import app.mousike.android.utils.FACE_SOURCE_DISCORD
+import app.mousike.android.utils.FACE_SOURCE_LASTFM
+import app.mousike.android.utils.FACE_SOURCE_PROFILE
+import app.mousike.android.utils.FACE_SOURCE_YOUTUBE
+import app.mousike.android.utils.FaceAvatar
+import app.mousike.android.utils.ProfileFace
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import app.mousike.android.components.ui.screens.profiles.loadProfileFace
+import app.mousike.android.core.utils.Toaster
+
+/**
+ * The face card at the top of the Accounts tab: the active profile's face preview,
+ * the name / avatar source selectors (an account source is locked while not logged
+ * in), the profile name (renamed with the same rules as the Profiles page) and the
+ * profile photo (gallery pick via PhotoPicker). [onOpenProfiles] optionally adds the
+ * "Open" row (deep link to the Profiles screen) under the face preview.
+ *
+ * Account state and face load once per profile / source change on the DATA dispatcher
+ * (secure prefs are keystore-backed — never built in composition); the contract is
+ * "reflected after the next login / profile switch". Face sources live in the active
+ * profile's plain prefs (`preferences`), so a profile switch shows its own face on
+ * the next composition.
+ */
+@Composable
+fun ProfileFaceCard(
+    modifier: Modifier = Modifier,
+    onOpenProfiles: (() -> Unit)? = null
+) {
+    SettingsSectionCard(
+        title = stringResource(R.string.profile_face),
+        icon = R.drawable.person,
+        description = stringResource(R.string.profile_face_description),
+        modifier = modifier,
+        content = {
+            val context = LocalContext.current
+            val app = context.applicationContext
+            val palette = colorPalette()
+            val defaultName = stringResource(R.string.profile_base_name)
+            val activeId = remember { getActiveProfile(app) }
+
+            // The stored face sources; the states mirror the saved values and key the
+            // face re-resolution (a pick re-reads the prefs through [loadProfileFace]).
+            var nameSource by remember { mutableStateOf(app.faceNameSource) }
+            var avatarSource by remember { mutableStateOf(app.faceAvatarSource) }
+            var faceVersion by remember { mutableStateOf(0) }
+            var photoVersion by remember { mutableStateOf(0) }
+
+            // The account login state, the display name and the resolved face come from
+            // a one-shot load on the DATA dispatcher — the secure prefs are
+//
+            // keystore-backed and must never be built or read in composition. Until the
+//
+            // load settles, the account sources stay locked and the face renders the
+            // deterministic initials (the face always renders something).
+            var account by remember { mutableStateOf<AccountLoginState?>(null) }
+            var profileName by remember { mutableStateOf(defaultName) }
+            var face by remember { mutableStateOf<ProfileFace?>(null) }
+            // The face update trigger covers an external face change (a profile state
+            // import) while this card stays composed — the card's own edits already
+//
+            // bump faceVersion / photoVersion / the sources.
+            LaunchedEffect(activeId, nameSource, avatarSource, faceVersion, photoVersion, profileFaceUpdateTrigger) {
+                val loaded = withContext(MousikeDispatchers.DATA) {
+                    Triple(
+                        loadAccountLoginState(app, activeId),
+                        resolveProfileDisplayName(activeId, app.profileDisplayName(activeId), defaultName),
+                        runCatching { loadProfileFace(app, activeId, defaultName) }.getOrNull(),
+                    )
+                }
+                account = loaded.first
+                profileName = loaded.second
+                face = loaded.third
+            }
+            val lockedSources = remember(account) {
+                val acc = account
+                buildSet {
+                    if (acc == null || !acc.youtube) add(FACE_SOURCE_YOUTUBE)
+                    if (acc == null || !acc.discord) add(FACE_SOURCE_DISCORD)
+                    if (acc == null || !acc.lastfm) add(FACE_SOURCE_LASTFM)
+                }
+            }
+            val hasPhoto = remember(photoVersion) { app.profileAvatarSource(activeId) != null }
+            val shownFace = face ?: ProfileFace(profileName, FaceAvatar.Initials(profileName))
+
+            var showNameSourceDialog by remember { mutableStateOf(false) }
+            var showAvatarSourceDialog by remember { mutableStateOf(false) }
+            var showRenameDialog by remember { mutableStateOf(false) }
+            var showErrorPopup by remember { mutableStateOf(false) }
+
+            val scope = rememberCoroutineScope()
+            var photoTarget by remember { mutableStateOf<String?>(null) }
+            var photoRequest by remember { mutableStateOf(0) }
+            var photoJob by remember { mutableStateOf<Job?>(null) }
+            val photoWrites = remember { ProfilePhotoWriteQueue() }
+            val photoPicker = rememberLauncherForActivityResult(
+                ActivityResultContracts.PickVisualMedia()
+            ) { uri ->
+                val target = photoTarget ?: return@rememberLauncherForActivityResult
+                val request = photoRequest
+                if (uri == null || getActiveProfile(app) != target) return@rememberLauncherForActivityResult
+                photoJob?.cancel()
+                photoJob = scope.launch {
+                    val edited = if (keepsOriginalArtwork(context, target)) {
+                        runCatching { PickedImageEditor.prepareSource(context, uri) }
+                            .onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
+                            .getOrNull()
+                    } else PickedImageEditor.edit(context, uri)
+                    if (edited == null) return@launch
+                    edited.use {
+                        if (request != photoRequest || getActiveProfile(app) != target) return@launch
+                        val saved = photoWrites.save(
+                            isCurrent = { request == photoRequest && getActiveProfile(app) == target }
+                        ) {
+                            withContext(MousikeDispatchers.DATA) {
+                                request == photoRequest && getActiveProfile(app) == target &&
+                                    saveProfileAvatarFromUri(app, target, edited.uri)
+                            }
+                        }
+                        if (saved) {
+                            photoVersion++
+                            faceVersion++
+                        } else {
+                            Toaster.e(R.string.profile_photo_failed)
+                        }
+                    }
+                }
+            }
+
+            // Preview: the face avatar + the name shown in-app.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ProfileAvatarFrame(size = 40.dp, area = GlassArea.SettingsCards) {
+                    ProfileFaceAvatar(avatar = shownFace.avatar, faceName = shownFace.name, size = 40.dp)
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    BasicText(
+                        text = stringResource(R.string.profile_display_name_preview_label),
+                        style = typography().xxs.copy(color = palette.textSecondary)
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    BasicText(
+                        text = shownFace.name,
+                        style = typography().s.copy(color = palette.text),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // Optional deep link to the Profiles screen (wired by the Accounts tab,
+            // spec-customizable-burger-menu goal B).
+            onOpenProfiles?.let { onOpen ->
+                OtherSettingsEntry(
+                    modifier = Modifier.settingsSearchTarget("embedded.profile.module_open"),
+                    title = stringResource(R.string.modules_open),
+                    text = stringResource(R.string.profile_open_desc),
+                    icon = R.drawable.chevron_forward,
+                    onClick = onOpen
+                )
+            }
+
+            OtherSettingsEntry(
+                modifier = Modifier.settingsSearchTarget("embedded.profile.face_name_source"),
+                title = stringResource(R.string.profile_name_source),
+                text = stringResource(R.string.profile_display_name_source_description),
+                selectedValueText = faceSourceLabel(nameSource),
+                icon = faceSourceIcon(nameSource),
+                onClick = { showNameSourceDialog = true }
+            )
+
+            OtherSettingsEntry(
+                modifier = Modifier.settingsSearchTarget("embedded.profile.face_avatar_source"),
+                title = stringResource(R.string.profile_avatar_source),
+                text = stringResource(R.string.profile_avatar_source_description),
+                selectedValueText = faceSourceLabel(avatarSource),
+                icon = faceSourceIcon(avatarSource),
+                onClick = { showAvatarSourceDialog = true }
+            )
+
+            OtherSettingsEntry(
+                modifier = Modifier.settingsSearchTarget("embedded.profile.face_profile_name"),
+                title = stringResource(R.string.profile_local_name),
+                text = stringResource(R.string.profile_local_name_description),
+                selectedValueText = profileName,
+                icon = R.drawable.pencil,
+                onClick = { showRenameDialog = true }
+            )
+
+            OtherSettingsEntry(
+                modifier = Modifier.settingsSearchTarget("embedded.profile.face_photo"),
+                title = stringResource(R.string.profile_photo),
+                text = stringResource(R.string.profile_photo_description),
+                selectedValueText = stringResource(
+                    if (hasPhoto) R.string.profile_photo_set else R.string.profile_photo_not_set
+                ),
+                icon = R.drawable.image,
+                onClick = {
+                    photoJob?.cancel()
+                    photoRequest++
+                    photoTarget = getActiveProfile(app)
+                    photoPicker.launch(
+                        PickVisualMediaRequest(
+                            mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly
+                        )
+                    )
+                },
+                trailingContent = if (hasPhoto) {
+                    {
+                        PageIconButton(
+                            modifier = Modifier.settingsSearchTarget("embedded.profile.face_photo_remove"),
+                            onClick = {
+                                val previousPhotoJob = photoJob
+                                previousPhotoJob?.cancel()
+                                photoRequest++
+                                // File IO off the main thread — the photo file is
+                                // removed alone (never the whole profile files dir).
+                                scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                                    photoWrites.remove {
+                                        previousPhotoJob?.cancelAndJoin()
+                                        withContext(MousikeDispatchers.DATA) {
+                                            removeProfileAvatarFile(app, activeId)
+                                        }
+                                    }
+                                    photoVersion++
+                                    faceVersion++
+                                    Timber.tag("ProfileFace").i("Profile photo removed for %s", activeId)
+                                }
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.trash),
+                                contentDescription = stringResource(R.string.profile_photo_remove_description),
+                                tint = Color.Red,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                } else {
+                    null
+                }
+            )
+
+            DialogPresence(visible = showNameSourceDialog) {
+                ValueSelectorDialog(
+                    onDismiss = { showNameSourceDialog = false },
+                    title = stringResource(R.string.profile_name_source),
+                    selectedValue = nameSource,
+                    values = listOf(
+                        FACE_SOURCE_PROFILE,
+                        FACE_SOURCE_YOUTUBE,
+                        FACE_SOURCE_DISCORD,
+                        FACE_SOURCE_LASTFM
+                    ),
+                    valueText = { faceSourceLabel(it) },
+                    lockedValues = lockedSources,
+                    lockedLabel = stringResource(R.string.profile_identity_source_not_connected),
+                    onValueSelected = { value ->
+                        nameSource = value
+                        app.saveFaceNameSource(value)
+                        // The resolved face name can change: let the header re-resolve it.
+                        profileFaceUpdateTrigger++
+                        Timber.tag("ProfileFace").i("Face name source -> $value")
+                    }
+                )
+            }
+
+            DialogPresence(visible = showAvatarSourceDialog) {
+                ValueSelectorDialog(
+                    onDismiss = { showAvatarSourceDialog = false },
+                    title = stringResource(R.string.profile_avatar_source),
+                    selectedValue = avatarSource,
+                    values = listOf(
+                        FACE_SOURCE_PROFILE,
+                        FACE_SOURCE_YOUTUBE,
+                        FACE_SOURCE_DISCORD,
+                        FACE_SOURCE_LASTFM
+                    ),
+                    valueText = { faceSourceLabel(it) },
+                    lockedValues = lockedSources,
+                    lockedLabel = stringResource(R.string.profile_identity_source_not_connected),
+                    onValueSelected = { value ->
+                        avatarSource = value
+                        app.saveFaceAvatarSource(value)
+                        // The resolved face avatar can change: let the header re-resolve it.
+                        profileFaceUpdateTrigger++
+                        Timber.tag("ProfileFace").i("Face avatar source -> $value")
+                    }
+                )
+            }
+
+            DialogPresence(visible = showRenameDialog) {
+                SettingsInputDialog(
+                    title = stringResource(R.string.profile_rename),
+                    initialValue = profileName,
+                    placeholder = stringResource(R.string.profile_name_input_hint),
+                    onDismiss = { showRenameDialog = false },
+                    onSetValue = { name ->
+                        // Same rules as the Profiles page: unique among every profile's
+                        // display names (its own is excluded with the same trimmed,
+//
+                        // case-insensitive normalization) + the reserved "default"
+                        // + file-name safety.
+                        val trimmedName = name.trim()
+                        // Confirming the name as-is stores nothing: the dialog opens on
+                        // the resolved display name, and storing it (the base default
+//
+                        // name for the base profile) would make the state archive claim
+                        // a state out of nothing.
+                        if (trimmedName != profileName) {
+                            val taken = app.takenProfileNames(app.readProfileIds(), defaultName)
+                                .filterNot { it.trim().equals(profileName.trim(), ignoreCase = true) }
+                            if (isProfileNameValid(name, taken)) {
+                                app.saveProfileDisplayName(activeId, name.trim())
+                                // The names file is the backup format: mirror the new display
+                                // name into it (same contract as the Profiles page rename),
+//
+                                // so an export never carries a stale name.
+                                app.writeProfileEntries(app.currentProfileEntries())
+                                faceVersion++
+                                // The initials can change: let the header re-resolve the face.
+                                profileFaceUpdateTrigger++
+                                Timber.tag("ProfileFace").i("Profile display name renamed for %s", activeId)
+                            } else {
+                                showErrorPopup = true
+                            }
+                        }
+                    },
+                ).apply {
+                    showDialog()
+                    Render()
+                }
+            }
+
+            DialogPresence(visible = showErrorPopup) {
+                DefaultDialog(
+                    title = stringResource(R.string.profile_error_dialog_title),
+                    onDismiss = { showErrorPopup = false },
+                    modifier = Modifier,
+                    footer = {
+                        ButtonRow(
+                            buttons = listOf(
+                                DialogButton(
+                                    text = stringResource(R.string.common_action_close),
+                                    danger = true,
+                                    onClick = {
+                                        showErrorPopup = false
+                                    }
+                                )
+                            )
+                        )
+                    }
+                ) {
+                    BasicText(
+                        text = stringResource(R.string.profile_name_invalid_or_taken),
+                        style = typography().xs.medium.center,
+                    )
+
+
+                }
+            }
+        }
+    )
+}

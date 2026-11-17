@@ -1,5 +1,5 @@
 New:
-- New Logo (added N-Zik name)
+- New Logo (added mousike name)
 - New Settings UI, Changelogs UI, Update UI
 - New Network Settings categorization
 - BETA build check; BETA builds auto-update to latest BETA or FULL
@@ -7,7 +7,7 @@ New:
 Changed:
 - Moved Update section to About
 - Quickpicks renamed to AI recommendations
-- Updated the logs and interface to use the N-Zik name
+- Updated the logs and interface to use the mousike name
 
 Improved:
 - Default purple slightly lighter for dark areas

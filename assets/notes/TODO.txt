@@ -12,4 +12,4 @@ Features & UI
 - Build the Desktop version of the application.
 
 Futur
-- Finish Nzik Desktop for windows, then linux and macos
+- Finish Mousike Desktop for windows, then linux and macos

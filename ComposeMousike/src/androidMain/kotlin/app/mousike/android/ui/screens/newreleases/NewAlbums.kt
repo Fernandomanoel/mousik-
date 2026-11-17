@@ -1,0 +1,150 @@
+﻿package app.mousike.android.ui.screens.newreleases
+
+import app.mousike.android.components.ui.screens.CollectionPageStatus
+import androidx.compose.foundation.layout.PaddingValues
+import app.mousike.android.components.navigation.rememberPageChromeContentPadding
+import androidx.compose.ui.draw.clip
+
+import app.mousike.android.uiRoundnessShape
+
+import android.annotation.SuppressLint
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
+import app.mousike.android.R
+import app.mousike.android.components.OfflineAwareLoader
+import app.mousike.android.core.network.utils.NetworkQualityHelper
+import app.mousike.android.compose.persist.persist
+import app.mousike.innertube.Innertube
+import app.mousike.innertube.requests.discoverPage
+import app.mousike.android.colorPalette
+import app.mousike.android.core.database.BookmarkStateManager
+import app.mousike.android.enums.NavRoutes
+import app.mousike.android.ui.components.themed.HeaderWithIcon
+import app.mousike.android.ui.items.AlbumItem
+import app.mousike.android.ui.styling.Dimensions
+import app.mousike.android.ui.styling.px
+import app.mousike.android.utils.disableScrollingTextKey
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.utils.showSearchTabKey
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import kotlinx.coroutines.withContext
+
+@ExperimentalTextApi
+@UnstableApi
+@SuppressLint("SuspiciousIndentation")
+@ExperimentalFoundationApi
+@ExperimentalAnimationApi
+@Composable
+fun NewAlbums(
+    navController: NavController
+) {
+    var discoverPage by persist<Result<Innertube.DiscoverPage>>("newreleases/albums/pageResult")
+    LaunchedEffect(Unit) {
+        discoverPage = withContext(MousikeDispatchers.DATA) { Innertube.discoverPage() }
+    }
+
+    val isOnline by NetworkQualityHelper.isNetworkAvailableComposable(LocalContext.current)
+
+    val thumbnailSizeDp = Dimensions.thumbnails.album + 24.dp
+    val thumbnailSizePx = thumbnailSizeDp.px
+
+    val showSearchTab by rememberPreference(showSearchTabKey, false)
+
+    val lazyGridState = rememberLazyGridState()
+
+    val disableScrollingText by rememberPreference(disableScrollingTextKey, false)
+
+
+    Column(
+        modifier = Modifier
+            .background(colorPalette().background0)
+            .fillMaxHeight()
+            .fillMaxWidth()
+    ) {
+
+        val page = discoverPage?.getOrNull()
+        if (page == null) {
+            CollectionPageStatus {
+                OfflineAwareLoader(
+                    isOnline = isOnline,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        } else {
+            val albumKeys = remember(page.newReleaseAlbums) { page.newReleaseAlbums.map { it.key } }
+            val bookmarkStatesMap by remember(albumKeys) {
+                BookmarkStateManager.getAlbumBookmarkStates(albumKeys)
+            }.collectAsStateWithLifecycle(emptyMap(), context = MousikeDispatchers.DATA)
+
+            LazyVerticalGrid(
+                contentPadding = rememberPageChromeContentPadding(PaddingValues(bottom = Dimensions.bottomSpacer)),
+                state = lazyGridState,
+                columns = GridCells.Adaptive(Dimensions.thumbnails.album + 24.dp),
+                modifier = Modifier
+                    .background(colorPalette().background0)
+            ) {
+                item(
+                    key = "header",
+                    contentType = 0,
+                    span = { GridItemSpan(maxLineSpan) }
+                ) {
+                    HeaderWithIcon(
+                        title = stringResource(R.string.recommendations_new_albums_title),
+                        iconId = R.drawable.search,
+                        enabled = true,
+                        showIcon = !showSearchTab,
+                        modifier = Modifier,
+                        onClick = {}
+                    )
+
+                }
+
+                items(
+                    items = page.newReleaseAlbums.distinct(),
+                    key = { it.key }) {
+                    AlbumItem(
+                        album = it,
+                        thumbnailSizePx = thumbnailSizePx,
+                        thumbnailSizeDp = thumbnailSizeDp,
+                        alternative = true,
+                        bookmarkState = bookmarkStatesMap[it.key],
+                        modifier = Modifier.clip(uiRoundnessShape()).clickable(onClick = {
+                            navController.navigate(route = "${NavRoutes.album.name}/${it.key}")
+                        }),
+                        disableScrollingText = disableScrollingText
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
+

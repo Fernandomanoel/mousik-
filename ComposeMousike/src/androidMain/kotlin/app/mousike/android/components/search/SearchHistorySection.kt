@@ -1,0 +1,171 @@
+package app.mousike.android.components.search
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.draw.paint
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import app.mousike.android.ui.components.themed.TitleMiniSection
+import app.mousike.android.utils.secondary
+import app.mousike.android.R
+import app.mousike.android.colorPalette
+import app.mousike.android.components.glass.GlassArea
+import app.mousike.android.components.glass.GlassControlOverflowColumn
+import app.mousike.android.components.glass.GlassSectionAction
+import app.mousike.android.components.glass.GlassSectionActions
+import app.mousike.android.components.glass.GlassTitleActionRow
+import app.mousike.android.components.glass.NativeSectionIconAction
+import app.mousike.android.components.glass.glassOverflowFade
+import app.mousike.android.components.glass.glassNativeActionContour
+import app.mousike.android.components.glass.rememberGlassSettings
+import app.mousike.android.components.glass.usesGlassMaterial
+import app.mousike.android.typography
+
+/** Filtered saved searches with animated entry and exit, query recall, and deletion. */
+@OptIn(ExperimentalAnimationApi::class, ExperimentalFoundationApi::class)
+@Composable
+fun SearchHistorySection(
+    visible: Boolean,
+    queries: List<String>,
+    onQueryClick: (String) -> Unit,
+    onQueryDelete: (String) -> Unit,
+    onQueryDeleteAll: () -> Unit,
+    onQueryEdit: ((String) -> Unit)? = null,
+) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val queryAlignment = if (LocalLayoutDirection.current == LayoutDirection.Rtl) TextAlign.Right else TextAlign.Left
+    val searchHistoryIconPainter = painterResource(R.drawable.search_circle)
+    val displayedQueries = rememberSearchHistoryRows(queries)
+    val glassSettings = rememberGlassSettings()
+    val overflow = glassSettings.usesGlassMaterial(GlassArea.ActionButtons)
+    GlassControlOverflowColumn {
+        AnimatedVisibility(
+            visibleState = rememberSearchHistoryVisibility(visible),
+            enter = slideInVertically(tween(200), initialOffsetY = { -it / 4 }) +
+                    expandVertically(tween(200), expandFrom = Alignment.Top,
+                        clip = !overflow) +
+                    (if (overflow) EnterTransition.None else fadeIn(tween(200))),
+            exit = shrinkVertically(tween(150), clip = !overflow) +
+                (if (overflow) ExitTransition.None else fadeOut(tween(150))),
+        ) {
+            GlassControlOverflowColumn(if (overflow) glassOverflowFade(200, 150) else Modifier) {
+                // Inset one step inside the search bar's margins (24dp)
+                TitleMiniSection(
+                    title = stringResource(R.string.search_saved_history_title),
+                    modifier = Modifier.padding(start = 24.dp)
+                )
+
+                displayedQueries.forEach { query ->
+                    // Row block inset inside the search bar's width (24dp margins)
+                    GlassTitleActionRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalPadding = 16.dp,
+                        contentPadding = PaddingValues(horizontal = 40.dp, vertical = 16.dp),
+                        hasTrailingActions = true,
+                        onClick = {
+                            onQueryClick(query)
+                            keyboardController?.hide()
+                            focusManager.clearFocus(force = true)
+                        },
+                    ) {
+                        if (glassSettings.usesGlassMaterial(GlassArea.ActionButtons)) {
+                            GlassSectionActions(listOf(GlassSectionAction(
+                                icon = R.drawable.search_circle,
+                                contentDescription = query,
+                                onClick = {
+                                onQueryClick(query)
+                                keyboardController?.hide()
+                                focusManager.clearFocus(force = true)
+                                },
+                            )), settings = glassSettings)
+                        } else Spacer(
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .size(20.dp)
+                                .glassNativeActionContour(glassSettings)
+                                .paint(
+                                    painter = searchHistoryIconPainter,
+                                    colorFilter = ColorFilter.tint(colorPalette().textDisabled)
+                                )
+                        )
+
+                        BasicText(
+                            text = query,
+                            style = typography().s.secondary.copy(textAlign = queryAlignment),
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .weight(1f)
+                        )
+
+                        if (glassSettings.usesGlassMaterial(GlassArea.ActionButtons)) {
+                            GlassSectionActions(
+                                actions = buildList {
+                                    add(GlassSectionAction(
+                                        icon = R.drawable.trash,
+                                        contentDescription = stringResource(R.string.common_action_delete),
+                                        onLongClick = onQueryDeleteAll,
+                                        onClick = { onQueryDelete(query) },
+                                    ))
+                                    if (onQueryEdit != null) {
+                                        add(GlassSectionAction(
+                                            icon = R.drawable.pencil,
+                                            contentDescription = stringResource(R.string.search_title),
+                                            onClick = { onQueryEdit(query) },
+                                        ))
+                                    }
+                                },
+                                settings = glassSettings,
+                            )
+                        } else {
+                            NativeSectionIconAction(
+                                icon = R.drawable.trash,
+                                contentDescription = stringResource(R.string.common_action_delete),
+                                iconSize = 20.dp,
+                                color = colorPalette().textDisabled,
+                                settings = glassSettings,
+                                onClick = { onQueryDelete(query) },
+                                onLongClick = onQueryDeleteAll,
+                            )
+                            if (onQueryEdit != null) {
+                                NativeSectionIconAction(
+                                    icon = R.drawable.pencil,
+                                    contentDescription = stringResource(R.string.search_title),
+                                    iconSize = 22.dp,
+                                    color = colorPalette().textDisabled,
+                                    settings = glassSettings,
+                                    onClick = { onQueryEdit(query) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

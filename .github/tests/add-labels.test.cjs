@@ -80,7 +80,7 @@ const variants = [
   ['Minified64', 'minified64'], ['Minified32', 'minified32'],
   ['Beta64', 'beta64'], ['Beta32', 'beta32'],
   ['Dev64', 'dev64'], ['Dev32', 'dev32'],
-  ['Foss (N-Zik-Foss, com.nevar.nzik.foss)', 'foss'],
+  ['Foss (mousike-Foss, app.mousike.foss)', 'foss'],
 ];
 
 for (const [value, expected] of variants) {

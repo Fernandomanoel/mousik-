@@ -1,0 +1,267 @@
+package app.mousike.android.components.settings.appearance
+
+import app.mousike.android.utils.effectRotationDefault
+import app.mousike.android.utils.showButtonPlayerVideoDefault
+import android.content.Context
+import androidx.core.content.edit
+import app.mousike.android.enums.AnimatedGradient
+import app.mousike.android.enums.BackgroundProgress
+import app.mousike.android.enums.CarouselSize
+import app.mousike.android.enums.ColorPaletteMode
+import app.mousike.android.enums.ColorPaletteName
+import app.mousike.android.enums.IconLikeType
+import app.mousike.android.enums.MiniPlayerType
+import app.mousike.android.enums.NotificationButtons
+import app.mousike.android.enums.PlayerBackgroundColors
+import app.mousike.android.enums.PlayerControlsType
+import app.mousike.android.enums.PlayerInfoType
+import app.mousike.android.enums.PlayerPlayButtonType
+import app.mousike.android.enums.PlayerTimelineSize
+import app.mousike.android.enums.PlayerTimelineType
+import app.mousike.android.enums.PlayerType
+import app.mousike.android.enums.PlayerVisualizerType
+import app.mousike.android.enums.PrevNextSongs
+import app.mousike.android.enums.QueueType
+import app.mousike.android.enums.SongsNumber
+import app.mousike.android.enums.SwipeAnimationNoThumbnail
+import app.mousike.android.enums.ThumbnailCoverType
+import app.mousike.android.enums.ThumbnailType
+import app.mousike.android.utils.VinylSizeKey
+import app.mousike.android.utils.actionExpandedKey
+import app.mousike.android.utils.actionspacedevenlyKey
+import app.mousike.android.utils.albumCoverRotationKey
+import app.mousike.android.utils.animatedGradientKey
+import app.mousike.android.utils.artistThumbnailRoundnessDpKey
+import app.mousike.android.utils.backgroundProgressKey
+import app.mousike.android.utils.blackBackgroundForVisThumbnailKey
+import app.mousike.android.utils.blackgradientKey
+import app.mousike.android.utils.blurStrengthKey
+import app.mousike.android.utils.bottomgradientKey
+import app.mousike.android.utils.buttonzoomoutKey
+import app.mousike.android.utils.carouselKey
+import app.mousike.android.utils.carouselSizeKey
+import app.mousike.android.utils.clickOnLyricsTextKey
+import app.mousike.android.utils.colorPaletteModeKey
+import app.mousike.android.utils.colorPaletteNameKey
+import app.mousike.android.utils.controlsExpandedKey
+import app.mousike.android.utils.coverThumbnailAnimationKey
+import app.mousike.android.utils.cropVideoThumbnailsKey
+import app.mousike.android.utils.currentVisualizerKey
+import app.mousike.android.utils.disablePlayerHorizontalSwipeKey
+import app.mousike.android.utils.disableScrollingTextKey
+import app.mousike.android.utils.effectRotationKey
+import app.mousike.android.utils.expandedplayerKey
+import app.mousike.android.utils.expandedplayertoggleKey
+import app.mousike.android.utils.fadingedgeKey
+import app.mousike.android.utils.iconLikeTypeKey
+import app.mousike.android.utils.isShowingThumbnailInLockscreenKey
+import app.mousike.android.utils.keepPlayerMinimizedKey
+import app.mousike.android.utils.lastPlayerPlayButtonTypeKey
+import app.mousike.android.utils.lyricsColorKey
+import app.mousike.android.utils.lyricsCustomColorKey
+import app.mousike.android.utils.lyricsFontSizeKey
+import app.mousike.android.utils.miniPlayerTypeKey
+import app.mousike.android.utils.miniQueueExpandedKey
+import app.mousike.android.utils.noblurKey
+import app.mousike.android.utils.notificationPlayerFirstIconKey
+import app.mousike.android.utils.notificationPlayerSecondIconKey
+import app.mousike.android.utils.playerBackgroundColorsKey
+import app.mousike.android.utils.playerControlsColorsKey
+import app.mousike.android.utils.playerControlsTypeKey
+import app.mousike.android.utils.playerEnableLyricsPopupMessageKey
+import app.mousike.android.utils.playerInfoShowIconsKey
+import app.mousike.android.utils.playerInfoTypeKey
+import app.mousike.android.utils.playerPlayButtonTypeKey
+import app.mousike.android.utils.playerSwapControlsWithTimelineKey
+import app.mousike.android.utils.playerSwipeSensitivityKey
+import app.mousike.android.utils.playerTimelineSizeKey
+import app.mousike.android.utils.playerTimelineTypeKey
+import app.mousike.android.utils.playerTypeKey
+import app.mousike.android.utils.playerVisualizerTypeKey
+import app.mousike.android.utils.preferences
+import app.mousike.android.utils.prevNextSongsKey
+import app.mousike.android.utils.putEnum
+import app.mousike.android.utils.queueDurationExpandedKey
+import app.mousike.android.utils.queueTypeKey
+import app.mousike.android.utils.rotatingAlbumCoverKey
+import app.mousike.android.utils.shakeSensitivityThemeKey
+import app.mousike.android.utils.showBackgroundLyricsKey
+import app.mousike.android.utils.showButtonPlayerAddToPlaylistKey
+import app.mousike.android.utils.showButtonPlayerArrowKey
+import app.mousike.android.utils.showButtonPlayerDiscoverKey
+import app.mousike.android.utils.showButtonPlayerDownloadKey
+import app.mousike.android.utils.showButtonPlayerLoopKey
+import app.mousike.android.utils.showButtonPlayerLyricsKey
+import app.mousike.android.utils.showButtonPlayerMenuKey
+import app.mousike.android.utils.showButtonPlayerShuffleKey
+import app.mousike.android.utils.showButtonPlayerSleepTimerKey
+import app.mousike.android.utils.showButtonPlayerStartRadioKey
+import app.mousike.android.utils.showButtonPlayerSystemEqualizerKey
+import app.mousike.android.utils.showButtonPlayerVideoKey
+import app.mousike.android.utils.showCoverThumbnailAnimationKey
+import app.mousike.android.utils.showDownloadButtonBackgroundPlayerKey
+import app.mousike.android.utils.showLikeButtonBackgroundPlayerKey
+import app.mousike.android.utils.showLyricsStateKey
+import app.mousike.android.utils.showNextSongsInPlayerKey
+import app.mousike.android.utils.showRemainingSongTimeKey
+import app.mousike.android.utils.showSkipTimeButtonsKey
+import app.mousike.android.utils.showTopActionsBarKey
+import app.mousike.android.utils.showTotalTimeQueueKey
+import app.mousike.android.utils.showVisualizerButtonsKey
+import app.mousike.android.utils.showVisualizerStateKey
+import app.mousike.android.utils.showalbumcoverKey
+import app.mousike.android.utils.showlyricsthumbnailKey
+import app.mousike.android.utils.showsongsKey
+import app.mousike.android.utils.showthumbnailKey
+import app.mousike.android.utils.showvisthumbnailKey
+import app.mousike.android.utils.statsExpandedKey
+import app.mousike.android.utils.statsfornerdsKey
+import app.mousike.android.utils.swipeAnimationsNoThumbnailKey
+import app.mousike.android.utils.swipeUpQueueKey
+import app.mousike.android.utils.tapqueueKey
+import app.mousike.android.utils.textoutlineKey
+import app.mousike.android.utils.thumbnailFadeExKey
+import app.mousike.android.utils.thumbnailFadeKey
+import app.mousike.android.utils.thumbnailRoundnessDpKey
+import app.mousike.android.utils.thumbnailSizeDpKey
+import app.mousike.android.utils.thumbnailSizeLDpKey
+import app.mousike.android.utils.thumbnailSpacingKey
+import app.mousike.android.utils.thumbnailSpacingLKey
+import app.mousike.android.utils.thumbnailTapEnabledKey
+import app.mousike.android.utils.thumbnailTypeKey
+import app.mousike.android.utils.thumbnailpauseKey
+import app.mousike.android.utils.timelineExpandedKey
+import app.mousike.android.utils.titleExpandedKey
+import app.mousike.android.utils.topPaddingKey
+import app.mousike.android.utils.transparentBackgroundPlayerActionBarKey
+import app.mousike.android.utils.transparentbarKey
+import app.mousike.android.utils.uiRoundnessDpKey
+import app.mousike.android.utils.visualizerCustomColorKey
+import app.mousike.android.utils.visualizerEnabledKey
+import app.mousike.android.utils.visualizerLineThicknessKey
+import app.mousike.android.utils.visualizerWhiteColorOptionKey
+import app.mousike.android.core.settings.DEFAULT_THUMBNAIL_SIZE_DP
+import app.mousike.android.enums.PlayerControlsColors
+import app.mousike.android.enums.PlayerSwipeSensitivity
+import app.mousike.android.enums.ShakeSensitivityTheme
+import app.mousike.android.enums.lyrics.LyricsColor
+import app.mousike.android.enums.lyrics.LyricsFontSize
+
+/** Applies the original Appearance reset once to the active profile. */
+internal fun applyAppearanceDefaults(context: Context) {
+    context.preferences.edit {
+        resetLyricsMenuDefaults()
+        putBoolean(isShowingThumbnailInLockscreenKey, true)
+        putBoolean(showthumbnailKey, true)
+        putBoolean(transparentbarKey, true)
+        putBoolean(blackgradientKey, false)
+        putBoolean(showlyricsthumbnailKey, true)
+        putBoolean(expandedplayerKey, false)
+        putEnum(playerPlayButtonTypeKey, PlayerPlayButtonType.CircularRibbed)
+        putBoolean(bottomgradientKey, false)
+        putBoolean(textoutlineKey, false)
+        putEnum(lastPlayerPlayButtonTypeKey, PlayerPlayButtonType.Rectangular)
+        putBoolean(disablePlayerHorizontalSwipeKey, false)
+        putEnum(playerSwipeSensitivityKey, PlayerSwipeSensitivity.Medium)
+        putBoolean(disableScrollingTextKey, false)
+        putBoolean(showLikeButtonBackgroundPlayerKey, true)
+        putBoolean(showDownloadButtonBackgroundPlayerKey, true)
+        putBoolean(visualizerEnabledKey, false)
+        putEnum(visualizerWhiteColorOptionKey, enums.VisualizerWhiteColorOption.White)
+        putInt(visualizerCustomColorKey, android.graphics.Color.WHITE)
+        putEnum(playerVisualizerTypeKey, PlayerVisualizerType.Disabled)
+        putFloat(visualizerLineThicknessKey, 6f)
+        putEnum(playerTimelineTypeKey, PlayerTimelineType.Wavy)
+        putFloat(thumbnailSizeDpKey, DEFAULT_THUMBNAIL_SIZE_DP)
+        remove(thumbnailSizeLDpKey)
+        putEnum(playerTimelineSizeKey, PlayerTimelineSize.Biggest)
+        putBoolean(effectRotationKey, effectRotationDefault)
+        putBoolean(thumbnailTapEnabledKey, true)
+        putBoolean(showButtonPlayerAddToPlaylistKey, true)
+        putBoolean(showButtonPlayerArrowKey, true)
+        putBoolean(showButtonPlayerDownloadKey, true)
+        putBoolean(showButtonPlayerLoopKey, false)
+        putBoolean(showButtonPlayerLyricsKey, true)
+        putBoolean(expandedplayertoggleKey, false)
+        putBoolean(showButtonPlayerShuffleKey, true)
+        putBoolean(showButtonPlayerSleepTimerKey, false)
+        putBoolean(showButtonPlayerMenuKey, false)
+        putBoolean(showButtonPlayerStartRadioKey, false)
+        putBoolean(showButtonPlayerSystemEqualizerKey, false)
+        putBoolean(showButtonPlayerDiscoverKey, false)
+        putBoolean(showButtonPlayerVideoKey, showButtonPlayerVideoDefault)
+        putBoolean(showTotalTimeQueueKey, true)
+        putEnum(backgroundProgressKey, BackgroundProgress.MiniPlayer)
+        putBoolean(showNextSongsInPlayerKey, false)
+        putBoolean(showRemainingSongTimeKey, true)
+        putBoolean(showSkipTimeButtonsKey, true)
+        putBoolean(clickOnLyricsTextKey, true)
+        putEnum(lyricsColorKey, LyricsColor.White)
+        putInt(lyricsCustomColorKey, android.graphics.Color.WHITE)
+        putEnum(lyricsFontSizeKey, LyricsFontSize.DEFAULT)
+        putBoolean(showBackgroundLyricsKey, false)
+        putFloat(thumbnailRoundnessDpKey, 6f)
+        putFloat(artistThumbnailRoundnessDpKey, 48f)
+        putFloat(uiRoundnessDpKey, 8f)
+        putEnum(miniPlayerTypeKey, MiniPlayerType.Essential)
+        putEnum(playerBackgroundColorsKey, PlayerBackgroundColors.AnimatedGradient)
+        putBoolean(showTopActionsBarKey, true)
+        putEnum(playerControlsTypeKey, PlayerControlsType.Essential)
+        putEnum(playerControlsColorsKey, PlayerControlsColors.Monochrome)
+        putEnum(playerInfoTypeKey, PlayerInfoType.Modern)
+        putBoolean(transparentBackgroundPlayerActionBarKey, true)
+        putEnum(iconLikeTypeKey, IconLikeType.Essential)
+        putBoolean(playerSwapControlsWithTimelineKey, false)
+        putBoolean(playerEnableLyricsPopupMessageKey, true)
+        putBoolean(actionspacedevenlyKey, true)
+        putEnum(thumbnailTypeKey, ThumbnailType.Modern)
+        putBoolean(showvisthumbnailKey, true)
+        putBoolean(blackBackgroundForVisThumbnailKey, true)
+        putBoolean(showVisualizerButtonsKey, true)
+        putBoolean(buttonzoomoutKey, true)
+        putBoolean(thumbnailpauseKey, true)
+        putBoolean(cropVideoThumbnailsKey, true)
+        putEnum(showsongsKey, SongsNumber.`2`)
+        putBoolean(showalbumcoverKey, true)
+        putEnum(prevNextSongsKey, PrevNextSongs.twosongs)
+        putBoolean(tapqueueKey, true)
+        putBoolean(swipeUpQueueKey, true)
+        putBoolean(statsfornerdsKey, false)
+        putEnum(playerTypeKey, PlayerType.Essential)
+        putEnum(queueTypeKey, QueueType.Modern)
+        putBoolean(noblurKey, true)
+        putBoolean(fadingedgeKey, false)
+        putBoolean(carouselKey, true)
+        putEnum(carouselSizeKey, CarouselSize.Biggest)
+        putBoolean(keepPlayerMinimizedKey, true)
+        putBoolean(playerInfoShowIconsKey, true)
+        putBoolean(queueDurationExpandedKey, true)
+        putBoolean(titleExpandedKey, true)
+        putBoolean(timelineExpandedKey, true)
+        putBoolean(controlsExpandedKey, true)
+        putBoolean(miniQueueExpandedKey, true)
+        putBoolean(statsExpandedKey, true)
+        putBoolean(actionExpandedKey, true)
+        putBoolean(showCoverThumbnailAnimationKey, false)
+        putEnum(coverThumbnailAnimationKey, ThumbnailCoverType.Vinyl)
+        putBoolean(showLyricsStateKey, false)
+        putBoolean(showVisualizerStateKey, false)
+        putEnum(notificationPlayerFirstIconKey, NotificationButtons.Download)
+        putEnum(notificationPlayerSecondIconKey, NotificationButtons.Favorites)
+        putBoolean(topPaddingKey, true)
+        putEnum(animatedGradientKey, AnimatedGradient.M3EMorphingCover)
+        putEnum(shakeSensitivityThemeKey, ShakeSensitivityTheme.Disabled)
+        putBoolean(albumCoverRotationKey, false)
+        putFloat(blurStrengthKey, 25f)
+        putFloat(thumbnailFadeExKey, 5f)
+        putFloat(thumbnailFadeKey, 5f)
+        putFloat(thumbnailSpacingKey, 0f)
+        putFloat(thumbnailSpacingLKey, 0f)
+        putFloat(VinylSizeKey, 50f)
+        putEnum(colorPaletteNameKey, ColorPaletteName.PureBlack)
+        putEnum(colorPaletteModeKey, ColorPaletteMode.System)
+        putEnum(swipeAnimationsNoThumbnailKey, SwipeAnimationNoThumbnail.Sliding)
+        putBoolean(rotatingAlbumCoverKey, false)
+        remove(currentVisualizerKey)
+    }
+}

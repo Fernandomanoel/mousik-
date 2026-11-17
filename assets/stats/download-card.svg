@@ -41,7 +41,7 @@
   <rect class="bg" width="600" height="136" rx="10" filter="url(#shadow)" stroke-width="1"/>
   
   <g font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif">
-    <text x="25" y="30" class="text-title animated">📊 N-Zik Project Stats</text>
+    <text x="25" y="30" class="text-title animated">📊 mousike Project Stats</text>
     
     <!-- Column 1 -->
     <g class="animated delay-1">

@@ -1,0 +1,17 @@
+package app.mousike.android.enums
+
+import androidx.annotation.StringRes
+import app.mousike.android.R
+import app.mousike.android.core.enums.TextView
+
+enum class ShakeSensitivityTheme(
+    @field:StringRes override val textId: Int,
+    val thresholdG: Float
+): TextView {
+
+    Disabled(R.string.theme_shake_sensitivity_disabled, 0f),
+    VeryHigh(R.string.theme_shake_sensitivity_very_high, 1.0f),
+    High(R.string.theme_shake_sensitivity_high, 2.2f),
+    Medium(R.string.theme_shake_sensitivity_medium, 3.5f),
+    Low(R.string.theme_shake_sensitivity_low, 5.0f);
+}

@@ -1,5 +1,5 @@
 Changed:
-- New N-Zik icons (Monochrome, Main, Material You)
+- New mousike icons (Monochrome, Main, Material You)
 - Integrated upstream fixes to improve stability
 - Timeline taps (single/double/long) to forward/rewind
 - More albums on the artist page

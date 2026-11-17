@@ -1,0 +1,148 @@
+package app.mousike.android.playback.services.automotive.browse.handlers
+
+import android.content.Context
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import app.mousike.android.PINNED_PREFIX
+import app.mousike.android.models.Playlist
+import app.mousike.android.utils.getEnum
+import app.mousike.android.utils.homePlaylistsOrderKey
+import app.mousike.android.utils.preferences
+import app.mousike.android.utils.showMonthlyPlaylistsKey
+import app.mousike.android.utils.showPinnedPlaylistsKey
+import app.mousike.android.utils.showYtPlaylistsKey
+import app.mousike.android.R
+import app.mousike.android.components.ui.screens.home.YOUTUBE_LIBRARY_FILTER_KEY
+import app.mousike.android.components.ui.screens.home.YouTubeLibraryFilter
+import app.mousike.android.core.database.Database
+import app.mousike.android.core.database.PlaylistLinkKind
+import app.mousike.android.core.database.playlistLinkKind
+import app.mousike.android.core.rewind.RewindPlaylists
+import app.mousike.android.core.rewind.RewindPlaylists.rewindDisplayName
+import app.mousike.android.download.utils.MyDownloadHelper
+import app.mousike.android.playback.services.PlayerServiceModern
+import app.mousike.android.playback.services.automotive.browse.autoLibraryPlaylistScope
+import app.mousike.android.playback.services.automotive.browse.loadAutoLibraryPlaylists
+import app.mousike.android.playback.services.automotive.browse.visibleAutoLibraryPlaylists
+import app.mousike.android.playback.services.automotive.models.AutoMediaItemMapper.browsableMediaItem
+import app.mousike.android.playback.services.automotive.models.AutoMediaItemMapper.drawableUri
+import app.mousike.android.playback.services.automotive.session.AutoSessionConstants
+import kotlinx.coroutines.flow.first
+
+class PlaylistsBrowseHandler : BrowseHandler {
+    override fun handles(parentId: String): Boolean = parentId == PlayerServiceModern.PLAYLIST ||
+        parentId.startsWith("PLAYLISTS_") || parentId.startsWith("ID_PLAYLISTS_")
+
+    override suspend fun getChildren(
+        parentId: String,
+        context: Context,
+        database: Database,
+        downloadHelper: MyDownloadHelper,
+        binder: PlayerServiceModern.Binder?,
+    ): List<MediaItem> = when (parentId) {
+        PlayerServiceModern.PLAYLIST -> libraryRoot(context, database)
+        AutoSessionConstants.ID_PLAYLISTS_YT -> {
+            val selected = context.preferences.getEnum(YOUTUBE_LIBRARY_FILTER_KEY, YouTubeLibraryFilter.All)
+            val previews = database.playlistTable.allAsPreview().first()
+            (listOf(selected) + YouTubeLibraryFilter.entries.filter { it != selected }).map { filter ->
+                val id = youtubeGroupId(filter)
+                folder(context, id, filter.labelRes, filter.iconRes,
+                    visibleAutoLibraryPlaylists(autoLibraryPlaylistScope(context, id), id, previews).size)
+            }
+        }
+        AutoSessionConstants.ID_PLAYLISTS_REWIND -> {
+            val selected = context.preferences.getEnum(RewindPlaylists.REWIND_PLAYLISTS_FILTER_KEY, RewindPlaylists.Filter.All)
+            val previews = database.playlistTable.allAsPreview().first()
+            (listOf(selected) + RewindPlaylists.Filter.entries.filter { it != selected }).map { filter ->
+                val id = rewindGroupId(filter)
+                folder(context, id, rewindGroupLabel(filter), rewindGroupIcon(filter),
+                    visibleAutoLibraryPlaylists(autoLibraryPlaylistScope(context, id), id, previews).size)
+            }
+        }
+        AutoSessionConstants.ID_PLAYLISTS_LOCAL,
+        AutoSessionConstants.ID_PLAYLISTS_PINNED,
+        AutoSessionConstants.ID_PLAYLISTS_YT_ALL,
+        AutoSessionConstants.ID_PLAYLISTS_YT_PLAYLISTS,
+        AutoSessionConstants.ID_PLAYLISTS_YT_PODCASTS,
+        AutoSessionConstants.ID_PLAYLISTS_REWIND_ALL,
+        AutoSessionConstants.ID_PLAYLISTS_REWIND_MONTH,
+        AutoSessionConstants.ID_PLAYLISTS_REWIND_YEAR -> {
+            val playlists = loadAutoLibraryPlaylists(context, database, parentId).map { preview ->
+                browsableMediaItem(
+                    "${PlayerServiceModern.PLAYLIST}/${preview.playlist.id}",
+                    context.rewindDisplayName(preview.playlist.name),
+                    preview.songCount.toString(),
+                    drawableUri(context, localPlaylistIcon(preview.playlist)),
+                    MediaMetadata.MEDIA_TYPE_PLAYLIST,
+                )
+            }
+            listOf(AutoSessionConstants.shuffleItem(context, "${parentId}_SHUFFLE")) + playlists
+        }
+        else -> emptyList()
+    }
+
+    private suspend fun libraryRoot(context: Context, database: Database): List<MediaItem> {
+        val previews = database.playlistTable.allAsPreview().first()
+        fun count(id: String) = visibleAutoLibraryPlaylists(autoLibraryPlaylistScope(context, id), id, previews).size
+        val categories = mapOf(
+            "all" to folder(context, AutoSessionConstants.ID_PLAYLISTS_LOCAL, R.string.library_title,
+                R.drawable.library, count(AutoSessionConstants.ID_PLAYLISTS_LOCAL)),
+            "pinned_playlists" to folder(context, AutoSessionConstants.ID_PLAYLISTS_PINNED, R.string.playlist_pinned_title,
+                R.drawable.pin_filled, count(AutoSessionConstants.ID_PLAYLISTS_PINNED)),
+            "rewind" to folder(context, AutoSessionConstants.ID_PLAYLISTS_REWIND, R.string.rewind_title,
+                R.drawable.musical_notes, count(AutoSessionConstants.ID_PLAYLISTS_REWIND)),
+            "yt_playlists" to folder(context, AutoSessionConstants.ID_PLAYLISTS_YT, R.string.sync_youtube_playlists_title,
+                R.drawable.ytmusic, count(AutoSessionConstants.ID_PLAYLISTS_YT)),
+        )
+        return homeCategoryOrder(context, homePlaylistsOrderKey, listOf("all", "pinned_playlists", "rewind", "yt_playlists"))
+            .mapNotNull { id ->
+                val visible = when (id) {
+                    "pinned_playlists" -> context.preferences.getBoolean(showPinnedPlaylistsKey, true)
+                    "rewind" -> context.preferences.getBoolean(showMonthlyPlaylistsKey, true)
+                    "yt_playlists" -> context.preferences.getBoolean(showYtPlaylistsKey, true)
+                    else -> true
+                }
+                categories[id].takeIf { visible }
+            }
+    }
+
+    private fun folder(context: Context, id: String, label: Int, icon: Int, count: Int): MediaItem =
+        browsableMediaItem(id, context.getString(label), count.toString(), drawableUri(context, icon),
+            MediaMetadata.MEDIA_TYPE_FOLDER_PLAYLISTS)
+
+    private fun youtubeGroupId(filter: YouTubeLibraryFilter): String = when (filter) {
+        YouTubeLibraryFilter.All -> AutoSessionConstants.ID_PLAYLISTS_YT_ALL
+        YouTubeLibraryFilter.Playlists -> AutoSessionConstants.ID_PLAYLISTS_YT_PLAYLISTS
+        YouTubeLibraryFilter.Podcasts -> AutoSessionConstants.ID_PLAYLISTS_YT_PODCASTS
+    }
+
+    private fun rewindGroupId(filter: RewindPlaylists.Filter): String = when (filter) {
+        RewindPlaylists.Filter.Month -> AutoSessionConstants.ID_PLAYLISTS_REWIND_MONTH
+        RewindPlaylists.Filter.Year -> AutoSessionConstants.ID_PLAYLISTS_REWIND_YEAR
+        RewindPlaylists.Filter.All -> AutoSessionConstants.ID_PLAYLISTS_REWIND_ALL
+    }
+
+    private fun rewindGroupLabel(filter: RewindPlaylists.Filter): Int = when (filter) {
+        RewindPlaylists.Filter.Month -> R.string.rewind_filter_month
+        RewindPlaylists.Filter.Year -> R.string.rewind_filter_year
+        RewindPlaylists.Filter.All -> R.string.common_option_all
+    }
+
+    private fun rewindGroupIcon(filter: RewindPlaylists.Filter): Int = when (filter) {
+        RewindPlaylists.Filter.Month -> R.drawable.stat_month
+        RewindPlaylists.Filter.Year -> R.drawable.stat_year
+        RewindPlaylists.Filter.All -> R.drawable.musical_notes
+    }
+
+    private fun localPlaylistIcon(playlist: Playlist): Int = when {
+        playlistLinkKind(playlist.browseId) == PlaylistLinkKind.YouTubePodcast -> R.drawable.podcast
+        playlist.name.startsWith(PINNED_PREFIX, true) -> R.drawable.pin_filled
+        RewindPlaylists.isMonthly(playlist.name) -> R.drawable.stat_month
+        RewindPlaylists.isYearly(playlist.name) -> R.drawable.stat_year
+        RewindPlaylists.isAlltime(playlist.name) -> R.drawable.musical_notes
+        playlist.browseId?.startsWith("SPOTIFY_IMPORT") == true -> R.drawable.spotify
+        playlist.browseId?.startsWith("RIPLAY_IMPORT") == true -> R.drawable.riplay
+        playlistLinkKind(playlist.browseId) == PlaylistLinkKind.YouTubePlaylist -> R.drawable.ytmusic
+        else -> R.drawable.ic_launcher
+    }
+}

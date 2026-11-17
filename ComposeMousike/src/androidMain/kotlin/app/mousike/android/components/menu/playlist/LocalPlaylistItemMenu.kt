@@ -1,0 +1,672 @@
+package app.mousike.android.components.menu.playlist
+
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
+import app.mousike.innertube.YtMusic
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
+
+import app.mousike.android.cleanPrefix
+import app.mousike.android.MODIFIED_PREFIX
+import app.mousike.android.enums.MenuStyle
+import app.mousike.android.enums.NavRoutes
+import app.mousike.android.enums.SyncDirection
+import app.mousike.android.models.PlaylistPreview
+import app.mousike.android.models.Song
+import app.mousike.android.ui.components.LocalMenuState
+import app.mousike.android.ui.components.MenuState
+import app.mousike.android.ui.components.tab.toolbar.Button
+import app.mousike.android.ui.components.tab.toolbar.Clickable
+import app.mousike.android.ui.components.tab.toolbar.Descriptive
+import app.mousike.android.ui.components.tab.toolbar.DynamicColor
+import app.mousike.android.ui.components.tab.toolbar.Menu
+import app.mousike.android.ui.components.tab.toolbar.MenuIcon
+import app.mousike.android.ui.components.themed.Enqueue
+import app.mousike.android.ui.components.themed.HeaderIconButton
+import app.mousike.android.ui.components.themed.IconButton
+import app.mousike.android.ui.components.themed.PlayNext
+import app.mousike.android.ui.styling.Dimensions
+import app.mousike.android.ui.styling.favoritesIcon
+import app.mousike.android.utils.asMediaItem
+import app.mousike.android.utils.checkFileExists
+import app.mousike.android.utils.conditional
+import app.mousike.android.utils.disableScrollingTextKey
+import app.mousike.android.utils.getSyncDirection
+import app.mousike.android.utils.isNetworkConnected
+import app.mousike.android.utils.menuStyleKey
+import app.mousike.android.utils.preferences
+import app.mousike.android.utils.getActiveProfile
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.utils.secondary
+import app.mousike.android.utils.semiBold
+import app.mousike.android.utils.syncPushPlaylistKey
+import app.mousike.android.core.utils.Toaster
+import app.mousike.android.LocalPlayerServiceBinder
+import app.mousike.android.R
+import app.mousike.android.playback.services.isLocal
+import app.mousike.android.appContext
+import app.mousike.android.colorPalette
+import app.mousike.android.components.dialog.playlist.ChangePlaylistBrowseIdDialog
+import app.mousike.android.components.dialog.playlist.PlaylistInsertionDialog
+import app.mousike.android.components.dialog.playlist.RenamePlaylistDialog
+import app.mousike.android.components.dialog.tab.DeleteAllDownloadedSongsDialog
+import app.mousike.android.components.dialog.tab.DownloadAllSongsDialog
+import app.mousike.android.components.glass.GlassHorizontalSeparator
+import app.mousike.android.components.glass.glassImageRim
+import app.mousike.android.components.menu.EntityMenuSnapshot
+import app.mousike.android.components.menu.ObserveEntityMenuSnapshot
+import app.mousike.android.components.menu.GridMenu
+import app.mousike.android.components.menu.ListMenu
+import app.mousike.android.components.menu.MenuSheetDragHandle
+import app.mousike.android.components.menu.MenuSheetSurface
+import app.mousike.android.components.menu.menuSheetSectionBackground
+import app.mousike.android.components.playlist.launchPlaylistSourceRefresh
+import app.mousike.android.components.playlist.playlistRefreshOnOpenAction
+import app.mousike.android.components.podcast.launchSavedPodcastBookmarkToggle
+import app.mousike.android.components.settings.accounts.isYouTubeSyncEnabled
+import app.mousike.android.components.tab.SongShuffler
+import app.mousike.android.core.coil.ImageCacheFactory
+import app.mousike.android.core.database.Database
+import app.mousike.android.core.database.PlaylistLinkKind
+import app.mousike.android.core.database.canBookmarkPlaylist
+import app.mousike.android.core.database.canRefreshPlaylist
+import app.mousike.android.core.database.isPlaylistBookmarked
+import app.mousike.android.core.database.isPodcastBrowseId
+import app.mousike.android.core.database.playlistLinkKind
+import app.mousike.android.core.network.OfflineMode
+import app.mousike.android.core.rewind.RewindPlaylists
+import app.mousike.android.playback.services.automotive.models.ArtworkRevisions
+import app.mousike.android.surfaceColor
+import app.mousike.android.thumbnailShape
+import app.mousike.android.typography
+import app.mousike.android.utils.ToastRelay
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import app.mousike.android.utils.player.addNextOffMain
+import app.mousike.android.utils.player.enqueueOffMain
+import app.mousike.android.utils.playlist.supportsInsertionPosition
+
+@UnstableApi
+@OptIn(ExperimentalFoundationApi::class)
+class LocalPlaylistItemMenu private constructor(
+    private val navController: NavController,
+    playlistPreview: PlaylistPreview,
+    override val menuState: MenuState,
+    private val onDevice: Boolean,
+    styleState: MutableState<MenuStyle>
+) : Menu {
+
+    private val initialPreview = playlistPreview
+    private val snapshot = EntityMenuSnapshot(playlistPreview.playlist, getActiveProfile(appContext())) { it.id }
+    private var songs by mutableStateOf<List<Song>?>(null)
+    private val playlistPreview: PlaylistPreview
+        get() = initialPreview.copy(playlist = snapshot.value, songCount = songs?.size ?: initialPreview.songCount)
+
+    companion object {
+        @Composable
+        operator fun invoke(navController: NavController, playlistPreview: PlaylistPreview, onDevice: Boolean = false): LocalPlaylistItemMenu =
+            LocalPlaylistItemMenu(
+                navController = navController,
+                playlistPreview = playlistPreview,
+                onDevice = onDevice,
+                menuState = LocalMenuState.current,
+                styleState = rememberPreference(menuStyleKey, MenuStyle.List)
+            )
+    }
+
+    lateinit var buttons: List<Button>
+    private var offlineMode = false
+    private val hasYouTubeLink: Boolean
+        get() = !onDevice && playlistLinkKind(playlistPreview.playlist.browseId) != PlaylistLinkKind.Local
+    override var menuStyle: MenuStyle by styleState
+
+    @Composable
+    override fun ListMenu() = ListMenu.Menu(title = null, showDragHandle = false) {
+        // Section: Playback
+        SectionTitle(stringResource(R.string.common_playback_section_title))
+        buttons.getOrNull(0)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        buttons.getOrNull(1)?.let { if (it is MenuIcon) it.ListMenuItem() }
+
+        // Section: Management
+        SectionTitle(stringResource(R.string.library_management_section_title))
+        val mgmtEnd = if (hasYouTubeLink) buttons.size - 1 else buttons.size
+        for (i in 2 until mgmtEnd) {
+            // idx 3 = download_all (network)
+            if (offlineMode && !onDevice && i == 3) continue
+            buttons.getOrNull(i)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        }
+
+        // Section: Navigation
+        if (hasYouTubeLink) {
+            SectionTitle(stringResource(R.string.common_navigation_section_title))
+            buttons.lastOrNull()?.let { if (it is MenuIcon) it.ListMenuItem() }
+        }
+    }
+
+    @Composable
+    override fun GridMenu() = GridMenu.Menu(title = null, showDragHandle = false) {
+        // Section: Playback
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            SectionTitle(stringResource(R.string.common_playback_section_title))
+        }
+        buttons.getOrNull(0)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        buttons.getOrNull(1)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+
+        // Section: Management
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            SectionTitle(stringResource(R.string.library_management_section_title))
+        }
+        val mgmtEnd = if (hasYouTubeLink) buttons.size - 1 else buttons.size
+        for (i in 2 until mgmtEnd) {
+            // idx 3 = download_all (network)
+            if (offlineMode && !onDevice && i == 3) continue
+            buttons.getOrNull(i)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        }
+
+        // Section: Navigation
+        if (hasYouTubeLink) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                SectionTitle(stringResource(R.string.common_navigation_section_title))
+            }
+            buttons.lastOrNull()?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        }
+    }
+
+    @Composable
+    private fun PlaylistItemDisplay(
+        playlistPreview: PlaylistPreview,
+        isBookmarked: Boolean,
+        onBookmarkToggle: () -> Unit,
+        modifier: Modifier = Modifier
+    ) {
+        // Bookmarking saves to the YouTube Music library: meaningless for a local playlist
+        val canBookmark = canBookmarkPlaylist(playlistPreview.playlist)
+        val disableScrollingText by rememberPreference(disableScrollingTextKey, false)
+        val context = LocalContext.current
+        
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = modifier
+                .fillMaxWidth()
+                .menuSheetSectionBackground(surfaceColor(colorPalette().background1))
+        ) {
+            MenuSheetDragHandle()
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        vertical = Dimensions.itemsVerticalPadding,
+                        horizontal = 16.dp
+                    )
+            ) {
+                // Playlist's thumbnail
+                Box(
+                    Modifier.size(Dimensions.thumbnails.album / 2)
+                ) {
+                    val thumbnails by remember(snapshot) {
+                        playlistMenuThumbnails(
+                            songs = Database.songPlaylistMapTable.sortSongsByPlayTime(snapshot.id),
+                            revisions = ArtworkRevisions.changes,
+                            ownsProfile = { getActiveProfile(context) == snapshot.profile },
+                            customThumbnail = { checkFileExists(context, "thumbnail/playlist_${snapshot.id}") }
+                        )
+                    }.collectAsStateWithLifecycle(emptyList(), context = MousikeDispatchers.DATA)
+
+                    // Clipped thumbnail content
+                    Box(
+                        modifier = Modifier
+                            .size(Dimensions.thumbnails.album / 2)
+                            .clip(thumbnailShape())
+                            .glassImageRim(thumbnailShape())
+                    ) {
+                        if (thumbnails.isEmpty()) {
+                            Image(
+                                painter = painterResource(R.drawable.library),
+                                contentDescription = null,
+                                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(colorPalette().textSecondary),
+                                modifier = Modifier
+                                    .align(Alignment.Center)
+                                    .size(Dimensions.thumbnails.album / 4)
+                            )
+                        } else if (thumbnails.size == 1) {
+                            ImageCacheFactory.Thumbnail(
+                                shape = null,
+                                thumbnailUrl = thumbnails[0],
+                                modifier = Modifier.size(Dimensions.thumbnails.album / 2)
+                            )
+                        } else {
+                            // 4 grid
+                            Row(modifier = Modifier.size(Dimensions.thumbnails.album / 2)) {
+                                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                    ImageCacheFactory.Thumbnail(shape = null, thumbnailUrl = thumbnails[0], modifier = Modifier.weight(1f).fillMaxWidth())
+                                    if (thumbnails.size > 2) {
+                                        ImageCacheFactory.Thumbnail(shape = null, thumbnailUrl = thumbnails[2], modifier = Modifier.weight(1f).fillMaxWidth())
+                                    }
+                                }
+                                Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                                    if (thumbnails.size > 1) {
+                                        ImageCacheFactory.Thumbnail(shape = null, thumbnailUrl = thumbnails[1], modifier = Modifier.weight(1f).fillMaxWidth())
+                                    }
+                                    if (thumbnails.size > 3) {
+                                        ImageCacheFactory.Thumbnail(shape = null, thumbnailUrl = thumbnails[3], modifier = Modifier.weight(1f).fillMaxWidth())
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (canBookmark && isBookmarked)
+                        HeaderIconButton(
+                            onClick = {},
+                            icon = R.drawable.bookmark,
+                            color = colorPalette().favoritesIcon,
+                            iconSize = 12.dp,
+                            placementModifier = Modifier.align( Alignment.BottomStart )
+                                               .absoluteOffset( x = (-8).dp )
+                        )
+                }
+
+                // Playlist's information
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    val disableScrollingText by rememberPreference(disableScrollingTextKey, false)
+                    BasicText(
+                        text = cleanPrefix(playlistPreview.playlist.name),
+                        style = typography().xs.semiBold.copy(color = colorPalette().text),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.conditional(!disableScrollingText) { basicMarquee(iterations = Int.MAX_VALUE) }
+                    )
+                    BasicText(
+                        text = pluralStringResource(R.plurals.library_song_count, playlistPreview.songCount, playlistPreview.songCount),
+                        style = typography().xs.semiBold.secondary.copy(color = colorPalette().textSecondary),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.conditional(!disableScrollingText) { basicMarquee(iterations = Int.MAX_VALUE) }
+                    )
+                }
+
+                // Trailing content (Bookmark & Open)
+                val coroutineScope = rememberCoroutineScope()
+                Column(
+                    Modifier.width(48.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    if (canBookmark)
+                        IconButton(
+                            icon = if (isBookmarked) R.drawable.bookmark else R.drawable.bookmark_outline,
+                            color = colorPalette().favoritesIcon,
+                            onClick = { onBookmarkToggle() },
+                            modifier = Modifier
+                                .padding(all = 4.dp)
+                                .size(20.dp)
+                        )
+
+                    IconButton(
+                        icon = R.drawable.open,
+                        color = colorPalette().text,
+                        onClick = {
+                            menuState.hide()
+                            val browseId = playlistPreview.playlist.browseId
+                            if (isPodcastBrowseId(browseId)) {
+                                navController.navigate(route = "${NavRoutes.podcast.name}/$browseId")
+                            } else if (playlistLinkKind(browseId) == PlaylistLinkKind.YouTubePlaylist) {
+                                navController.navigate(route = "${NavRoutes.playlist.name}/$browseId")
+                            } else {
+                                navController.navigate(route = "${NavRoutes.localPlaylist.name}/${playlistPreview.playlist.id}")
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(all = 4.dp)
+                            .size(20.dp)
+                    )
+                }
+            }
+
+            GlassHorizontalSeparator(Modifier.height(1.dp))
+        }
+    }
+
+    @Composable
+    override fun MenuComponent() {
+        if (!ObserveEntityMenuSnapshot(snapshot, { Database.playlistTable.findById(it) }, menuState::hide)) return
+        val observedSongs = remember(snapshot) { Database.songPlaylistMapTable.allSongsOf(snapshot.id) }
+            .collectAsStateWithLifecycle<List<Song>?>(null, context = MousikeDispatchers.DATA).value
+        SideEffect { songs = if (onDevice) observedSongs?.filter { it.isLocal } else observedSongs }
+        val context = LocalContext.current
+        offlineMode = OfflineMode.enabled(context)
+        val binder = LocalPlayerServiceBinder.current
+        val coroutineScope = rememberCoroutineScope()
+        
+        val insertionDialog = PlaylistInsertionDialog { playlistPreview.playlist }
+
+        val downloadAllDialog = DownloadAllSongsDialog { songs ?: emptyList() }
+        val downloadAll = object : MenuIcon by downloadAllDialog, Descriptive by downloadAllDialog, Clickable {
+            override fun onShortClick() {
+                val currentSongs = songs
+                if (currentSongs == null) {
+                    ToastRelay.loadingWarning()
+                } else if (currentSongs.isNotEmpty()) {
+                    downloadAllDialog.onShortClick()
+                } else {
+                    Toaster.e(R.string.player_no_song_found)
+                }
+            }
+            override fun onLongClick() {}
+        }
+
+        val refreshOnOpen = playlistRefreshOnOpenAction(playlistPreview.playlist)
+
+        val deleteAllDialog = DeleteAllDownloadedSongsDialog { songs ?: emptyList() }
+        val deleteAll = object : MenuIcon by deleteAllDialog, Descriptive by deleteAllDialog, Clickable {
+            override fun onShortClick() {
+                val currentSongs = songs
+                if (currentSongs == null) {
+                    ToastRelay.loadingWarning()
+                } else if (currentSongs.isNotEmpty()) {
+                    deleteAllDialog.onShortClick()
+                } else {
+                    Toaster.e(R.string.player_no_song_found)
+                }
+            }
+            override fun onLongClick() {}
+        }
+
+        val renamePlaylist = RenamePlaylistDialog { playlistPreview.playlist }
+        val changePlaylistId = ChangePlaylistBrowseIdDialog(menuState = menuState) { playlistPreview.playlist }
+
+        val rename = object : MenuIcon, Descriptive, Clickable {
+            override val iconId: Int = R.drawable.title_edit
+            override val messageId: Int = R.string.playlist_rename_dialog_title
+            @get:Composable override val menuIconTitle: String get() = stringResource(messageId)
+            override fun onShortClick() { renamePlaylist.onShortClick() }
+            override fun onLongClick() {}
+        }
+
+        renamePlaylist.Render()
+        changePlaylistId.Render()
+        downloadAllDialog.Render()
+        deleteAllDialog.Render()
+
+        val playNext = PlayNext {
+            val currentSongs = songs
+            if (currentSongs == null) {
+                ToastRelay.loadingWarning()
+            } else if (currentSongs.isNotEmpty()) {
+                // Queue changes must survive the popup closing.
+                MousikeDispatchers.fireAndForget(MousikeDispatchers.UI).launch {
+                    val mediaItems = withContext(MousikeDispatchers.DATA) { currentSongs.map { it.asMediaItem } }
+                    binder?.player?.addNextOffMain(mediaItems, context)
+                }
+                menuState.hide()
+            } else {
+                Toaster.e(R.string.player_no_song_found)
+            }
+        }
+
+        val enqueue = Enqueue {
+            val currentSongs = songs
+            if (currentSongs == null) {
+                ToastRelay.loadingWarning()
+            } else if (currentSongs.isNotEmpty()) {
+                MousikeDispatchers.fireAndForget(MousikeDispatchers.UI).launch {
+                    val mediaItems = withContext(MousikeDispatchers.DATA) { currentSongs.map { it.asMediaItem } }
+                    binder?.player?.enqueueOffMain(mediaItems, context)
+                }
+                menuState.hide()
+            } else {
+                Toaster.e(R.string.player_no_song_found)
+            }
+        }
+
+        val shuffle = SongShuffler { songs ?: emptyList() }
+
+        val isSpecialPlaylist = playlistPreview.playlist.browseId?.removePrefix("VL") in listOf("LM", "SE")
+        
+        var isBookmarked by remember(playlistPreview.playlist) { mutableStateOf(isPlaylistBookmarked(playlistPreview.playlist)) }
+
+        fun toggleSavedPodcast(): Boolean = launchSavedPodcastBookmarkToggle(
+            playlistPreview.playlist, coroutineScope,
+            onRemoved = { menuState.hide() },
+            onExistingImport = {
+                menuState.hide()
+                playlistPreview.playlist.browseId?.let { NavRoutes.podcast.navigateHere(navController, it) }
+            },
+        )
+
+        val bookmark = object : MenuIcon, Descriptive, Clickable {
+            override val iconId: Int = if (isBookmarked) R.drawable.bookmark else R.drawable.bookmark_outline
+            override val messageId: Int = R.string.library_action_bookmark
+            @get:Composable override val menuIconTitle: String get() = stringResource(messageId)
+            override fun onShortClick() {
+                if (!canBookmarkPlaylist(playlistPreview.playlist)) return
+                if (toggleSavedPodcast()) return
+                if (isSpecialPlaylist) {
+                    Toaster.e(R.string.playlist_bookmark_unsupported_message)
+                    return
+                }
+                val wasBookmarked = isBookmarked
+                coroutineScope.launch(MousikeDispatchers.DATA) {
+                    val browseId = playlistPreview.playlist.browseId
+                    val pushPlaylist = appContext().preferences.getBoolean(syncPushPlaylistKey, false)
+                    val syncDir = getSyncDirection()
+                    if (browseId != null && isYouTubeSyncEnabled() && pushPlaylist && syncDir != SyncDirection.YT_TO_APP && isNetworkConnected(appContext())) {
+                        runCatching {
+                            if (wasBookmarked) {
+                                YtMusic.removelikePlaylistOrAlbum(browseId.removePrefix("VL"))
+                            } else {
+                                YtMusic.likePlaylistOrAlbum(browseId.removePrefix("VL"))
+                            }
+                        }.onFailure { e ->
+                            Timber.tag("LocalPlaylistItemMenu").e(e, "Failed to toggle YTM bookmark")
+                        }
+                    }
+                    Database.playlistTable.update(
+                        playlistPreview.playlist.copy(isYoutubePlaylist = !wasBookmarked)
+                    )
+                    withContext(MousikeDispatchers.UI) {
+                        isBookmarked = !wasBookmarked
+                    }
+                    Toaster.s( if (!wasBookmarked) R.string.library_favorites_added else R.string.library_favorites_removed )
+                }
+            }
+            override fun onLongClick() {}
+        }
+
+        // Define buttons
+        buttons = run {
+            val list = mutableListOf<Button>()
+            
+            list.add(shuffle)
+            list.add(playNext)
+            list.add(enqueue)
+            if (!onDevice) {
+                list.add(downloadAll)
+                list.add(deleteAll)
+            }
+            
+
+            if (playlistPreview.playlist.supportsInsertionPosition()) list.add(insertionDialog)
+
+            if (playlistPreview.playlist.isEditable) {
+                // Spec 2: generated rewind-* playlists keep their language-neutral name - no rename
+                if (!RewindPlaylists.isRewind(playlistPreview.playlist.name)) {
+                    list.add(rename)
+                }
+                if (!onDevice && (playlistPreview.playlist.isYoutubePlaylist || playlistPreview.playlist.browseId?.startsWith(MODIFIED_PREFIX) == true || playlistPreview.playlist.browseId?.startsWith("VL") == true)) {
+                    list.add(changePlaylistId)
+                }
+                
+                list.add(object : MenuIcon, Descriptive, Clickable {
+                    override val iconId: Int = R.drawable.trash
+                    override val messageId: Int = R.string.common_action_delete
+                    @get:Composable override val menuIconTitle: String get() = stringResource(messageId)
+                    override fun onShortClick() {
+                        menuState.hide()
+                        coroutineScope.launch(MousikeDispatchers.DATA) {
+                            val pushPlaylist = appContext().preferences.getBoolean(syncPushPlaylistKey, false)
+                            val syncDirection = getSyncDirection()
+                            if (!onDevice && playlistPreview.playlist.isYoutubePlaylist && playlistLinkKind(playlistPreview.playlist.browseId) == PlaylistLinkKind.YouTubePlaylist && isYouTubeSyncEnabled() && pushPlaylist && syncDirection != SyncDirection.YT_TO_APP && isNetworkConnected(appContext())) {
+                                val browseId = playlistPreview.playlist.browseId
+                                if (browseId != null) {
+                                    YtMusic.deletePlaylist(browseId.removePrefix("VL"))
+                                }
+                            }
+                            Database.playlistTable.delete(playlistPreview.playlist)
+                        }
+                        Toaster.done()
+                    }
+                    override fun onLongClick() {}
+                })
+            }
+            
+            // Auto-sync toggle for this playlist
+            if (!onDevice && playlistPreview.playlist.isYoutubePlaylist && playlistLinkKind(playlistPreview.playlist.browseId) == PlaylistLinkKind.YouTubePlaylist && isYouTubeSyncEnabled()) {
+                list.add(object : MenuIcon, Descriptive, DynamicColor {
+                    override var isFirstColor: Boolean = playlistPreview.playlist.isAutoSync
+                    override val iconId: Int = R.drawable.sync
+                    override val messageId: Int = R.string.sync_per_playlist_auto
+                    @get:Composable override val menuIconTitle: String
+                        get() = if (playlistPreview.playlist.isAutoSync) stringResource(R.string.sync_per_playlist_auto_on) else stringResource(R.string.sync_per_playlist_auto_off)
+                    override fun onShortClick() {
+                        menuState.hide()
+                        coroutineScope.launch(MousikeDispatchers.DATA) {
+                            Database.playlistTable.toggleAutoSync(playlistPreview.playlist.id)
+                            Toaster.done()
+                        }
+                    }
+                    override fun onLongClick() {}
+                })
+            }
+
+            if (!onDevice && canRefreshPlaylist(playlistPreview.playlist) && !offlineMode) {
+                list.add(object : MenuIcon, Descriptive, Clickable {
+                    override val iconId: Int = R.drawable.sync
+                    override val messageId: Int = R.string.sync_action_sync
+                    @get:Composable override val menuIconTitle: String get() = stringResource(messageId)
+                    override fun onShortClick() {
+                        launchPlaylistSourceRefresh(playlistPreview.playlist, MousikeDispatchers.fireAndForget(MousikeDispatchers.UI))
+                        menuState.hide()
+                    }
+                    override fun onLongClick() {}
+                })
+            }
+
+            if (!onDevice && canRefreshPlaylist(playlistPreview.playlist)) list.add(refreshOnOpen)
+
+            if (hasYouTubeLink) {
+                list.add(object : MenuIcon, Descriptive, Clickable {
+                    override val iconId: Int = R.drawable.play
+                    override val messageId: Int = R.string.player_action_listen_on_youtube
+                    @get:Composable override val menuIconTitle: String get() = stringResource(messageId)
+                    override fun onShortClick() {
+                        menuState.hide()
+                        val browseId = playlistPreview.playlist.browseId ?: return
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            data = Uri.parse("https://music.youtube.com/playlist?list=$browseId")
+                        }
+                        context.startActivity(intent)
+                    }
+                    override fun onLongClick() {}
+                })
+            }
+
+            list
+        }
+
+        MenuSheetSurface {
+            insertionDialog.Render()
+            downloadAllDialog.Render()
+            deleteAllDialog.Render()
+            PlaylistItemDisplay(playlistPreview, isBookmarked, onBookmarkToggle = {
+                if (!canBookmarkPlaylist(playlistPreview.playlist)) return@PlaylistItemDisplay
+                if (toggleSavedPodcast()) return@PlaylistItemDisplay
+                val wasBookmarked = isBookmarked
+                coroutineScope.launch(MousikeDispatchers.DATA) {
+                    val browseId = playlistPreview.playlist.browseId
+                    val pushPlaylist = appContext().preferences.getBoolean(syncPushPlaylistKey, false)
+                    val syncDir = getSyncDirection()
+                    if (browseId != null && isYouTubeSyncEnabled() && pushPlaylist && syncDir != SyncDirection.YT_TO_APP && isNetworkConnected(appContext())) {
+                        runCatching {
+                            if (wasBookmarked) {
+                                YtMusic.removelikePlaylistOrAlbum(browseId.removePrefix("VL"))
+                            } else {
+                                YtMusic.likePlaylistOrAlbum(browseId.removePrefix("VL"))
+                            }
+                        }.onFailure { e ->
+                            Timber.tag("LocalPlaylistItemMenu").e(e, "Failed to toggle YTM bookmark from header")
+                        }
+                    }
+                    Database.playlistTable.update(
+                        playlistPreview.playlist.copy(isYoutubePlaylist = !wasBookmarked)
+                    )
+                    withContext(MousikeDispatchers.UI) {
+                        isBookmarked = !wasBookmarked
+                    }
+                    Toaster.s( if (!wasBookmarked) R.string.library_favorites_added else R.string.library_favorites_removed )
+                }
+            })
+
+            if (menuStyle == MenuStyle.List)
+                ListMenu()
+            else
+                GridMenu()
+        }
+    }
+
+    @Composable
+    private fun SectionTitle(title: String) {
+        BasicText(
+            text = title,
+            style = typography().xxs.semiBold.copy(
+                color = colorPalette().accent,
+                textAlign = TextAlign.Start
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 4.dp)
+        )
+    }
+}

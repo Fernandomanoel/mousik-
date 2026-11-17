@@ -1,5 +1,5 @@
 Fixed:
-- Crash due to widget in Android 17 (moved files to app.n_zik.android.widget)
+- Crash due to widget in Android 17 (moved files to app.mousike.android.widget)
 - RPC being stuck on "browsing" while listening to music
 - Status bar being black while on pitch black mode
 - Crash on textClassifier for A7 on Minified build
@@ -20,7 +20,7 @@ Added:
 - Search in AI Recommendation Settings
 
 Refactored:
-- Visualizer code to app.n_zik.android.extensions.nextvisualizer
+- Visualizer code to app.mousike.android.extensions.nextvisualizer
 
 Removed:
 - Old showPlaybackSpeedButtonKey (hold play button to change speed instead)

@@ -1,8 +1,8 @@
 Android的多语言YouTube音乐前端，侧重于性能，UI/UX精炼，功能扩展和长期支持。
 
-<b>N-Zik</b> 是 <a href="https://github.com/knighthat/Kreate">Kreate</a> 的开源叉。
+<b>mousike</b> 是 <a href="https://github.com/knighthat/Kreate">Kreate</a> 的开源叉。
 
-<b>注意：</b> N-Zik开始作为一个侧边项目。更成熟的替代品，请检查 <a href="https://github.com/MetrolistGroup/Metrolist">计量列表</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI 音乐</a>, 或 <a href="https://github.com/fast4x/RiPlay">RiPlay</a>。
+<b>注意：</b> mousike开始作为一个侧边项目。更成熟的替代品，请检查 <a href="https://github.com/MetrolistGroup/Metrolist">计量列表</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI 音乐</a>, 或 <a href="https://github.com/fast4x/RiPlay">RiPlay</a>。
 
 <b>AI 用法：</b> 我使用生成的 AI 代码(通过 <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD 方法</a>)，在发货前经过审查和测试。
 
@@ -38,7 +38,7 @@ Android的多语言YouTube音乐前端，侧重于性能，UI/UX精炼，功能�
 - 音乐Brainz艺术家和专辑洞见解。
 - Discord Rich Presence，包括高级模式和实时预览
 - 替代的 YouTube 串流的邀请集成
-- 播放列表导入/导出：Riplay、Spotify、YouTube Music、N-Zik
+- 播放列表导入/导出：Riplay、Spotify、YouTube Music、mousike
 
 👥 <b>Listen Together</b>
 - 通过代码或邀请链接加入或主持与其他用户的现场监听会话
@@ -57,12 +57,12 @@ Android的多语言YouTube音乐前端，侧重于性能，UI/UX精炼，功能�
 - OTA从 GitHub 更新，睡眠计时器，背景播放
 
 📦 <b>可用版本</b>
-- 发布64/Beta64 (`com.nevar.nzik`): 完全构建，64位设备
-- 发布32/Beta32 (`com.nevar.nzik`): 只完成构建，32位设备
-- Minified64 (`com.nevar.nzik`)：轻量R8 构建，用于低端设备(64位)
-- Minified32 (`com.nevar.nzik`)：轻量R8 build(32位)
-- 自由和开放源码软件(“com.nevar.nzik.foss”)：F-Droid (所有建筑师)
-- Dev64/Dev32 (`com.nevar.nzik.dev`)：开发版本，只测试
+- 发布64/Beta64 (`app.mousike`): 完全构建，64位设备
+- 发布32/Beta32 (`app.mousike`): 只完成构建，32位设备
+- Minified64 (`app.mousike`)：轻量R8 构建，用于低端设备(64位)
+- Minified32 (`app.mousike`)：轻量R8 build(32位)
+- 自由和开放源码软件(“app.mousike.foss”)：F-Droid (所有建筑师)
+- Dev64/Dev32 (`app.mousike.dev`)：开发版本，只测试
 
 没有构建包 FFmpeg: 它是一个可下载的扩展 (安装在首次使用中，管理在 设置 -> 扩展)。 F-Droid上只有自由和开放源码软件。
 

@@ -1,0 +1,174 @@
+package app.mousike.android.components.dialog.settings
+
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import app.mousike.android.R
+import app.mousike.android.colorPalette
+import app.mousike.android.components.dialog.common.ButtonRow
+import app.mousike.android.components.dialog.common.DialogButton
+import app.mousike.android.typography
+import app.mousike.android.uiRoundnessShape
+import app.mousike.android.utils.preferredStreamClientKey
+import app.mousike.android.utils.semiBold
+import app.mousike.android.LocalPlayerServiceBinder
+import app.mousike.android.components.dialog.common.ContentFramedDialog
+import app.mousike.android.components.dialog.common.DialogFrame
+import app.mousike.android.utils.streamClientRestartNeededKey
+import app.mousike.android.playback.services.clearStreamCaches
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import android.content.Context
+import androidx.media3.datasource.cache.Cache
+import kotlinx.coroutines.launch
+
+object PreferredStreamClientDialog : ContentFramedDialog {
+
+    override val dialogTitle: String
+        @Composable
+        get() = stringResource(R.string.settings_stream_preferred_client_title)
+
+    override var isActive: Boolean by mutableStateOf(false)
+
+    @Composable
+    override fun DialogBody() {
+        val context = LocalContext.current
+        val binder = LocalPlayerServiceBinder.current
+        val prefs = remember { context.getSharedPreferences("preferences", Context.MODE_PRIVATE) }
+        val savedPref = remember { prefs.getString(preferredStreamClientKey, "WEB_REMIX") ?: "WEB_REMIX" }
+
+        // Local state - not saved until OK is clicked
+        var selectedClient by remember { mutableStateOf(savedPref) }
+
+        val options = listOf(
+            Triple("ANDROID_VR", "Android VR", stringResource(R.string.network_stream_client_android_vr_description)),
+            Triple("WEB_REMIX", "Web Remix", stringResource(R.string.network_stream_client_youtube_music_web_description))
+        )
+
+        DialogFrame(onDismiss = ::hideDialog, title = dialogTitle, bodyPadding = PaddingValues(0.dp),
+        footer = {
+            ButtonRow(
+                buttons = listOf(
+                    // Reset button (grey) - only changes local state
+                    DialogButton(
+                        text = stringResource(R.string.common_action_reset),
+                        enabled = selectedClient != "WEB_REMIX",
+                        textColor = colorPalette().textDisabled,
+                        onClick = {
+                            selectedClient = "WEB_REMIX"
+                        }
+                    ),
+                    // Cancel button (red) - closes without saving
+                    DialogButton(
+                        text = stringResource(R.string.common_action_cancel),
+                        onClick = { hideDialog() },
+                        danger = true
+                    ),
+                    // OK button (accent filled) - saves only if changed
+                    DialogButton(
+                        text = stringResource(R.string.common_action_apply),
+                        onClick = {
+                            if (selectedClient != savedPref) {
+                                prefs.edit().putString(preferredStreamClientKey, selectedClient).apply()
+                                prefs.edit().putBoolean(streamClientRestartNeededKey, true).apply()
+                                clearStreamCaches()
+                                // Clear audio cache
+                                MousikeDispatchers.fireAndForget(MousikeDispatchers.DATA).launch {
+                                    clearAudioCache(binder?.cache)
+                                }
+                            }
+                            hideDialog()
+                        },
+                        primary = true
+                    )
+                )
+            )
+        }) {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState()).padding(24.dp)
+                ) {
+                    options.forEachIndexed { index, (value, title, description) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(uiRoundnessShape())
+                                .clickable { selectedClient = value }
+                                .padding(vertical = 8.dp, horizontal = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = selectedClient == value,
+                                onClick = { selectedClient = value },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = colorPalette().text,
+                                    unselectedColor = colorPalette().textSecondary
+                                ),
+                                modifier = Modifier.size(20.dp)
+                            )
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = title,
+                                    style = typography().xs.semiBold,
+                                    color = colorPalette().text
+                                )
+                                Text(
+                                    text = description,
+                                    style = typography().xxs,
+                                    color = colorPalette().textSecondary
+                                )
+                            }
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+
+    fun reset(context: Context) {
+        val prefs = context.getSharedPreferences("preferences", Context.MODE_PRIVATE)
+        prefs.edit().putString(preferredStreamClientKey, "WEB_REMIX").apply()
+    }
+}
+
+/**
+ * Purges the full streaming audio cache (issue #606 H3) — one `removeResource` per key.
+ * Callers dispatch this on a background dispatcher; a null [cache] is a safe no-op and
+ * individual removal failures are already tolerated by the cache itself.
+ */
+internal suspend fun clearAudioCache(cache: Cache?) {
+    cache?.keys?.forEach { key ->
+        cache.removeResource(key)
+    }
+}

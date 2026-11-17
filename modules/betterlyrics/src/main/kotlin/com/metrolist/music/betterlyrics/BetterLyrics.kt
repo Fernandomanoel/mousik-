@@ -1,0 +1,136 @@
+package com.metrolist.music.betterlyrics
+
+import com.metrolist.music.betterlyrics.models.TTMLResponse
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.request.get
+import io.ktor.client.request.parameter
+import io.ktor.http.HttpStatusCode
+import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
+import timber.log.Timber
+import okhttp3.Protocol
+import okhttp3.Response
+
+object BetterLyrics {
+    private const val TAG = "BetterLyrics"
+
+    /**
+     * Root-level offline gate, wired by the app at startup (MainApplication).
+     * When non-null and it returns false, every outbound request short-circuits
+     * with a synthetic 503. Read live per request. Null until wired keeps the
+     * module self-contained for standalone/tests use.
+     */
+    @Volatile
+    var offlineGate: (() -> Boolean)? = null
+
+    private val client by lazy {
+        HttpClient(OkHttp) {
+            install(ContentNegotiation) {
+                json(
+                    Json {
+                        isLenient = true
+                        ignoreUnknownKeys = true
+                    },
+                )
+            }
+
+            install(HttpTimeout) {
+                requestTimeoutMillis = 15000
+                connectTimeoutMillis = 10000
+                socketTimeoutMillis = 15000
+            }
+
+            defaultRequest {
+                url("https://lyrics-api.boidu.dev")
+                headers {
+                    append("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+                    append("Accept", "application/json")
+                }
+            }
+
+            // Root-level offline gate (app-wired): fast-fail synthetic 503 while offline.
+            engine {
+                config {
+                    addInterceptor { chain ->
+                        val gate = offlineGate
+                        if (gate != null && !gate()) {
+                            val request = chain.request()
+                            Timber.tag(TAG).d("offline: short-circuited ${request.method} ${request.url.encodedPath}")
+                            return@addInterceptor Response.Builder()
+                                .request(request)
+                                .protocol(Protocol.HTTP_1_1)
+                                .code(503)
+                                .message("No network connection")
+                                .build()
+                        }
+                        chain.proceed(chain.request())
+                    }
+                }
+            }
+
+            expectSuccess = false
+        }
+    }
+
+    suspend fun fetchTTML(
+        artist: String,
+        title: String,
+        duration: Int = -1,
+        album: String? = null,
+    ): String? = runCatching {
+        Timber.d("%s: Requesting TTML -> Title: '%s' | Artist: '%s' | Duration: %d | Album: '%s'", TAG, title, artist, duration, album ?: "N/A")
+        val response = client.get("/getLyrics") {
+            parameter("s", title)
+            parameter("a", artist)
+            if (duration > 0) {
+                parameter("d", duration)
+            }
+            if (!album.isNullOrBlank()) {
+                parameter("al", album)
+            }
+        }
+        
+        Timber.d("%s: Request URL: %s", TAG, response.call.request.url)
+        
+        if (response.status == HttpStatusCode.OK) {
+            val ttml = response.body<TTMLResponse>().ttml?.trim()?.takeIf { it.isNotEmpty() }
+            if (ttml != null) {
+                Timber.d("%s: Successfully received TTML (length=%d)", TAG, ttml.length)
+            } else {
+                Timber.d("%s: Request successful, but TTML response is empty or null", TAG)
+            }
+            ttml
+        } else {
+            Timber.e("%s: API returned error status: %d %s", TAG, response.status.value, response.status.description)
+            null
+        }
+    }.getOrElse { e ->
+        Timber.e(e, "%s: Exception during fetchTTML", TAG)
+        null
+    }
+
+    suspend fun getLyrics(
+        title: String,
+        artist: String,
+        duration: Int,
+        album: String? = null,
+    ) = runCatching {
+        // Use exact title and artist - no normalization to ensure correct sync
+        // Normalizing can return wrong lyrics (e.g., radio edit vs original)
+        val ttml =
+            fetchTTML(artist, title, duration, album)
+                ?: throw IllegalStateException("Lyrics unavailable")
+
+        val parsedLines = TTMLParser.parseTTML(ttml)
+        if (parsedLines.isEmpty()) {
+            throw IllegalStateException("Failed to parse lyrics")
+        }
+        
+        TTMLParser.toLRC(parsedLines)
+    }
+}

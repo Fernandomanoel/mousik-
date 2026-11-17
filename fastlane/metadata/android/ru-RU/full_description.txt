@@ -1,8 +1,8 @@
 Многоязычный open-source фронтенд YouTube Music для Android: производительность, доработки UI/UX, новые функции и долгосрочная поддержка.
 
-<b>N-Zik</b> - open-source форк <a href="https://github.com/knighthat/Kreate">Kreate</a>.
+<b>mousike</b> - open-source форк <a href="https://github.com/knighthat/Kreate">Kreate</a>.
 
-<b>Примечание:</b> N-Zik начался как побочный проект. Более зрелые альтернативы: <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a> или <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
+<b>Примечание:</b> mousike начался как побочный проект. Более зрелые альтернативы: <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a> или <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
 
 <b>Использование ИИ:</b> Я использую генеративный ИИ для кода (через <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD Method</a>), всё проверено и протестировано перед выпуском.
 
@@ -38,7 +38,7 @@
 - Профили исполнителей и альбомы MusicBrainz
 - Discord Rich Presence, включая продвинутый режим с живым предпросмотром
 - Интеграция Invidious для альтернативного YouTube-стриминга
-- Импорт/экспорт плейлистов: RiPlay, Spotify, YouTube Music, N-Zik
+- Импорт/экспорт плейлистов: RiPlay, Spotify, YouTube Music, mousike
 
 👥 <b>Слушайте вместе</b>
 - Присоединяйтесь или создавайте живые сессии с другими пользователями по коду или ссылке на приглашение
@@ -57,12 +57,12 @@
 - OTA-обновления с GitHub, таймер сна, фоновое воспроизведение
 
 📦 <b>Доступные сборки</b>
-- Release64/Beta64 (`com.nevar.nzik`): Полная сборка, только 64-битовые устройства
-- Release32/Beta32 (`com.nevar.nzik`): Полная сборка, только 32-битовые устройства
-- Minified64 (`com.nevar.nzik`): Облегчённая сборка R8, для слабых устройств (64-бит)
-- Minified32 (`com.nevar.nzik`): Облегчённая сборка R8 (32-бит)
-- FOSS (`com.nevar.nzik.foss`): Без автообновления, для F-Droid (все архитектуры)
-- Dev64/Dev32 (`com.nevar.nzik.dev`): Для разработчиков, только для тестирования
+- Release64/Beta64 (`app.mousike`): Полная сборка, только 64-битовые устройства
+- Release32/Beta32 (`app.mousike`): Полная сборка, только 32-битовые устройства
+- Minified64 (`app.mousike`): Облегчённая сборка R8, для слабых устройств (64-бит)
+- Minified32 (`app.mousike`): Облегчённая сборка R8 (32-бит)
+- FOSS (`app.mousike.foss`): Без автообновления, для F-Droid (все архитектуры)
+- Dev64/Dev32 (`app.mousike.dev`): Для разработчиков, только для тестирования
 
 Ни одна сборка не содержит FFmpeg: это загрузочное расширение (устанавливается при первом использовании, управляется в Настройки → Расширения). Только FOSS на F-Droid.
 

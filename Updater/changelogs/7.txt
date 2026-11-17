@@ -1,5 +1,5 @@
 Changed:
-- Added the new N-Zik icon: Monochrome, Main, and Material You
+- Added the new mousike icon: Monochrome, Main, and Material You
 - Added the new banner
 - Fixed missing content in the project
 - Integrated upstream updates, improving stability

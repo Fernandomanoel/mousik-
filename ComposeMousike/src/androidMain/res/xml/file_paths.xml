@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <cache-path
+        name="image_edit"
+        path="image_edit/" />
+    <external-files-path
+        name="mousike_updates"
+        path="Download/mousike_updates/" />
+    <files-path
+        name="app_covers"
+        path="app_covers/" />
+    <cache-path
+        name="shared_rewind"
+        path="shared_rewind/" />
+</paths>

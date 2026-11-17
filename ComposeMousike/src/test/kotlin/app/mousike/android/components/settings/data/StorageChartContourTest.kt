@@ -1,0 +1,93 @@
+package app.mousike.android.components.settings.data
+
+import android.app.Application
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.unit.dp
+import app.mousike.android.enums.FontType
+import app.mousike.android.ui.styling.Appearance
+import app.mousike.android.ui.styling.DefaultDarkColorPalette
+import app.mousike.android.ui.styling.LocalAppearance
+import app.mousike.android.ui.styling.typographyOf
+import app.mousike.android.components.glass.GlassArea
+import app.mousike.android.components.glass.GlassAreaMode
+import app.mousike.android.components.glass.GlassQuality
+import app.mousike.android.components.glass.GlassSettings
+import app.mousike.android.components.glass.LocalGlassPreviewSettings
+import app.mousike.android.components.glass.glassSettingsCardRim
+import app.mousike.android.components.glass.usesGlassMaterial
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33], application = Application::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+class StorageChartContourTest {
+    @get:Rule val compose = createComposeRule()
+
+    @Test fun `storage chart draws exactly one rim when contour is enabled`() {
+        val mode = mutableStateOf(GlassAreaMode.Disabled)
+        val chartColor = StorageCategory.IMAGES.color
+        val snapshot = requireNotNull(partitionStorage(100L, 0L, mapOf(StorageCategory.IMAGES to 100L)))
+        compose.setContent {
+            val settings = GlassSettings(
+                quality = GlassQuality.Performance,
+                film = 0f,
+                areaModes = mapOf(GlassArea.SettingsCards to mode.value),
+            )
+            CompositionLocalProvider(
+                LocalAppearance provides Appearance(DefaultDarkColorPalette,
+                    typographyOf(Color.White, true, false, FontType.Rubik), CircleShape, CircleShape, CircleShape),
+                LocalGlassPreviewSettings provides settings,
+            ) {
+                Column(Modifier.width(180.dp).background(Color.Black)) {
+                    val fill = if (settings.usesGlassMaterial(GlassArea.SettingsCards)) {
+                        chartColor.copy(alpha = chartColor.alpha * .68f)
+                    } else chartColor
+                    Box(Modifier.fillMaxWidth().height(20.dp).testTag("singleRimReference")
+                        .glassSettingsCardRim(CircleShape).clip(CircleShape).background(fill))
+                    StorageChart(snapshot)
+                }
+            }
+        }
+
+        for (selected in GlassAreaMode.entries) {
+            compose.runOnIdle { mode.value = selected }
+            val actual = compose.onNodeWithTag("data.storage.chart.bar").captureToImage().toPixelMap()
+            val reference = compose.onNodeWithTag("singleRimReference").captureToImage().toPixelMap()
+            assertEquals(selected.name, reference.height, actual.height)
+            val x = actual.width / 2
+            assertPixelColor(selected.name, reference[x, 0], actual[x, 0])
+            assertPixelColor(selected.name, reference[x, actual.height - 1], actual[x, actual.height - 1])
+        }
+    }
+
+    private fun assertPixelColor(mode: String, expected: Color, actual: Color) {
+        // Canvas and a composited background can round an 8-bit color channel differently.
+        val tolerance = 1f / 255f + 0.00001f
+        assertEquals(mode, expected.red, actual.red, tolerance)
+        assertEquals(mode, expected.green, actual.green, tolerance)
+        assertEquals(mode, expected.blue, actual.blue, tolerance)
+        assertEquals(mode, expected.alpha, actual.alpha, tolerance)
+    }
+}

@@ -1,0 +1,182 @@
+package app.mousike.android.components.navigation.header
+
+import app.mousike.android.components.ui.screens.home.LocalSharedHomeHeaderGlass
+import app.mousike.android.components.ui.screens.home.LocalHomeGlassInAppHeader
+import app.mousike.android.components.glass.GlassArea
+import app.mousike.android.components.glass.LocalGlassContainerBackdrop
+import app.mousike.android.components.glass.LocalGlassMaterialSource
+import app.mousike.android.components.glass.LocalGlassBackdrop
+import app.mousike.android.components.glass.usesGlassMaterial
+import app.mousike.android.components.glass.headerGlassMotionVisualOutset
+import app.mousike.android.core.navigation.navigationChromeTween
+import app.mousike.android.core.navigation.rememberAppBackAction
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import app.mousike.android.components.glass.backdrop.Backdrop
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import app.mousike.android.enums.NavRoutes
+import app.mousike.android.ui.styling.favoritesIcon
+import app.mousike.android.R
+import app.mousike.android.LocalTopBarOffset
+import app.mousike.android.colorPalette
+import app.mousike.android.surfaceColor
+import app.mousike.android.components.player.APP_HEADER_HEIGHT
+import app.mousike.android.components.ui.header.CollapsingAppTitle
+import app.mousike.android.components.glass.rememberGlassSettings
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.material3.LocalContentColor
+
+class AppHeader(
+    val navController: NavController
+) {
+
+    companion object {
+
+        @OptIn(ExperimentalMaterial3Api::class)
+        @Composable
+        fun colors(): TopAppBarColors = TopAppBarColors(
+            containerColor = colorPalette().background0,
+            titleContentColor = colorPalette().text,
+            scrolledContainerColor = colorPalette().background0,
+            navigationIconContentColor = colorPalette().background0,
+            actionIconContentColor = colorPalette().text
+        )
+    }
+
+    @Composable
+    fun Draw(backgroundOverride: Color? = null, statusBackgroundVisible: Boolean = false, glassBaseColor: Color = Color.Transparent) {
+        val glassSettings = rememberGlassSettings()
+        val glassEnabled = glassSettings.usesGlassMaterial(GlassArea.Header)
+        val onAppBack = rememberAppBackAction(navController)
+        val context = LocalContext.current
+        val currentEntry by navController.currentBackStackEntryAsState()
+        val isHome = currentEntry?.destination?.route?.let { route ->
+            route.startsWith(NavRoutes.home.name) || route == NavRoutes.queue.name
+        } ?: true
+        // Animate the start padding smoothly so the logo has nice spacing when home, 
+        // and the back button aligns correctly when present.
+        val startPadding by animateDpAsState(
+            targetValue = 12.dp,
+            animationSpec = navigationChromeTween()
+        )
+
+        val topBarOffsetState = LocalTopBarOffset.current
+        val density = LocalDensity.current
+        val statusBarTopPx = WindowInsets.safeDrawing.getTop(density).toFloat()
+        val headerHeightPx = with(density) { APP_HEADER_HEIGHT.toPx() }
+        val headerColor = backgroundOverride ?: colorPalette().background0
+        val hasTopGlassBackdrop = statusBackgroundVisible && glassSettings.usesGlassMaterial(GlassArea.Nav)
+        val sharedHomeGlass = LocalSharedHomeHeaderGlass.current.takeIf { LocalHomeGlassInAppHeader.current }
+        val standaloneGlass = glassEnabled && !hasTopGlassBackdrop && sharedHomeGlass == null
+        val motionVisualOutset = if (glassEnabled) headerGlassMotionVisualOutset() else 0.dp
+
+        Box(Modifier.fillMaxWidth()) {
+        // Glass Top owns one continuous pane behind both this header and its nav row.
+        if (statusBackgroundVisible && !hasTopGlassBackdrop && !standaloneGlass && sharedHomeGlass == null) {
+            TopHeaderBackdrop(
+                settings = glassSettings,
+                filmColor = surfaceColor(colorPalette().background1),
+                statusBarTopPx = statusBarTopPx,
+                headerRowHeightPx = headerHeightPx,
+                headerOffsetPx = { topBarOffsetState.value },
+            )
+        }
+        // Slide the themed surface above the page without fading its controls. The page
+        // keeps its own scroll distance while this clip excludes the system status area.
+        val controlsContent: @Composable (Backdrop?) -> Unit = { controlsBackdrop ->
+        Row(
+            modifier = Modifier
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+                .headerScrollFade(
+                    statusBarTopPx, headerHeightPx,
+                    surfaceColor = headerColor.takeUnless { statusBackgroundVisible || standaloneGlass || sharedHomeGlass != null },
+                    clipStatusAtRest = true,
+                    motionVisualOutset = motionVisualOutset,
+                ) { topBarOffsetState.value }
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+                .fillMaxWidth()
+                .height(64.dp)
+                .padding(start = startPadding, end = headerActionEndPadding(glassSettings.usesGlassMaterial(GlassArea.ActionButtons))),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Restore TopAppBar's default content coloring behavior for action buttons
+            CompositionLocalProvider(
+                LocalContentColor provides colorPalette().text,
+            ) {
+                HeaderControlsGlassSources(
+                    controlsBackdrop = controlsBackdrop,
+                ) {
+                    // Glass Back fades in at its anchor; only the title's reserved space expands.
+                    HeaderBackSlot(visible = !isHome, glass = glassEnabled) {
+                        Box(Modifier.padding(end = 8.dp)) {
+                            HeaderIcon(R.drawable.chevron_back, colorPalette().favoritesIcon, onClick = onAppBack)
+                        }
+                    }
+    
+                    // Logo + Title â€” shifts right smoothly as back button expands.
+                    // Takes the full remaining width (weight, fill) so its extras can
+
+                    // collapse behind the logo instead of compressing the action bar, which
+                    // stays pinned to the right edge.
+                    CollapsingAppTitle(navController, context, Modifier.weight(1f))
+
+                    // Action icons (search, settingsâ€¦)
+                    ActionBar(navController)
+                }
+            }
+        }
+        }
+        if (sharedHomeGlass != null) {
+            controlsContent(sharedHomeGlass.surface)
+        } else if (standaloneGlass) {
+            StandaloneHeaderGlass(
+                settings = glassSettings,
+                filmColor = headerColor,
+                pageBackdrop = LocalGlassBackdrop.current,
+                baseColor = glassBaseColor,
+                statusBarTopPx = statusBarTopPx,
+                headerHeightPx = headerHeightPx,
+                headerOffsetPx = { topBarOffsetState.value },
+                content = { surface -> controlsContent(surface) },
+            )
+        } else {
+            controlsContent(rememberHeaderControlsBackdrop(hasTopGlassBackdrop, headerColor))
+        }
+        }
+    }
+}
+
+/** Descendants sample the child-free header material, including its own film. */
+@Composable
+internal fun HeaderControlsGlassSources(
+    controlsBackdrop: Backdrop?,
+    content: @Composable () -> Unit,
+) {
+    CompositionLocalProvider(
+        LocalGlassBackdrop provides controlsBackdrop,
+        LocalGlassContainerBackdrop provides controlsBackdrop,
+        LocalGlassMaterialSource provides controlsBackdrop,
+        content = content,
+    )
+}

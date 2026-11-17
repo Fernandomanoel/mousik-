@@ -1,8 +1,8 @@
 Android向けの多言語YouTubeミュージックフロントエンド。パフォーマンス、UI/UX改良、機能拡張、長期サポートに焦点を当てています。
 
-<b>N-Zik</b> は、 <a href="https://github.com/knighthat/Kreate">Kreate</a> のオープンソースフォークです。
+<b>mousike</b> は、 <a href="https://github.com/knighthat/Kreate">Kreate</a> のオープンソースフォークです。
 
-<b>注意:</b> N-Zik はサイドプロジェクトとして開始されました。より成熟した選択肢については、 <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>, または <a href="https://github.com/fast4x/RiPlay">RiPlay</a> をご覧ください。
+<b>注意:</b> mousike はサイドプロジェクトとして開始されました。より成熟した選択肢については、 <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>, または <a href="https://github.com/fast4x/RiPlay">RiPlay</a> をご覧ください。
 
 <b>AI 使用法:</b> 生成AIをコード( <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD メソッド</a>を介して)に使用し、出荷前にレビューおよびテストします。
 
@@ -38,7 +38,7 @@ Android向けの多言語YouTubeミュージックフロントエンド。パフ
 - MusicBrainzアーティストとアルバムの洞察力があります
 - ライブプレビューの高度なモードを含むDiscord Rich Presence。
 - 代わりのYouTubeストリーミングへの鮮明な統合
-- Playlist のインポート/エクスポート: RiPlay, Spotify, YouTube Music, N-Zik
+- Playlist のインポート/エクスポート: RiPlay, Spotify, YouTube Music, mousike
 
 :busts_in_sシルエット: <b>一緒に聞く</b>
 - コードまたは招待リンクを介して他のユーザーとライブリスニングセッションに参加またはホスト
@@ -57,12 +57,12 @@ Android向けの多言語YouTubeミュージックフロントエンド。パフ
 - GitHubからOTAアップデート、スリープタイマー、バックグラウンド再生
 
 📦 <b>利用可能なビルド</b>
-- Release64/Beta64 (`com.nevar.nzik`): 64ビットデバイスのみを完全にビルドする
-- Release32/Beta32 (`com.nevar.nzik`): 完全なビルド、32ビットデバイスのみ
-- Minified64 (`com.nevar.nzik`): 軽量R8ビルド、ローエンドデバイス (64ビット)
-- Minified32 (`com.nevar.nzik`): 軽量R8ビルド (32ビット)
-- FOSS (`com.nevar.nzik.foss`): 自動更新なし、F-Droid (すべてのアーキテクチャ)
-- Dev64/Dev32 (`com.nevar.nzik.dev`): 開発ビルド、テストのみ
+- Release64/Beta64 (`app.mousike`): 64ビットデバイスのみを完全にビルドする
+- Release32/Beta32 (`app.mousike`): 完全なビルド、32ビットデバイスのみ
+- Minified64 (`app.mousike`): 軽量R8ビルド、ローエンドデバイス (64ビット)
+- Minified32 (`app.mousike`): 軽量R8ビルド (32ビット)
+- FOSS (`app.mousike.foss`): 自動更新なし、F-Droid (すべてのアーキテクチャ)
+- Dev64/Dev32 (`app.mousike.dev`): 開発ビルド、テストのみ
 
 ビルドバンドルなし FFmpeg: ダウンロード可能な拡張機能です (最初の使用時にインストールされ、設定 → 拡張機能で管理されます)。 F-Droidに搭載されているのはFOSSだけです。
 

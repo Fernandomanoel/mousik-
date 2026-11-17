@@ -1,8 +1,8 @@
 Een meertalige YouTube Music frontend voor Android, gericht op prestaties, UI/UX raffinaderijen, feature expansie en langdurige ondersteuning.
 
-<b>N-Zik</b> is een open-source vork van <a href="https://github.com/knighthat/Kreate">Kreate</a>.
+<b>mousike</b> is een open-source vork van <a href="https://github.com/knighthat/Kreate">Kreate</a>.
 
-<b>Opmerking:</b> N-Zik begon als een zijproject. Voor meer volwassen alternatieven, bekijk <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>of <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
+<b>Opmerking:</b> mousike begon als een zijproject. Voor meer volwassen alternatieven, bekijk <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>of <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
 
 <b>AI gebruik:</b> Ik gebruik generative AI voor code (via <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD Method</a>), herzien en getest voor verzending.
 
@@ -38,7 +38,7 @@ Glazen credits: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / Ac
 - MusicBrainz artiest en album inzichten
 - Discord Rich Presence, inclusief geavanceerde modus met live voorbeeld
 - Onbenauwde integratie voor alternatieve YouTube streaming
-- Afspeellijst import/export: RiPlay, Spotify, YouTube Music, N-Zik
+- Afspeellijst import/export: RiPlay, Spotify, YouTube Music, mousike
 
 👥 <b>Luister samen</b>
 - Deelnemen aan of hosten van live luistersessies met andere gebruikers via code of uitnodigingslink
@@ -57,12 +57,12 @@ Glazen credits: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / Ac
 - OTA updates vanaf GitHub, slaap timer, achtergrond afspelen
 
 📦 <b>Beschikbare Builds</b>
-- Release64/Beta64 (`com.nevar.nzik`): Complete build, alleen 64-bit apparaten
-- Release32/Beta32 (`com.nevar.nzik`): Complete build, 32-bit apparaten alleen
-- Minified64 (`com.nevar.nzik`): Lichtgewicht R8 gebouwd, voor low-end apparaten (64-bit)
-- Minified32 (`com.nevar.nzik`): Lichtgewicht R8 build (32-bit)
-- FOSS (`com.nevar.nzik.fos`): Zonder automatische updater, voor F-Droid (alle architectures)
-- Dev64/Dev32 (`com.nevar.nzik.dev`): Ontwikkeling builds, alleen testen
+- Release64/Beta64 (`app.mousike`): Complete build, alleen 64-bit apparaten
+- Release32/Beta32 (`app.mousike`): Complete build, 32-bit apparaten alleen
+- Minified64 (`app.mousike`): Lichtgewicht R8 gebouwd, voor low-end apparaten (64-bit)
+- Minified32 (`app.mousike`): Lichtgewicht R8 build (32-bit)
+- FOSS (`app.mousike.fos`): Zonder automatische updater, voor F-Droid (alle architectures)
+- Dev64/Dev32 (`app.mousike.dev`): Ontwikkeling builds, alleen testen
 
 Geen build bundles FFmpeg: het is een downloadbare extensie (geïnstalleerd op het eerste gebruik, beheerd in Instellingen → Extensies). Alleen FOSS is op F-Droid.
 

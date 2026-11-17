@@ -11,7 +11,7 @@ Fixed:
 - Fixed top charts country selection
 - Fixed top charts not updating
 - Fixed source error on Android Auto
-- Fixed desynchronization of NZik with NZik on Android Auto
+- Fixed desynchronization of Mousike with Mousike on Android Auto
 - Fixed On device play not working on Android Auto (stuck in searching phase)
 
 Improved:

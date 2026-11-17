@@ -1,0 +1,134 @@
+package app.mousike.android.components.import
+
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.ManagedActivityResultLauncher
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.CoroutineScope
+import app.mousike.android.utils.getActiveProfile
+import app.mousike.android.R
+import app.mousike.android.components.ui.screens.profiles.plainProfilePrefs
+import app.mousike.android.components.ui.screens.profiles.profileSecurePrefs
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
+import java.io.InputStream
+
+import app.mousike.android.components.ImportFromFile
+import app.mousike.android.components.settings.accounts.GitHubAccount
+import app.mousike.android.components.dialog.common.RestartAppDialog
+import app.mousike.android.core.rescue.RescueFiles
+import app.mousike.android.core.backup.SettingsPreferencesBridge
+import app.mousike.android.core.backup.DatabaseRestoreJournal
+import app.mousike.android.core.profiles.profileStorageIdentity
+import app.mousike.android.core.utils.Toaster
+
+class ImportSettings private constructor(
+    launcher: ManagedActivityResultLauncher<Array<String>, Uri?>
+): ImportFromFile(launcher) {
+
+    companion object {
+
+        /**
+         * Imports a settings CSV into [profile]'s prefs: every row is routed to the
+         * plain or the encrypted editor of that profile (the base profile keeps the
+         * un-suffixed files). [profile] defaults to the active one for the callers
+         * that import straight into the running app (migration, immediate imports).
+         */
+        fun onImport( context: Context, inStream: InputStream, profile: String = getActiveProfile(context) ) {
+            Timber.tag("ImportSettings").d("Starting settings import into profile '$profile'...")
+            val target = checkNotNull(profileStorageIdentity(context, profile))
+            val rows = RescueFiles.readSettingsCsv(inStream)
+            DatabaseRestoreJournal.withProfileStorageMutation(context) {
+                check(profileStorageIdentity(context, profile) == target) { "The profile changed during settings import" }
+                val editor = plainProfilePrefs(context, profile).edit()
+                val encryptedEditor = profileSecurePrefs(context, profile).edit()
+                val glassEditor = SettingsPreferencesBridge.stageGlass(context, rows, profile)
+                RescueFiles.applySettingRows(rows, editor, encryptedEditor) { key, value ->
+                    SettingsPreferencesBridge.stageStorageRow(context, target, editor, key, value)
+                }
+                check(editor.commit()) { "Could not save the settings" }
+                check(encryptedEditor.commit()) { "Could not save the credentials" }
+                check(glassEditor?.commit() ?: true) { "Could not save the Glass settings" }
+                rows.lastOrNull { it.second == "githubBackupIdentity" && it.first.equals("string", ignoreCase = true) }
+                    ?.third?.let { GitHubAccount.restoreIdentity(context, it, profile) }
+            }
+            Timber.tag("ImportSettings").d("Settings import complete")
+        }
+
+        /**
+         * Opens the settings file at [uri] and imports it into [profile]'s prefs.
+         * Throws when the source stream cannot be opened.
+         */
+        suspend fun importFile( context: Context, uri: Uri, profile: String ) {
+            val inStream = context.contentResolver
+                .openInputStream( uri )
+                ?: error("Failed to open input stream for $uri")
+            inStream.use { onImport( context, it, profile ) }
+        }
+
+        /**
+         * @param onImportComplete immediate mode: the import runs straight into the
+         *   active profile and this callback closes the flow (null = restart prompt)
+         * @param onFilePicked deferred mode: the picked URI is only reported back —
+         *   the import runs later, into the profile chosen in the target dialog
+         */
+        @Composable
+        operator fun invoke(
+            context: Context,
+            onImportComplete: (() -> Unit)? = null,
+            onFilePicked: ((Uri) -> Unit)? = null,
+            onCancelled: () -> Unit = {}
+        ): ImportSettings {
+            val coroutineScope = rememberCoroutineScope()
+            return ImportSettings(
+                rememberLauncherForActivityResult(
+                    ActivityResultContracts.OpenDocument()
+                ) { uri ->
+                    Timber.tag("ImportSettings").d("File picker callback received, uri: $uri")
+                    if (uri == null) {
+                        onCancelled()
+                        return@rememberLauncherForActivityResult
+                    }
+
+                    // Deferred mode: the caller keeps the URI and runs the import later,
+                    // into the profile picked in the target dialog.
+                    onFilePicked?.let { deferred ->
+                        deferred(uri)
+                        return@rememberLauncherForActivityResult
+                    }
+
+                    coroutineScope.launch(MousikeDispatchers.DATA) {
+                        runCatching {
+                            importFile( context, uri, getActiveProfile(context) )
+
+                            withContext(MousikeDispatchers.UI) {
+                                if (onImportComplete != null) {
+                                    onImportComplete()
+                                } else {
+                                    RestartAppDialog.showDialog()
+                                }
+                            }
+                        }.onFailure { e ->
+                            Timber.tag("ImportSettings").e(e, "Import failed")
+                            withContext(MousikeDispatchers.UI) {
+                                Toaster.e(R.string.backup_import_failed)
+                            }
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    override val supportedMimes: Array<String> = arrayOf(
+        "text/csv",
+        "text/comma-separated-values",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+}

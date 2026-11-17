@@ -46,14 +46,14 @@ Changed:
 
 Refactor:
 - Extracted nextvisualizer into an independent git submodule, flattened its structure and removed its R class dependencies
-- Renamed the main application module from composeApp to ComposeN-Zik
+- Renamed the main application module from composeApp to ComposeMousike
 - LocalPlaylistScreen now uses Skeleton like all other screens for consistent layout and mini-player positioning
 - Replaced old drag-and-drop library with sh.calvin.reorderable for local playlist songs
 - Custom sorting visibility logic applied to LocalPlaylistSongs
 - Centralized and migrated context menus and SongItem components to the new component architecture in Statistics, Quick Picks, and Artist Details pages
-- Moved menu directory from temporary namespace to the permanent app.n_zik.android.components.menu package across the entire application
-- Migrated the remaining screens (HistoryList, LocalSongSearch, Podcast, StatisticsPage) to use the new app.n_zik item menus
-- Migrated PlayerMenu and PlayerItemMenu to the new app.n_zik namespace, finalizing the menu architecture transition
+- Moved menu directory from temporary namespace to the permanent app.mousike.android.components.menu package across the entire application
+- Migrated the remaining screens (HistoryList, LocalSongSearch, Podcast, StatisticsPage) to use the new app.mousike item menus
+- Migrated PlayerMenu and PlayerItemMenu to the new app.mousike namespace, finalizing the menu architecture transition
 - Replaced temporary inline InputTextDialog logic with a modular ChangeCoverDialog for Songs and Videos across SongItemMenu, VideoItemMenu, and PlayerItemMenu
 - Migrated Album and Artist metadata editing (Title, Authors, Cover) from inline InputTextDialog into dedicated modular dialog components (ChangeAlbumTitleDialog, ChangeAlbumAuthorsDialog, ChangeAlbumCoverDialog, ChangeArtistTitleDialog, ChangeArtistCoverDialog)
 - Removed all legacy inline InputTextDialog calls from Item Menus; created ImportPlaylistDialog for importing and reused NewPlaylistDialog for standard creations, ensuring 100% modularization of context menus

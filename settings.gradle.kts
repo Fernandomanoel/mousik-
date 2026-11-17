@@ -17,8 +17,8 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "N-Zik"
-include(":ComposeN-Zik")
+rootProject.name = "mousike"
+include(":ComposeMousike")
 // Projects from extensions
 include(":oldtube")
 project(":oldtube").projectDir = file("extensions/innertube")

@@ -1,5 +1,5 @@
 name: 💡 Feature request
-description: Suggest an idea to help us improve N-Zik
+description: Suggest an idea to help us improve mousike
 title: "[Feature]: "
 labels: ["enhancement"]
 assignees:
@@ -11,7 +11,7 @@ body:
         ****
         ### 💡 READ BEFORE SUBMITTING 💡
         
-        Thanks for taking the time to suggest an idea for N-Zik!
+        Thanks for taking the time to suggest an idea for mousike!
         In-depth details will help us understand your vision and implement it better.
 
   - type: checkboxes

@@ -1,0 +1,191 @@
+package app.mousike.android.components.dialog.settings
+
+import app.mousike.android.utils.preferences
+import app.mousike.android.components.settings.appearance.preview.PortableControlList
+import android.content.Context
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import org.json.JSONArray
+import sh.calvin.reorderable.rememberReorderableLazyListState
+
+import app.mousike.android.utils.homeArtistsDislikedSortMenuOrderKey
+import app.mousike.android.utils.homeArtistsFavoritesSortMenuOrderKey
+import app.mousike.android.utils.homeArtistsLibrarySortMenuOrderKey
+import app.mousike.android.utils.homeArtistsOnDeviceSortMenuOrderKey
+import app.mousike.android.core.utils.Toaster
+import app.mousike.android.components.dialog.common.ContentFramedDialog
+import app.mousike.android.components.dialog.common.ToggleItem
+import app.mousike.android.components.dialog.common.ToggleListDialog
+import app.mousike.android.R
+import app.mousike.android.components.settings.common.SettingsNestedOption
+
+object HomeArtistsSortSettingsDialog : ContentFramedDialog {
+
+    /** Exact searchable options from the same definitions used by this dialog. */
+    internal fun searchOptions(): List<SettingsNestedOption> = tabs.flatMapIndexed { index, tab -> tab.availableIds.map { id ->
+        SettingsNestedOption("${getTabPrefix(tab)}_$id", requireNotNull(getSortLabelRes(id)), index, tab.textId)
+    } }
+
+
+    private val librarySortIds = listOf("Name", "PlayCount", "ListeningTime", "DateAdded", "Custom")
+    private val onDeviceSortIds = listOf("Name", "PlayCount", "ListeningTime", "DateAdded", "Custom")
+    private val favoritesSortIds = listOf("Name", "PlayCount", "ListeningTime", "DateAdded")
+    private val dislikedSortIds = listOf("Name", "PlayCount", "ListeningTime", "DateAdded")
+
+    private enum class ArtistTab(val textId: Int, val availableIds: List<String>) {
+        Library(R.string.library_title, librarySortIds),
+        Favorites(R.string.library_favorites_title, favoritesSortIds),
+        Disliked(R.string.library_disliked_title, dislikedSortIds),
+        OnDevice(R.string.library_on_device_title, onDeviceSortIds)
+    }
+
+    private val tabs = ArtistTab.entries
+
+    internal fun portableLists(): Map<String, PortableControlList> = tabs.associate { tab ->
+        val prefix = getTabPrefix(tab)
+        prefix to PortableControlList(getSortOrderKey(tab), tab.availableIds, "${prefix}_sort_", "_visible")
+    }
+
+    override val dialogTitle: String @Composable get() = stringResource(R.string.settings_dialog_sort_title_format, stringResource(R.string.home_artists_settings))
+    override var isActive: Boolean by mutableStateOf(false)
+
+    private fun parseOrder(s: String, available: List<String>): List<String> {
+        if (s.isBlank()) return available
+        return try {
+            val a = JSONArray(s)
+            val savedIds = mutableListOf<String>(); val seen = mutableSetOf<String>()
+            for (i in 0 until a.length()) { val id = a.getString(i); if (id in available && seen.add(id)) savedIds.add(id) }
+            savedIds + available.filter { it !in savedIds }
+        } catch (_: Exception) { available }
+    }
+    private fun serializeOrder(order: List<String>): String { val a = JSONArray(); order.forEach { a.put(it) }; return a.toString() }
+
+    private fun getSortIcon(id: String): Int = when (id) {
+        "Name" -> R.drawable.text
+        "PlayCount" -> R.drawable.play
+        "ListeningTime" -> R.drawable.trending
+        "DateAdded" -> R.drawable.time
+        "Custom" -> R.drawable.position
+        else -> R.drawable.text
+    }
+    private fun getSortLabelRes(id: String): Int? = when (id) {
+        "Name" -> R.string.library_sort_name
+        "PlayCount" -> R.string.library_sort_play_count
+        "ListeningTime" -> R.string.library_sort_listening_time
+        "DateAdded" -> R.string.library_sort_date_added
+        "Custom" -> R.string.library_sort_custom_order
+        else -> null
+    }
+
+    @Composable
+    private fun getSortLabel(id: String): String = getSortLabelRes(id)?.let { stringResource(it) } ?: id
+
+    private fun getTabPrefix(tab: ArtistTab): String = when (tab) {
+        ArtistTab.Library -> "art_lib"
+        ArtistTab.OnDevice -> "art_dev"
+        ArtistTab.Favorites -> "art_fav"
+        ArtistTab.Disliked -> "art_dis"
+    }
+
+    private fun getSortOrderKey(tab: ArtistTab): String = when (tab) {
+        ArtistTab.Library -> homeArtistsLibrarySortMenuOrderKey
+        ArtistTab.OnDevice -> homeArtistsOnDeviceSortMenuOrderKey
+        ArtistTab.Favorites -> homeArtistsFavoritesSortMenuOrderKey
+        ArtistTab.Disliked -> homeArtistsDislikedSortMenuOrderKey
+    }
+
+    @Composable
+    override fun DialogBody() {
+        val ctx = LocalContext.current
+        val prefs = remember { ctx.preferences }
+        var selectedTabIndex by remember { mutableStateOf(0) }
+
+        var workingOrders by remember {
+            mutableStateOf(
+                tabs.associate { tab ->
+                    val key = getSortOrderKey(tab)
+                    tab to parseOrder(prefs.getString(key, "") ?: "", tab.availableIds).toMutableList()
+                }.toMutableMap()
+            )
+        }
+        var workingToggles by remember {
+            mutableStateOf(
+                tabs.associate { tab ->
+                    val prefix = getTabPrefix(tab)
+                    tab to tab.availableIds.associateWith { id -> prefs.getBoolean("${prefix}_sort_${id}_visible", true) }.toMutableMap()
+                }.toMutableMap()
+            )
+        }
+
+        val currentTab = tabs[selectedTabIndex]
+        val prefix = getTabPrefix(currentTab)
+        val lazyListState = rememberLazyListState()
+        val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+            val o = (workingOrders[currentTab] ?: return@rememberReorderableLazyListState).toMutableList()
+            val fi = o.indexOfFirst { "${prefix}_$it" == from.key }; val ti = o.indexOfFirst { "${prefix}_$it" == to.key }
+            if (fi != -1 && ti != -1) { val item = o.removeAt(fi); o.add(ti, item); workingOrders = workingOrders.toMutableMap().apply { this[currentTab] = o } }
+        }
+        val items = (workingOrders[currentTab] ?: emptyList()).distinct().map { id ->
+            ToggleItem("${prefix}_$id", getSortIcon(id), getSortLabel(id), "${prefix}_sort_${id}_visible", true)
+        }
+
+        ToggleListDialog(
+            frameTitle = dialogTitle,
+            onDismiss = ::hideDialog,
+            bodyHeader = {
+                SettingsDialogTabRow(
+                    labels = tabs.map { stringResource(it.textId) },
+                    selectedTabIndex = selectedTabIndex,
+                    onTabSelected = { selectedTabIndex = it },
+                )
+                Spacer(modifier = Modifier.fillMaxWidth().height(8.dp).testTag("toggleListDialogTabGap"))
+            },
+            items = items, lazyListState = lazyListState, reorderableState = reorderableState, enforceMinOneChecked = true,
+            checkedStatesOverride = items.map { (workingToggles[currentTab] ?: emptyMap())[it.id.removePrefix("${prefix}_")] ?: true },
+            onCheckedChange = { index, newValue ->
+                val id = items[index].id.removePrefix("${prefix}_")
+                val m = (workingToggles[currentTab] ?: emptyMap()).toMutableMap(); m[id] = newValue
+                workingToggles = workingToggles.toMutableMap().apply { this[currentTab] = m }
+            },
+            onReset = {
+                workingToggles = workingToggles.toMutableMap().apply { this[currentTab] = currentTab.availableIds.associateWith { true }.toMutableMap() }
+                workingOrders = workingOrders.toMutableMap().apply { this[currentTab] = currentTab.availableIds.toMutableList() }
+            },
+            onCancel = { hideDialog() },
+            onConfirm = {
+                val edit = prefs.edit()
+                tabs.forEach { tab ->
+                    val prefix2 = getTabPrefix(tab)
+                    val key = getSortOrderKey(tab)
+                    (workingToggles[tab] ?: emptyMap()).forEach { (id, isChecked) -> edit.putBoolean("${prefix2}_sort_${id}_visible", isChecked) }
+                    edit.putString(key, serializeOrder((workingOrders[tab] ?: emptyList()).filter { id -> (workingToggles[tab] ?: emptyMap())[id] == true }))
+                }
+                edit.apply(); Toaster.s(R.string.settings_preference_saved_message); hideDialog()
+            }
+        )
+    }
+
+    fun reset(context: Context) {
+        val prefs = context.preferences
+        val edit = prefs.edit()
+        tabs.forEach { tab ->
+            val prefix2 = getTabPrefix(tab)
+            val key = getSortOrderKey(tab)
+            tab.availableIds.forEach { id -> edit.putBoolean("${prefix2}_sort_${id}_visible", true) }
+            edit.putString(key, serializeOrder(tab.availableIds))
+        }
+        edit.apply()
+    }
+}

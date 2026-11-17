@@ -1,5 +1,5 @@
 New:
-- OTA updates directly inside NZik
+- OTA updates directly inside Mousike
 - Automatic update installation (with permission)
 - Wavy loader on the Update screen
 - "Download again" and "GitHub" buttons

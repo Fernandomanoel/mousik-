@@ -1,0 +1,168 @@
+package app.mousike.android.components.ui.screens.rewind.slides
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import app.mousike.android.R
+import app.mousike.android.components.ui.screens.rewind.RewindData
+import kotlin.math.roundToInt
+
+@Composable
+fun RewindListeningDaysCard(
+    data: RewindData,
+    page: Int,
+    pageCount: Int,
+    active: Boolean,
+    onNext: () -> Unit,
+    onShareSlide: (() -> Unit)? = null
+) {
+    val textScale = LocalRewindTextScale.current
+    val daysInPeriod = data.daysInPeriod
+    // The all-time period has no fixed length; with an empty history its data span is zero —
+    // the ratio is 0 instead of 0/0 = NaN (spec GH-275, patch "Stale string key name").
+    val ratio = if (daysInPeriod > 0) (data.daysWithMusic.toFloat() / daysInPeriod.toFloat()).coerceIn(0f, 1f) else 0f
+    val bar = remember(data.daysWithMusic, data.periodLabel) { Animatable(0f) }
+    LaunchedEffect(active, ratio) {
+        if (!active) {
+            bar.snapTo(0f)
+        } else {
+            rewindRevealDelay(700)
+            rewindDriveTo(bar, ratio, tween(1_050, easing = FastOutSlowInEasing))
+        }
+    }
+    RewindStoryShell(
+        page = page,
+        pageCount = pageCount,
+        background = rewindColors.value.blue,
+        progressColor = rewindColors.value.cream,
+        onNext = onNext,
+        onShareSlide = onShareSlide
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val compact = maxHeight < 700.dp
+            Column(modifier = Modifier.fillMaxSize()) {
+                RewindReveal(active, 40, direction = RewindRevealDirection.Left) {
+                    RewindKicker(stringResource(R.string.rewind_listening_days_kicker, data.periodLabel), rewindColors.value.lime)
+                }
+                Spacer(Modifier.height(11.dp))
+                RewindReveal(active, 110, direction = RewindRevealDirection.Left) {
+                    RewindAdaptiveTitle(
+                        text = stringResource(R.string.rewind_listening_days_heading),
+                        color = rewindColors.value.cream,
+                        fontSize = textScale.size(if (compact) 34.sp else 40.sp),
+                        lineHeight = textScale.size(if (compact) 32.sp else 37.sp),
+                        letterSpacing = textScale.letterSpacing((-1.9).sp),
+                        fontWeight = FontWeight.Black
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Column {
+                        RewindAnimatedNumber(
+                            value = data.daysWithMusic.toLong(),
+                            active = active,
+                            color = rewindColors.value.cream,
+                            fontSize = if (compact) 100 else 126,
+                            delayMillis = 330,
+                            durationMillis = 1_250
+                        )
+                        Text(
+                            text = stringResource(R.string.rewind_label_days),
+                            color = rewindColors.value.lime,
+                            fontSize = textScale.size(25.sp),
+                            lineHeight = textScale.size(25.sp),
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = textScale.letterSpacing(1.0.sp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                RewindReveal(active, 760) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .rewindCardBackground(rewindColors.value.ink, RoundedCornerShape(12.dp))
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Bottom
+                        ) {
+                            Text(
+                                text = stringResource(R.string.rewind_listening_days_heading),
+                                color = rewindColors.value.cream.copy(alpha = 0.55f),
+                                fontSize = textScale.size(9.sp),
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = textScale.letterSpacing(0.8.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = stringResource(R.string.rewind_listening_days_percent_of_period, (ratio * 100f).roundToInt()),
+                                color = rewindColors.value.lime,
+                                fontSize = textScale.size(12.sp),
+                                fontWeight = FontWeight.Black,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.rewindMarqueeOnly()
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(9.dp)
+                                .background(rewindColors.value.cream.copy(alpha = 0.12f), RoundedCornerShape(100.dp))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(bar.value)
+                                    .height(9.dp)
+                                    .background(rewindColors.value.lime, RoundedCornerShape(100.dp))
+                            )
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        RewindAdaptiveTitle(
+                            text = rewindCount(R.plurals.rewind_listening_day_count_without, (daysInPeriod - data.daysWithMusic).coerceAtLeast(0).toLong()),
+                            color = rewindColors.value.cream.copy(alpha = 0.52f),
+                            fontSize = textScale.size(10.sp),
+                            lineHeight = textScale.size(14.sp),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

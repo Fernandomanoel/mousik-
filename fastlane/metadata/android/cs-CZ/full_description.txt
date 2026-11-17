@@ -1,8 +1,8 @@
 Mnohojazyčné YouTube hudební rozhraní pro Android, zaměřené na výkon, UI/UX vylepšení, rozšíření funkcí a dlouhodobou podporu.
 
-<b>N-Zik</b> je open-source fork <a href="https://github.com/knighthat/Kreate">Kreate</a>.
+<b>mousike</b> je open-source fork <a href="https://github.com/knighthat/Kreate">Kreate</a>.
 
-<b>Poznámka:</b> N-Zik začal jako postranní projekt. Pro dospělé alternativy se podívejte na <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>nebo <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
+<b>Poznámka:</b> mousike začal jako postranní projekt. Pro dospělé alternativy se podívejte na <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>nebo <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
 
 <b>Využití AI:</b> Používám generativní AI pro kód (prostřednictvím <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD metoda</a>) zkontrolováno a testováno před odesláním.
 
@@ -38,7 +38,7 @@ Skleněné kredity: Square / Convx projekt (GPL-3.0); Kyant0 AndroidLiquidGlass 
 - Zhlédnutí umělce a alba MusicBrainz
 - Discord Rich Presence, včetně pokročilého režimu s živým náhledem
 - Neviditelná integrace pro alternativní YouTube streamování
-- import/export playlistu: RiPlay, Spotify, YouTube Music, N-Zik
+- import/export playlistu: RiPlay, Spotify, YouTube Music, mousike
 
 👥 <b>Poslechněte společně</b>
 - Připojte se nebo hostte živé poslech s ostatními uživateli prostřednictvím kódu nebo odkazu pozvánky
@@ -57,12 +57,12 @@ Skleněné kredity: Square / Convx projekt (GPL-3.0); Kyant0 AndroidLiquidGlass 
 - OTA aktualizace z GitHubu, časovače spánku, přehrávání na pozadí
 
 📦 <b>Dostupné sestavení</b>
-- Release64/Beta64 (`com.nevar.nzik`): Pouze kompletní sestavení, 64bitová zařízení
-- Release32/Beta32 (`com.nevar.nzik`): Pouze kompletní 32-bitová zařízení
-- Minified64 (`com.nevar.nzik`): lehká R8 postavená pro nízkokoncová zařízení (64-bit)
-- Minified32 (`com.nevar.nzik`): Lightweight R8 build (32-bit)
-- FOSS (`com.nevar.nzik.foss`): bez auto-updateru pro F-Droid (všechny architektury)
-- Dev64/Dev32 (`com.nevar.nzik.dev`): Vývojové sestavení, pouze testovací
+- Release64/Beta64 (`app.mousike`): Pouze kompletní sestavení, 64bitová zařízení
+- Release32/Beta32 (`app.mousike`): Pouze kompletní 32-bitová zařízení
+- Minified64 (`app.mousike`): lehká R8 postavená pro nízkokoncová zařízení (64-bit)
+- Minified32 (`app.mousike`): Lightweight R8 build (32-bit)
+- FOSS (`app.mousike.foss`): bez auto-updateru pro F-Droid (všechny architektury)
+- Dev64/Dev32 (`app.mousike.dev`): Vývojové sestavení, pouze testovací
 
 Žádné balíčky sestavení FFmpeg: je to rozšíření ke stažení (nainstalované při prvním použití, řízené v Nastavení → Rozšíření). Pouze FOSS je na F-Droid.
 

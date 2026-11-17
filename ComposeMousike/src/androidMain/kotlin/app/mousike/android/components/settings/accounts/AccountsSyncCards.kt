@@ -1,0 +1,90 @@
+package app.mousike.android.components.settings.accounts
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.Modifier
+import app.mousike.android.R
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.setValue
+import androidx.media3.common.util.UnstableApi
+import app.mousike.android.utils.enableYouTubeLoginKey
+import app.mousike.android.utils.enableYouTubeSyncKey
+import app.mousike.android.utils.encryptedPreferencesUpdateTrigger
+import app.mousike.android.utils.rememberEncryptedPreference
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.utils.useLoginForBrowseKey
+import app.mousike.android.components.settings.common.SettingsCardSlot
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@Composable
+internal fun AccountsSyncCards(
+    selectedCards: Set<Int>? = null,
+    cardModifier: @Composable (Int) -> Modifier = { Modifier },
+) {
+    if (selectedCards != null && selectedCards.none {
+        it == R.string.sync_data_with_ytm_account || it == R.string.sync_imported_playlists_automatic_title ||
+            it == R.string.sync_import_from_youtube || it == R.string.sync_push_to_youtube
+    }) return
+
+    val useLoginForBrowseSync by rememberPreference(useLoginForBrowseKey, true)
+    val isYouTubeLoginActive by key(encryptedPreferencesUpdateTrigger) {
+        rememberEncryptedPreference(enableYouTubeLoginKey, false)
+    }
+    val isSyncBuild = isYouTubeSyncBuild()
+    val isLoggedIn = isYouTubeLoggedIn()
+    val canEnableSync = isSyncBuild && isYouTubeLoginActive && isLoggedIn && useLoginForBrowseSync
+    val disabledReason = when {
+        !isSyncBuild -> R.string.account_youtube_sync_build_required
+        !isYouTubeLoginActive || !isLoggedIn -> R.string.settings_youtube_connection_required_description
+        !useLoginForBrowseSync -> R.string.account_youtube_sync_browse_required
+        else -> null
+    }
+
+    Column {
+        var isYouTubeSyncEnabled by key(encryptedPreferencesUpdateTrigger) {
+            rememberEncryptedPreference(enableYouTubeSyncKey, false)
+        }
+        val isSyncEnabled = isYouTubeSyncEnabled && canEnableSync
+
+        // Re-sync state when Login for Browse changes (prefs reset externally)
+        LaunchedEffect(useLoginForBrowseSync) {
+            if (!useLoginForBrowseSync) {
+                isYouTubeSyncEnabled = false
+            }
+        }
+
+        Column {
+            if (selectedCards == null || R.string.sync_data_with_ytm_account in selectedCards) {
+                SettingsCardSlot(R.string.sync_data_with_ytm_account, order = 2, modifier = { cardModifier(R.string.sync_data_with_ytm_account) }) {
+                    AccountsSyncOverviewCard(isSyncEnabled, disabledReason) { isYouTubeSyncEnabled = it }
+                }
+            }
+
+            AnimatedVisibility(visible = isSyncEnabled) {
+                Column {
+                    if (selectedCards == null || R.string.sync_imported_playlists_automatic_title in selectedCards) {
+                        SettingsCardSlot(R.string.sync_imported_playlists_automatic_title, order = 3, modifier = { cardModifier(R.string.sync_imported_playlists_automatic_title) }) {
+                            AccountsAutoSyncCard()
+                        }
+                    }
+                    if (selectedCards == null || R.string.sync_import_from_youtube in selectedCards) {
+                        SettingsCardSlot(R.string.sync_import_from_youtube, order = 4, modifier = { cardModifier(R.string.sync_import_from_youtube) }) {
+                            AccountsSyncImportCard()
+                        }
+                    }
+                    if (selectedCards == null || R.string.sync_push_to_youtube in selectedCards) {
+                        SettingsCardSlot(R.string.sync_push_to_youtube, order = 5, modifier = { cardModifier(R.string.sync_push_to_youtube) }) {
+                            AccountsSyncPushCard()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,6 +1,6 @@
 """Generate the fixed ribbed pane's RG16 signed-distance field using only Python stdlib.
 
-Run from N-Zik: python scripts/generate_player_ribbed_sdf.py
+Run from mousike: python scripts/generate_player_ribbed_sdf.py
 The exact polygon remains the clip. The 256px field supplies its optical distance
 and finite-difference normals without a 360-edge loop in every GPU fragment.
 """
@@ -11,8 +11,8 @@ import struct
 import zlib
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / 'ComposeN-Zik/src/androidMain/kotlin/app/n_zik/android/components/player/PlayerTransportRibbedShape.kt'
-OUTPUT = ROOT / 'ComposeN-Zik/src/androidMain/res/drawable-nodpi/player_ribbed_sdf.png'
+SOURCE = ROOT / 'ComposeMousike/src/androidMain/kotlin/app/mousike/android/components/player/PlayerTransportRibbedShape.kt'
+OUTPUT = ROOT / 'ComposeMousike/src/androidMain/res/drawable-nodpi/player_ribbed_sdf.png'
 SIZE = 256
 
 

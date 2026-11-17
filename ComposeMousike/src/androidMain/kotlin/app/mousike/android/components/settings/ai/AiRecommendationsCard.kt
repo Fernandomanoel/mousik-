@@ -1,0 +1,63 @@
+package app.mousike.android.components.settings.ai
+
+import app.mousike.android.components.dialog.common.DialogPresence
+import app.mousike.android.components.settings.common.settingsSearchTarget
+import androidx.compose.ui.Modifier
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import androidx.media3.common.util.UnstableApi
+import app.mousike.android.enums.RecommendationsNumber
+import app.mousike.android.utils.recommendationsNumberKey
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.R
+import app.mousike.android.components.dialog.common.ValueSelectorDialog
+import app.mousike.android.components.settings.common.OtherSettingsEntry
+import app.mousike.android.components.settings.common.SettingsSectionCard
+import app.mousike.android.components.tab.Search
+
+/** Preserves the original Recommendations settings and actions. */
+@UnstableApi
+@Composable
+internal fun AiRecommendationsCard(search: Search) {
+    var recommendationsNumber by rememberPreference(recommendationsNumberKey, RecommendationsNumber.Adaptive)
+    val searchCtx_4 = search.inputValue.isBlank() || stringResource(R.string.settings_section_smart_recommendations_title).contains(search.inputValue, true) || stringResource(R.string.recommendations_number).contains(search.inputValue, true)
+    SettingsSectionCard(
+        title = stringResource(R.string.settings_section_smart_recommendations_title),
+        icon = R.drawable.smart_shuffle,
+        visible = searchCtx_4,
+        content = {
+            var showRecommendationsDialog by remember { mutableStateOf(false) }
+            if (search.inputValue.isBlank() || stringResource(R.string.recommendations_number).contains(search.inputValue, true)) {
+                OtherSettingsEntry(
+                    modifier = Modifier.settingsSearchTarget("ai.smart_recommendations.smart_recommendations_number"),
+                    title = stringResource(R.string.recommendations_number),
+                    text = stringResource(R.string.recommendations_smart_song_count_description),
+                    selectedValueText = if (recommendationsNumber == RecommendationsNumber.Adaptive)
+                        stringResource(R.string.recommendations_adaptive_description) else recommendationsNumber.text,
+                    icon = R.drawable.shuffle,
+                    onClick = { showRecommendationsDialog = true }
+                )
+            }
+
+            DialogPresence(visible = showRecommendationsDialog) {
+                ValueSelectorDialog(
+                    title = stringResource(R.string.recommendations_number),
+                    selectedValue = recommendationsNumber,
+                    values = RecommendationsNumber.values().toList(),
+                    onValueSelected = { recommendationsNumber = it },
+                    valueText = {
+                        when (it) {
+                            RecommendationsNumber.Adaptive -> stringResource(R.string.recommendations_adaptive)
+                            else -> it.text
+                        }
+                    },
+                    onDismiss = { showRecommendationsDialog = false }
+                )
+            }
+        }
+    )
+}

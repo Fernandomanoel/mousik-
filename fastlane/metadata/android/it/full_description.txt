@@ -1,8 +1,8 @@
 Frontend multilingue di YouTube Music per Android, focalizzato su prestazioni, UI/UX, espansione delle funzioni e supporto a lungo termine.
 
-<b>N-Zik</b> è un fork open source di <a href="https://github.com/knighthat/Kreate">Kreate</a>.
+<b>mousike</b> è un fork open source di <a href="https://github.com/knighthat/Kreate">Kreate</a>.
 
-<b>Nota:</b> N-Zik è nato come progetto personale. Per alternative più mature, consulta <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a> o <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
+<b>Nota:</b> mousike è nato come progetto personale. Per alternative più mature, consulta <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a> o <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
 
 <b>Uso dell'IA:</b> Uso IA generativa per il codice (tramite <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD Method</a>), revisionato e testato prima del rilascio.
 
@@ -38,7 +38,7 @@ Crediti: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / Backdrop 
 - Informazioni su artisti e album di MusicBrainz
 - Discord Rich Presence, modalità avanzata con anteprima live
 - Invidious per lo streaming YouTube alternativo
-- Importazione/esportazione playlist: RiPlay, Spotify, YouTube Music, N-Zik
+- Importazione/esportazione playlist: RiPlay, Spotify, YouTube Music, mousike
 
 👥 <b>Ascolta Insieme</b>
 - Unisciti o crea sessioni di ascolto live con altri utenti tramite codice o link di invito
@@ -57,12 +57,12 @@ Crediti: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / Backdrop 
 - Aggiornamenti OTA da GitHub, sleep timer, riproduzione in background
 
 📦 <b>Build Disponibili</b>
-- Release64/Beta64 (`com.nevar.nzik`): Build completa, solo dispositivi 64-bit
-- Release32/Beta32 (`com.nevar.nzik`): Build completa, solo dispositivi 32-bit
-- Minified64 (`com.nevar.nzik`): Build R8 leggera, per dispositivi di fascia bassa (64-bit)
-- Minified32 (`com.nevar.nzik`): Build R8 leggera (32-bit)
-- FOSS (`com.nevar.nzik.foss`): Senza auto-updater, per F-Droid (tutte le architetture)
-- Dev64/Dev32 (`com.nevar.nzik.dev`): Build di sviluppo, solo per test
+- Release64/Beta64 (`app.mousike`): Build completa, solo dispositivi 64-bit
+- Release32/Beta32 (`app.mousike`): Build completa, solo dispositivi 32-bit
+- Minified64 (`app.mousike`): Build R8 leggera, per dispositivi di fascia bassa (64-bit)
+- Minified32 (`app.mousike`): Build R8 leggera (32-bit)
+- FOSS (`app.mousike.foss`): Senza auto-updater, per F-Droid (tutte le architetture)
+- Dev64/Dev32 (`app.mousike.dev`): Build di sviluppo, solo per test
 
 Nessuna build include FFmpeg: è un'estensione scaricabile (installata al primo utilizzo, gestita in Impostazioni → Estensioni). Solo FOSS è su F-Droid.
 

@@ -1,0 +1,164 @@
+package app.mousike.android.components.settings.common
+
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.fillMaxWidth
+import app.mousike.android.components.dialog.common.DialogPresence
+import app.mousike.android.components.dialog.common.DialogFrame
+import app.mousike.android.components.dialog.common.DialogButton
+import app.mousike.android.components.dialog.common.ButtonRow
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.material3.Text
+import app.mousike.android.colorPalette
+import app.mousike.android.typography
+import app.mousike.android.R
+import app.mousike.android.core.utils.Toaster
+import app.mousike.android.components.glass.rememberGlassStore
+
+private val resetScopeNames = listOf("general", "ui", "appearance", "ai", "data", "accounts", "network", "other")
+private const val GLASS_RESET_SCOPE = -1
+private const val ALL_RESET_SCOPE = -2
+
+private data class ResetDialogStep(val scope: Int?)
+
+internal fun resetScopeForTarget(target: String): Int? = if (target == "glass.settings_reset.settings_reset") GLASS_RESET_SCOPE
+else resetScopeNames.indices.firstOrNull { tab ->
+    target == "card.$tab.settings_reset" || target == "${resetScopeNames[tab]}.settings_reset.settings_reset"
+}
+
+private fun resetScopeLabel(scope: Int): Int = when (scope) {
+    ALL_RESET_SCOPE -> R.string.settings_reset_all
+    GLASS_RESET_SCOPE -> R.string.glass_effect_title
+    else -> SettingsCategories.first { it.tab == scope }.labelRes
+}
+
+/** Reuses each original reset action so its defaults and restart behavior remain unchanged. */
+@Composable
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+internal fun SettingsResetCard(
+    scopes: List<Int>,
+    target: String,
+    resetContent: @Composable (Int) -> Unit,
+) {
+    val context = LocalContext.current
+    var restartService by remember { mutableStateOf(false) }
+    val initialScope = resetScopeForTarget(target)
+    var open by remember(target) { mutableStateOf(initialScope != null) }
+    var selectedScope by remember(target) { mutableStateOf(initialScope) }
+    SettingsSectionCard(
+        title = stringResource(R.string.settings_reset),
+        icon = R.drawable.refresh,
+        modifier = Modifier.testTag("settings.reset.card"),
+        content = {
+            OtherSettingsEntry(
+                title = stringResource(R.string.settings_reset_choose_scope),
+                text = stringResource(R.string.settings_reset_choose_scope_description),
+                icon = R.drawable.refresh,
+                modifier = Modifier.testTag("settings.reset.open"),
+                onClick = { selectedScope = null; open = true },
+            )
+        },
+    )
+    DialogPresence(target = ResetDialogStep(selectedScope).takeIf { open }) { step ->
+        // Render the retained step until the shared dialog fade reaches its invisible midpoint.
+        val scope = step.scope
+        DialogFrame(
+            onDismiss = { open = false },
+            bodyPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
+            title = scope?.let { scope ->
+                stringResource(resetScopeLabel(scope))
+            } ?: stringResource(R.string.settings_reset),
+            footer = {
+                ButtonRow(buttons = buildList {
+                    if (scope == ALL_RESET_SCOPE) {
+                        add(DialogButton(
+                            text = stringResource(R.string.settings_reset_all_confirm),
+                            danger = true,
+                            onClick = {
+                                if (open && selectedScope == ALL_RESET_SCOPE) {
+                                    open = false
+                                    applyAllSettingsDefaults(context) { restartService = true }
+                                    Toaster.done()
+                                }
+                            },
+                        ))
+                    }
+                    if (scope != null) {
+                        add(DialogButton(
+                            text = stringResource(R.string.settings_reset_scope_back),
+                            onClick = { selectedScope = null },
+                        ))
+                    }
+                    add(DialogButton(
+                        text = stringResource(R.string.common_action_cancel),
+                        onClick = { open = false },
+                        danger = true,
+                    ))
+                })
+            }
+        ) {
+            Column(
+                Modifier.fillMaxWidth().weight(1f, fill = false)
+                    .testTag("settings.reset.dialog").verticalScroll(rememberScrollState())
+                    .padding(vertical = 24.dp)
+            ) {
+                if (scope == null) {
+                    OtherSettingsEntry(
+                        title = stringResource(R.string.settings_reset_all),
+                        text = stringResource(R.string.settings_reset_all_description),
+                        icon = R.drawable.refresh,
+                        modifier = Modifier.testTag("settings.reset.all.open"),
+                        onClick = { if (open && selectedScope == null) selectedScope = ALL_RESET_SCOPE },
+                    )
+                    val availableScopes = scopes.flatMap { if (it == 1) listOf(it, GLASS_RESET_SCOPE) else listOf(it) }
+                    availableScopes.forEach { tab ->
+                        val label = resetScopeLabel(tab)
+                        OtherSettingsEntry(
+                            title = stringResource(label),
+                            text = stringResource(R.string.settings_reset_scope, stringResource(label)),
+                            icon = R.drawable.refresh,
+                            modifier = Modifier.testTag("settings.reset.scope.$tab"),
+                            onClick = { if (open && selectedScope == null) selectedScope = tab },
+                        )
+                    }
+                } else if (scope == ALL_RESET_SCOPE) {
+                    Text(
+                        text = stringResource(R.string.settings_reset_all_confirmation),
+                        color = colorPalette().text,
+                        style = typography().xs,
+                        modifier = Modifier.testTag("settings.reset.all.confirmation"),
+                    )
+                } else if (scope == GLASS_RESET_SCOPE) {
+                    val store = rememberGlassStore()
+                    OtherSettingsEntry(
+                        title = stringResource(R.string.settings_reset),
+                        text = stringResource(R.string.settings_restore_default_settings),
+                        icon = R.drawable.refresh,
+                        modifier = Modifier.testTag("settings.reset.glass.action"),
+                        onClick = {
+                            if (open && selectedScope == GLASS_RESET_SCOPE) {
+                                store.reset()
+                                Toaster.done()
+                            }
+                        },
+                    )
+                } else {
+                    resetContent(scope)
+                }
+            }
+        }
+    }
+    RestartPlayerService(restartService, onRestart = { restartService = false })
+}

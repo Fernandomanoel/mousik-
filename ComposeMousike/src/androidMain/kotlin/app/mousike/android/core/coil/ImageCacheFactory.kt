@@ -1,0 +1,1259 @@
+package app.mousike.android.core.coil
+
+import app.mousike.android.appTextResources
+import android.content.Context
+import android.graphics.Bitmap
+import android.net.Uri
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.core.net.toUri
+import app.mousike.android.R
+import app.mousike.android.components.image.keepsOriginalArtwork
+import app.mousike.android.components.glass.glassImageRim
+import coil3.ImageLoader
+import coil3.annotation.ExperimentalCoilApi
+import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
+import coil3.compose.AsyncImagePainter.State
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.rememberAsyncImagePainter
+import coil3.decode.DataSource
+import coil3.disk.DiskCache
+import coil3.memory.MemoryCache
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.ErrorResult
+import coil3.request.CachePolicy
+import coil3.size.Scale
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.request.crossfade
+import coil3.request.SuccessResult
+import coil3.toBitmap
+import app.mousike.innertube.models.Thumbnail
+import app.mousike.android.appContext
+import app.mousike.android.cleanPrefix
+import app.mousike.android.enums.ImageQualityFormat
+import app.mousike.android.thumbnailShape
+import app.mousike.android.core.network.utils.NetworkQualityHelper
+// import GlobalNetworkLogger
+import app.mousike.android.core.network.models.NetworkQuality as MousikeNetworkQuality
+import app.mousike.android.utils.getEnum
+import app.mousike.android.utils.getActiveProfile
+import app.mousike.android.utils.imageQualityFormatKey
+import app.mousike.android.utils.preferences
+import app.mousike.android.core.profiles.ProfileStorageIdentity
+import app.mousike.android.core.profiles.coilImageCacheDir
+import app.mousike.android.core.profiles.ProfileDataItem
+import app.mousike.android.core.profiles.isLegacyStorageShared
+import app.mousike.android.core.profiles.profileDataPrefs
+import app.mousike.android.core.profiles.profileStorageGeneration
+import app.mousike.android.core.profiles.settingsProfileFor
+import app.mousike.android.playback.services.automotive.models.ArtworkRevisions
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
+import okhttp3.OkHttpClient
+import okio.Path.Companion.toOkioPath
+// import Timber
+import java.io.File
+import java.io.InputStream
+import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+import app.mousike.android.core.network.client.GlobalNetworkLogger
+import app.mousike.android.core.network.client.NetworkClientFactory
+import androidx.compose.foundation.Image
+import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okio.buffer
+import timber.log.Timber
+
+@OptIn(ExperimentalCoilApi::class)
+object ImageCacheFactory {
+
+    /**
+     * The Coil disk-cache dir of the ACTIVE profile (spec-profile-data-separation):
+     * `coil` (base) or `coil_<id>` (separate), under that profile's location setting
+     * (a shared item follows the BASE profile's setting — see [coilImageCacheDir]).
+     * Extracted from the [DISK_CACHE] lazy so the selection is unit-testable.
+     */
+    internal fun coilDiskCacheDir(context: Context): File =
+        coilImageCacheDir(context, getActiveProfile(context))
+
+    private val diskMutationLock = Any()
+    private var metadataRevision = 0L
+
+    internal fun <T> captureCleanupState(capture: (Long) -> T): T = synchronized(diskMutationLock) {
+        capture(metadataRevision)
+    }
+
+    private fun updateCleanupMetadata(write: () -> Unit) = synchronized(diskMutationLock) {
+        metadataRevision++
+        write()
+    }
+
+    val DISK_CACHE: DiskCache by lazy {
+        val app = appContext()
+        val profile = getActiveProfile(app)
+        val owner = settingsProfileFor(app, profile, ProfileDataItem.IMAGES)
+        val preferences = profileDataPrefs(app, owner)
+        // The Coil image cache of the ACTIVE profile (spec-profile-data-separation).
+        val cacheDir = coilDiskCacheDir(app)
+        val maxSizeBytes = configuredImageCacheBytes(preferences)
+        if (isLegacyStorageShared(app, profile, ProfileDataItem.IMAGES)) {
+            ReadOnlyCoilCache(checkNotNull(cacheDir.parentFile).canonicalFile.resolve(cacheDir.name), maxSizeBytes)
+        } else {
+            CleanupCoilCache(
+                DiskCache.Builder().directory(cacheDir.toPath().toOkioPath()).maxSizeBytes(maxSizeBytes).build(),
+                diskMutationLock,
+            )
+        }
+    }
+
+    private const val PLAYLIST_THUMBNAIL_STORE = "playlist_thumbnail_store"
+    private const val IMAGE_METADATA_STORE = "image_cache_metadata"
+
+    internal fun profileMetadataFiles(identity: ProfileStorageIdentity): Set<String> =
+        setOf(PLAYLIST_THUMBNAIL_STORE, IMAGE_METADATA_STORE).flatMap { base ->
+            val name = "${base}_${identity.id}_${identity.generation}.xml"
+            listOf(name, "$name.bak")
+        }.toSet()
+
+    internal fun profileMetadataStoreName(context: Context, base: String): String {
+        val id = getActiveProfile(context)
+        return "${base}_${id}_${profileStorageGeneration(context, id)}"
+    }
+
+    enum class NetworkQuality(val size: Int, val ttl: Long) {
+        LOW(300, TimeUnit.HOURS.toMillis(1)),
+        MEDIUM(700, TimeUnit.HOURS.toMillis(24)),
+        HIGH(1000, TimeUnit.DAYS.toMillis(14))
+    }
+
+    data class DownloadDecision(
+        val useNetwork: Boolean,
+        val quality: NetworkQuality,
+        val original: Boolean = false,
+    ) {
+        val sourceSize: Int get() = if (original) ORIGINAL_SOURCE_SIZE else quality.size
+    }
+
+    private const val COOLDOWN_MS = 10 * 1000L
+    private val cooldownMap = ConcurrentHashMap<String, Long>()
+    private val cacheKeyMap = ConcurrentHashMap<String, String>()
+    private val storeVersion = MutableStateFlow(0)
+
+    internal object PlaylistThumbnailStore {
+        private const val PREFS_NAME = PLAYLIST_THUMBNAIL_STORE
+        private fun getPrefs() = appContext().let { app ->
+            app.getSharedPreferences(profileMetadataStoreName(app, PREFS_NAME), Context.MODE_PRIVATE)
+        }
+
+        // Store format: "lowResUrl|highResUrl"
+        @Synchronized
+        fun save(id: String, url: String, isHigh: Boolean) {
+            try {
+                val preferences = getPrefs()
+                val current = preferences.getString(id, null)
+                val parts = current?.split("|")
+                var low = parts?.getOrNull(0).orEmpty()
+                var high = parts?.getOrNull(1).orEmpty()
+
+                val newScore = url.getYouTubeQualityScore()
+
+                // Only overwrite if the quality is better for the "high" slot
+                // or worse for the "low" slot (to keep an ultra-light fallback thumbnail)
+                if (isHigh || newScore >= 5) {
+                    if (newScore >= high.getYouTubeQualityScore()) {
+                        high = url
+                    }
+                } else {
+                    if (low.isEmpty() || newScore < low.getYouTubeQualityScore()) {
+                        low = url
+                    }
+                }
+
+                val updated = "$low|$high"
+                if ((low.isNotEmpty() || high.isNotEmpty()) && updated != current) {
+                    updateCleanupMetadata { preferences.edit().putString(id, updated).apply() }
+                    storeVersion.update { it + 1 }
+                }
+            } catch (e: Exception) {
+            }
+        }
+
+        fun getHighUrl(id: String): String? {
+            return try {
+                val current = getPrefs().getString(id, null) ?: return null
+                current.split("|").getOrNull(1)?.takeIf { it.isNotEmpty() }
+            } catch (e: Exception) { null }
+        }
+
+        fun getLowUrl(id: String): String? {
+            return try {
+                val current = getPrefs().getString(id, null) ?: return null
+                current.split("|").getOrNull(0)?.takeIf { it.isNotEmpty() }
+            } catch (e: Exception) { null }
+        }
+
+        fun clear(id: String) {
+            try {
+                updateCleanupMetadata { getPrefs().edit().remove(id).apply() }
+            } catch (e: Exception) {}
+        }
+
+        fun clearAll() {
+            try { updateCleanupMetadata { getPrefs().edit().clear().apply() } } catch (e: Exception) {}
+        }
+    }
+
+    private object CacheMetadataStore {
+        private const val PREFS_NAME = IMAGE_METADATA_STORE
+        private fun getPrefs() = appContext().let { app ->
+            app.getSharedPreferences(profileMetadataStoreName(app, PREFS_NAME), Context.MODE_PRIVATE)
+        }
+
+        fun save(url: String, quality: NetworkQuality) {
+            try {
+                val key = url.hashCode().toString()
+                updateCleanupMetadata { getPrefs().edit().putString(key, "${quality.name}:${System.currentTimeMillis()}").apply() }
+            } catch (e: Exception) {}
+        }
+
+        fun get(url: String): NetworkQuality? {
+            return try {
+                val key = url.hashCode().toString()
+                val value = getPrefs().getString(key, null) ?: return null
+                NetworkQuality.valueOf(value.substringBefore(":"))
+            } catch (e: Exception) { null }
+        }
+
+        fun remove(url: String) {
+            try { updateCleanupMetadata { getPrefs().edit().remove(url.hashCode().toString()).apply() } } catch (e: Exception) {}
+        }
+
+        fun clearAll() {
+            try { updateCleanupMetadata { getPrefs().edit().clear().apply() } } catch (e: Exception) {}
+        }
+    }
+
+    val LOADER: ImageLoader by lazy {
+        ImageLoader.Builder(appContext())
+            .crossfade(true)
+            // Decode every image as a software bitmap: Coil defaults to HARDWARE on API 26+,
+            // but the Rewind share screenshot replays the view tree on a software canvas,
+//
+            // where hardware bitmaps cannot be drawn at all (IllegalArgumentException:
+            // "Software rendering doesn't support hardware bitmaps") — the legacy mini
+//
+            // player's cover goes through this factory too. loadBitmap() keeps its
+            // per-request allowHardware override.
+            .allowHardware(false)
+            .memoryCache { MemoryCache.Builder().maxSizePercent(appContext(), 0.15).strongReferencesEnabled(true).build() }
+            .diskCache(DISK_CACHE)
+            .components {
+                add(OkHttpNetworkFetcherFactory(
+                    callFactory = { request: Request ->
+                        NetworkClientFactory.getClient().newCall(request)
+                    }
+                ))
+            }
+            .build()
+    }
+
+    fun generateCacheKeySync(url: String?, quality: NetworkQuality): String {
+        if (url.isNullOrBlank()) return "empty"
+
+        val id = url.getYouTubeId()
+        if (id != null && (url.contains("pl_c") || url.contains("podcasts"))) {
+            val resSuffix = if (url.isYouTubeHighRes()) "HIGH" else "LOW"
+            return "playlist_${id}_$resSuffix"
+        }
+
+        val cacheKey = "${url}_${quality.size}"
+        val baseKey = cacheKeyMap.getOrPut(cacheKey) {
+            try {
+                val md = MessageDigest.getInstance("MD5")
+                val digest = md.digest(url.toByteArray())
+                digest.fold("") { str, it -> str + "%02x".format(it) }
+            } catch (e: Exception) { "${url.hashCode()}_${quality.size}" }
+        }
+        // Keep the memoized map stable; revision-specific keys belong only to Coil's bounded caches.
+        return if (isLocalArtworkSource(url)) "$baseKey-local-${ArtworkRevisions.current()}" else baseKey
+    }
+
+    internal fun isLocalArtworkSource(source: String?): Boolean {
+        if (source.isNullOrBlank()) return false
+        val clean = cleanPrefix(source)
+        return clean.startsWith("file:", ignoreCase = true) ||
+            clean.startsWith("content:", ignoreCase = true) || File(clean).isAbsolute
+    }
+
+    /** Only local requests observe cover replacement; remote image identities stay unchanged. */
+    @Composable
+    internal fun rememberLocalArtworkRevision(source: String?): Long {
+        if (!isLocalArtworkSource(source)) return 0L
+        return ArtworkRevisions.changes.collectAsStateWithLifecycle(context = MousikeDispatchers.DATA).value
+    }
+
+    fun clearCacheForKey(url: String?, quality: NetworkQuality, invalidateColors: Boolean = true) {
+        if (url == null) return
+        val key = generateCacheKeySync(url, quality)
+        try {
+            evictCacheKey(key)
+        } catch (e: Exception) {}
+        // Publish only after pixel eviction, so new-generation readers cannot see old cache entries.
+        if (invalidateColors) app.mousike.android.components.player.SharedArtworkColors.invalidate(url)
+    }
+
+    /** Explicit update actions must report failed eviction instead of claiming a complete cover reset. */
+    internal fun clearCacheForKeyOrThrow(url: String, quality: NetworkQuality) {
+        evictCacheKey(generateCacheKeySync(url, quality))
+        app.mousike.android.components.player.SharedArtworkColors.invalidate(url)
+    }
+
+    private fun evictCacheKey(key: String) {
+        LOADER.memoryCache?.remove(MemoryCache.Key(key))
+        DISK_CACHE.remove(key)
+    }
+
+    fun getNetworkQuality(): NetworkQuality {
+        val context = appContext()
+        val forcedQuality = context.preferences.getEnum(imageQualityFormatKey, ImageQualityFormat.Auto)
+
+        // Return forced quality if set
+        if (forcedQuality != ImageQualityFormat.Auto) {
+           // GlobalNetworkLogger.logNetworkState("Image_Factory", -1, false, "FORCED", forcedQuality.name)
+            return when (forcedQuality) {
+                ImageQualityFormat.High -> NetworkQuality.HIGH
+                ImageQualityFormat.Medium -> NetworkQuality.MEDIUM
+                else -> NetworkQuality.LOW
+            }
+        }
+
+        // Otherwise, delegate to centralized helper for AUTO mode
+        val detectedQuality = when (NetworkQualityHelper.getCurrentNetworkQuality(context)) {
+            MousikeNetworkQuality.HIGH -> NetworkQuality.HIGH
+            MousikeNetworkQuality.MEDIUM -> NetworkQuality.MEDIUM
+            else -> NetworkQuality.LOW
+        }
+        // GlobalNetworkLogger.logNetworkState("Image_Factory", -1, false, "AUTO", detectedQuality.name)
+        return detectedQuality
+    }
+
+    // New method to get ONLY the real network quality (ignoring user preference)
+    fun getActualNetworkQuality(): NetworkQuality {
+        val quality = when (NetworkQualityHelper.getCurrentNetworkQuality(appContext())) {
+            MousikeNetworkQuality.HIGH -> NetworkQuality.HIGH
+            MousikeNetworkQuality.MEDIUM -> NetworkQuality.MEDIUM
+            else -> NetworkQuality.LOW
+        }
+        // GlobalNetworkLogger.logNetworkState("Image_UI", -1, false, "REAL_DETECT", quality.name)
+        return quality
+    }
+
+    fun getCurrentNetworkQuality(): NetworkQuality = getActualNetworkQuality()
+
+    internal fun refreshArtworkQuality() {
+        storeVersion.update { it + 1 }
+    }
+
+    fun getDownloadDecision(thumbnailUrl: String?): DownloadDecision {
+        if (thumbnailUrl.isNullOrBlank() || thumbnailUrl == "null") {
+            return DownloadDecision(false, NetworkQuality.LOW)
+        }
+
+        if (keepsOriginalArtwork(appContext())) return DownloadDecision(true, NetworkQuality.HIGH, original = true)
+
+        val lastAttempt = cooldownMap[thumbnailUrl]
+        val now = System.currentTimeMillis()
+        if (lastAttempt != null && (now - lastAttempt) < COOLDOWN_MS) {
+            val cachedQuality = CacheMetadataStore.get(thumbnailUrl) ?: NetworkQuality.LOW
+            return DownloadDecision(false, cachedQuality)
+        }
+
+        val currentQuality = getNetworkQuality()
+        val cachedQuality = CacheMetadataStore.get(thumbnailUrl)
+
+        if (cachedQuality == null) {
+            cooldownMap[thumbnailUrl] = now
+            return DownloadDecision(true, currentQuality)
+        }
+
+        if (currentQuality.ordinal > cachedQuality.ordinal) {
+            cooldownMap[thumbnailUrl] = now
+            return DownloadDecision(true, currentQuality)
+        }
+
+        return DownloadDecision(false, cachedQuality)
+    }
+
+    @Composable
+    fun Thumbnail(
+        thumbnailUrl: String?,
+        contentDescription: String? = null,
+        contentScale: ContentScale = ContentScale.Crop,
+        modifier: Modifier = Modifier.clip(thumbnailShape()).fillMaxSize(),
+        shape: Shape? = thumbnailShape(),
+    ) {
+        val sourceUrl = rememberDisplayArtworkSource(thumbnailUrl)
+        val resolvedScale = rememberVideoArtworkContentScale(sourceUrl, contentScale)
+        val imageModifier = if (shape == null) modifier else modifier.glassImageRim(shape)
+        val cleanedUrl = sourceUrl?.let { cleanPrefix(it) }
+        val validUrl = if (cleanedUrl.isNullOrBlank() || cleanedUrl == "null") null else cleanedUrl
+        val decision = getDownloadDecision(validUrl)
+        val version by storeVersion.collectAsStateWithLifecycle()
+        val localRevision = rememberLocalArtworkRevision(validUrl)
+        var currentUrl by remember(validUrl, version, localRevision, decision.sourceSize) {
+            mutableStateOf(validUrl?.thumbnail(decision.sourceSize).also { modUrl ->
+                // if (validUrl != null) Timber.tag("ImageCache").d("URL: original=%s, modified=%s", validUrl, modUrl)
+            })
+        }
+
+        if (currentUrl == null) {
+            var showFallback by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(10000L)
+                showFallback = true
+            }
+            Image(
+                painter = painterResource(if (showFallback) R.drawable.ic_launcher_box else R.drawable.loader),
+                contentDescription = null,
+                modifier = imageModifier.fillMaxSize(),
+                contentScale = resolvedScale
+            )
+            return
+        }
+
+        val request = ImageRequest.Builder(appContext())
+            .data(currentUrl)
+            .diskCacheKey(generateCacheKeySync(currentUrl, decision.quality))
+            .memoryCacheKey(generateCacheKeySync(currentUrl, decision.quality))
+            .listener(
+                onSuccess = { _, result ->
+                    val dataSource = result.dataSource
+                    if (dataSource != DataSource.MEMORY_CACHE) {
+                        val id = currentUrl?.getYouTubeId()
+                        if (id != null) {
+                            currentUrl?.let { url -> PlaylistThumbnailStore.save(id, url, url.isYouTubeHighRes()) }
+                        }
+                    }
+                    if (validUrl != null && decision.useNetwork) {
+                        CacheMetadataStore.save(validUrl, decision.quality)
+                    }
+                },
+                onError = { _, result ->
+                    val errorMsg = result.throwable.message ?: ""
+                    // Timber.tag("ImageCache").e(result.throwable, "Error: original=%s, modified=%s, error=%s", validUrl, currentUrl, errorMsg)
+                    val id = currentUrl?.getYouTubeId()
+
+                    // Un-swap fallback for Playlists/Podcasts (handling expired signatures)
+                    // We are more aggressive: any error on a swapped URL triggers un-swap.
+                    if (currentUrl != validUrl && id != null &&
+                        (currentUrl?.contains("i.ytimg.com/pl_c/") == true || currentUrl?.contains("podcasts") == true)) {
+
+                        clearCacheForKey(currentUrl, decision.quality, invalidateColors = false)
+                        PlaylistThumbnailStore.clear(id)
+                        currentUrl = validUrl
+                        return@listener
+                    }
+
+                    if (errorMsg.contains("404") && currentUrl?.contains("i.ytimg.com/vi/") == true) {
+                        val fallback = currentUrl.getNextYouTubeFallback()
+                        if (fallback != null) {
+                            currentUrl = fallback
+                            return@listener
+                        }
+                    }
+                }
+            )
+            .build()
+
+        AsyncImage(
+            model = request,
+            imageLoader = LOADER,
+            contentDescription = contentDescription,
+            contentScale = resolvedScale,
+            modifier = imageModifier,
+            placeholder = painterResource(R.drawable.loader),
+            error = painterResource(R.drawable.ic_launcher_box),
+            fallback = painterResource(R.drawable.ic_launcher_box)
+        )
+    }
+
+    @Composable
+    fun Painter(
+        thumbnailUrl: String?,
+        contentScale: ContentScale = ContentScale.Crop,
+        @DrawableRes placeholder: Int? = null,
+        @DrawableRes error: Int = R.drawable.ic_launcher_box,
+        @DrawableRes fallback: Int = R.drawable.ic_launcher_box,
+        onLoading: ((State.Loading) -> Unit)? = null,
+        onSuccess: ((State.Success) -> Unit)? = null,
+        onError: ((State.Error) -> Unit)? = null
+    ): AsyncImagePainter {
+        val sourceUrl = rememberDisplayArtworkSource(thumbnailUrl)
+        val transformArtwork = rememberVideoArtworkPainterTransform(sourceUrl, contentScale)
+        val cleanedUrl = sourceUrl?.let { cleanPrefix(it) }
+        val validUrl = if (cleanedUrl.isNullOrBlank() || cleanedUrl == "null") null else cleanedUrl
+        val decision = getDownloadDecision(validUrl)
+        val version by storeVersion.collectAsStateWithLifecycle()
+        val localRevision = rememberLocalArtworkRevision(validUrl)
+        var currentUrl by remember(validUrl, version, localRevision, decision.sourceSize) {
+            mutableStateOf(validUrl?.thumbnail(decision.sourceSize).also { modUrl ->
+                // if (validUrl != null) Timber.tag("ImageCache").d("URL: original=%s, modified=%s", validUrl, modUrl)
+            })
+        }
+
+        // A null model never resolves in Coil (the placeholder would show forever). Load the
+        // fallback box as a resource so the painter settles on a drawable instead of hanging.
+        if (currentUrl == null) {
+            return rememberAsyncImagePainter(
+                model = ImageRequest.Builder(appContext())
+                    .data(R.drawable.ic_launcher_box)
+                    .build(),
+                imageLoader = LOADER,
+                contentScale = contentScale,
+                placeholder = painterResource(placeholder ?: R.drawable.loader),
+                error = painterResource(error),
+                fallback = painterResource(fallback)
+            )
+        }
+
+
+        val request = ImageRequest.Builder(appContext())
+            .data(currentUrl)
+            .diskCacheKey(generateCacheKeySync(currentUrl, decision.quality))
+            .memoryCacheKey(generateCacheKeySync(currentUrl, decision.quality))
+            .listener(
+                onSuccess = { _, result ->
+                    val dataSource = result.dataSource
+                    if (dataSource != DataSource.MEMORY_CACHE) {
+                        val id = currentUrl?.getYouTubeId()
+                        if (id != null) {
+                            currentUrl?.let { url -> PlaylistThumbnailStore.save(id, url, url.isYouTubeHighRes()) }
+                        }
+                    }
+                    if (validUrl != null && decision.useNetwork) {
+                        CacheMetadataStore.save(validUrl, decision.quality)
+                    }
+                },
+                onError = { _, result ->
+                    val errorMsg = result.throwable.message ?: ""
+                    //Timber.tag("ImageCache").e(result.throwable, "Error: original=%s, modified=%s, error=%s", validUrl, currentUrl, errorMsg)
+                    val id = currentUrl?.getYouTubeId()
+
+                    if (currentUrl != validUrl && id != null &&
+                        (currentUrl?.contains("i.ytimg.com/pl_c/") == true || currentUrl?.contains("podcasts") == true)) {
+
+                        clearCacheForKey(currentUrl, decision.quality, invalidateColors = false)
+                        PlaylistThumbnailStore.clear(id)
+                        currentUrl = validUrl
+                        return@listener
+                    }
+
+                    if (errorMsg.contains("404") && currentUrl?.contains("i.ytimg.com/vi/") == true) {
+                        val fallback = currentUrl.getNextYouTubeFallback()
+                        if (fallback != null) {
+                            currentUrl = fallback
+                            return@listener
+                        }
+                    }
+                }
+            )
+            .build()
+
+        // Some player backgrounds use the success callback without drawing the painter.
+        val window = LocalWindowInfo.current.containerSize
+        val displayEdge = maxOf(window.width, window.height).takeIf { it > 0 } ?: 1000
+        val sizedRequest = if (isFileArtwork(currentUrl) || decision.original) {
+            request.newBuilder().size(displayEdge, displayEdge).build()
+        } else request
+
+        // Coil's CrossfadePainter freezes intrinsicSize and keeps applying its original Crop
+        // after the fade ends, preventing this painter's live Crop/Fit geometry from taking over.
+        val painterRequest = if (isVideoArtwork(sourceUrl) && contentScale == ContentScale.Crop) {
+            sizedRequest.newBuilder().crossfade(false).build()
+        } else sizedRequest
+        val loadingPainter = painterResource(placeholder ?: R.drawable.loader)
+        val errorPainter = painterResource(error)
+        return rememberAsyncImagePainter(
+            model = painterRequest,
+            imageLoader = LOADER,
+            contentScale = contentScale,
+            transform = { state ->
+                when (state) {
+                    is State.Loading -> state.copy(painter = loadingPainter)
+                    is State.Success -> state.copy(painter = transformArtwork(state.painter))
+                    is State.Error -> state.copy(painter = errorPainter)
+                    State.Empty -> state
+                }
+            },
+            onState = { state ->
+                when (state) {
+                    is State.Loading -> onLoading?.invoke(state)
+                    is State.Success -> onSuccess?.invoke(state)
+                    is State.Error -> onError?.invoke(state)
+                    State.Empty -> Unit
+                }
+            },
+        )
+    }
+
+    @Composable
+    fun SubcomposeImage(
+        thumbnailUrl: String?,
+        contentDescription: String? = null,
+        contentScale: ContentScale = ContentScale.Crop,
+        modifier: Modifier = Modifier,
+        @DrawableRes error: Int = R.drawable.ic_launcher_box,
+        shape: Shape = RectangleShape,
+    ) {
+        val sourceUrl = rememberDisplayArtworkSource(thumbnailUrl)
+        val resolvedScale = rememberVideoArtworkContentScale(sourceUrl, contentScale)
+        val imageModifier = modifier.glassImageRim(shape)
+        val cleanedUrl = sourceUrl?.let { cleanPrefix(it) }
+        val validUrl = if (cleanedUrl.isNullOrBlank() || cleanedUrl == "null") null else cleanedUrl
+        val decision = getDownloadDecision(validUrl)
+        val version by storeVersion.collectAsStateWithLifecycle()
+        val localRevision = rememberLocalArtworkRevision(validUrl)
+        var currentUrl by remember(validUrl, version, localRevision, decision.sourceSize) {
+            mutableStateOf(validUrl?.thumbnail(decision.sourceSize))
+        }
+
+        if (currentUrl == null) {
+            var showFallback by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(10000L)
+                showFallback = true
+            }
+            Image(
+                painter = painterResource(if (showFallback) R.drawable.ic_launcher_box else R.drawable.loader),
+                contentDescription = null,
+                modifier = imageModifier.fillMaxSize(),
+                contentScale = resolvedScale
+            )
+            return
+        }
+
+        val request = ImageRequest.Builder(appContext())
+            .data(currentUrl)
+            .diskCacheKey(generateCacheKeySync(currentUrl, decision.quality))
+            .memoryCacheKey(generateCacheKeySync(currentUrl, decision.quality))
+            .listener(
+                onSuccess = { _, result ->
+                    val dataSource = result.dataSource
+                    if (dataSource != DataSource.MEMORY_CACHE) {
+                        val id = currentUrl?.getYouTubeId()
+                        if (id != null) {
+                            currentUrl?.let { url -> PlaylistThumbnailStore.save(id, url, url.isYouTubeHighRes()) }
+                        }
+                    }
+                    if (validUrl != null && decision.useNetwork) {
+                        CacheMetadataStore.save(validUrl, decision.quality)
+                    }
+                },
+                onError = { _, _ ->
+                    val id = currentUrl?.getYouTubeId()
+                    if (currentUrl != validUrl && id != null &&
+                        (currentUrl?.contains("i.ytimg.com/pl_c/") == true || currentUrl?.contains("podcasts") == true)) {
+                        clearCacheForKey(currentUrl, decision.quality, invalidateColors = false)
+                        PlaylistThumbnailStore.clear(id)
+                        currentUrl = validUrl
+                        return@listener
+                    }
+                }
+            )
+            .build()
+
+        SubcomposeAsyncImage(
+            model = request,
+            imageLoader = LOADER,
+            contentDescription = contentDescription,
+            contentScale = resolvedScale,
+            modifier = imageModifier,
+            loading = {
+                Image(
+                    painter = painterResource(R.drawable.loader),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = resolvedScale
+                )
+            },
+            error = {
+                Image(
+                    painter = painterResource(error),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = resolvedScale
+                )
+            }
+        )
+    }
+
+    @Composable
+    fun AsyncImage(
+        thumbnailUrl: String?,
+        contentDescription: String? = null,
+        contentScale: ContentScale = ContentScale.Crop,
+        modifier: Modifier = Modifier,
+        onLoading: ((State.Loading) -> Unit)? = null,
+        onSuccess: ((State.Success) -> Unit)? = null,
+        onError: ((State.Error) -> Unit)? = null,
+        shape: Shape? = RectangleShape,
+    ) {
+        val sourceUrl = rememberDisplayArtworkSource(thumbnailUrl)
+        val resolvedScale = rememberVideoArtworkContentScale(sourceUrl, contentScale)
+        val imageModifier = if (shape == null) modifier else modifier.glassImageRim(shape)
+        val cleanedUrl = sourceUrl?.let { cleanPrefix(it) }
+        val validUrl = if (cleanedUrl.isNullOrBlank() || cleanedUrl == "null") null else cleanedUrl
+        val decision = getDownloadDecision(validUrl)
+        val version by storeVersion.collectAsStateWithLifecycle()
+        val localRevision = rememberLocalArtworkRevision(validUrl)
+        var currentUrl by remember(validUrl, version, localRevision, decision.sourceSize) {
+            mutableStateOf(validUrl?.thumbnail(decision.sourceSize).also { modUrl ->
+                //if (validUrl != null) Timber.tag("ImageCache").d("URL: original=%s, modified=%s", validUrl, modUrl)
+            })
+        }
+
+        if (currentUrl == null) {
+            var showFallback by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(10000L)
+                showFallback = true
+            }
+            Image(
+                painter = painterResource(if (showFallback) R.drawable.ic_launcher_box else R.drawable.loader),
+                contentDescription = null,
+                modifier = imageModifier.fillMaxSize(),
+                contentScale = resolvedScale
+            )
+            return
+        }
+
+        val request = ImageRequest.Builder(appContext())
+            .data(currentUrl)
+            .diskCacheKey(generateCacheKeySync(currentUrl, decision.quality))
+            .memoryCacheKey(generateCacheKeySync(currentUrl, decision.quality))
+            .listener(
+                onSuccess = { _, result ->
+                    val dataSource = result.dataSource
+                    if (dataSource != DataSource.MEMORY_CACHE) {
+                        val id = currentUrl?.getYouTubeId()
+                        if (id != null) {
+                            currentUrl?.let { url -> PlaylistThumbnailStore.save(id, url, url.isYouTubeHighRes()) }
+                        }
+                    }
+                    if (validUrl != null && decision.useNetwork) {
+                        CacheMetadataStore.save(validUrl, decision.quality)
+                    }
+                },
+                onError = { _, result ->
+                    val errorMsg = result.throwable.message ?: ""
+                    //Timber.tag("ImageCache").e(result.throwable, "Error: original=%s, modified=%s, error=%s", validUrl, currentUrl, errorMsg)
+                    val id = currentUrl?.getYouTubeId()
+
+                    if (currentUrl != validUrl && id != null &&
+                        (currentUrl?.contains("i.ytimg.com/pl_c/") == true || currentUrl?.contains("podcasts") == true)) {
+
+                        clearCacheForKey(currentUrl, decision.quality, invalidateColors = false)
+                        PlaylistThumbnailStore.clear(id)
+                        currentUrl = validUrl
+                        return@listener
+                    }
+
+                    if (errorMsg.contains("404") && currentUrl?.contains("i.ytimg.com/vi/") == true) {
+                        val fallback = currentUrl.getNextYouTubeFallback()
+                        if (fallback != null) {
+                            currentUrl = fallback
+                            return@listener
+                        }
+                    }
+                }
+            )
+            .build()
+
+        AsyncImage(
+            model = request,
+            imageLoader = LOADER,
+            contentDescription = contentDescription,
+            contentScale = resolvedScale,
+            modifier = imageModifier,
+            placeholder = painterResource(R.drawable.loader),
+            error = painterResource(R.drawable.ic_launcher_box),
+            fallback = painterResource(R.drawable.ic_launcher_box),
+            onLoading = onLoading,
+            onSuccess = onSuccess,
+            onError = { state ->
+                val errorMsg = state.result.throwable.message ?: ""
+                if (errorMsg.contains("404") && currentUrl?.contains("i.ytimg.com/vi/") == true) {
+                    val fallback = currentUrl.getNextYouTubeFallback()
+                    if (fallback != null) {
+                        // Re-trigger via currentUrl in listener above
+                        return@AsyncImage
+                    }
+                }
+                onError?.invoke(state)
+            }
+        )
+    }
+
+    /**
+     * Renders an image from a possibly-null model (typically a local file) with the
+     * app's standard null handling: while [model] is null, the [placeholder] shows for
+     * [fallbackDelayMs], after which the [fallback] drawable replaces it instead of
+     * spinning forever. Mirrors the null branch of [AsyncImage] and [Thumbnail].
+     *
+     * [cacheKey] (when provided) is used as both the memory and disk cache key, so a
+     * content replacement behind a stable path (a re-downloaded file at the same URI)
+     * forces Coil to re-read it — a bare file:// URI is string-equal across rewrites,
+     * which would otherwise keep the previously decoded bitmap.
+     */
+    @Composable
+    fun LocalAsyncImage(
+        model: Any?,
+        contentDescription: String?,
+        contentScale: ContentScale = ContentScale.Crop,
+        modifier: Modifier = Modifier,
+        cacheKey: String? = null,
+        @DrawableRes placeholder: Int = R.drawable.loader,
+        @DrawableRes fallback: Int? = R.drawable.ic_launcher_box,
+        fallbackDelayMs: Long = 4_000L,
+        shape: Shape? = RectangleShape,
+        onSuccess: ((State.Success) -> Unit)? = null,
+    ) {
+        val imageModifier = if (shape == null) modifier else modifier.glassImageRim(shape)
+        if (model == null) {
+            var showFallback by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                kotlinx.coroutines.delay(fallbackDelayMs)
+                showFallback = true
+            }
+            val drawable = if (showFallback) fallback else placeholder
+            if (drawable != null) Image(
+                painter = painterResource(drawable),
+                contentDescription = contentDescription,
+                modifier = imageModifier.fillMaxSize(),
+                contentScale = contentScale
+            )
+            return
+        }
+
+        val request = ImageRequest.Builder(appContext())
+            .data(model)
+            .apply { if (cacheKey != null) { diskCacheKey(cacheKey); memoryCacheKey(cacheKey) } }
+            .build()
+
+        AsyncImage(
+            model = request,
+            imageLoader = LOADER,
+            contentDescription = contentDescription,
+            contentScale = contentScale,
+            modifier = imageModifier,
+            placeholder = painterResource(placeholder),
+            error = fallback?.let { painterResource(it) },
+            onSuccess = onSuccess,
+        )
+    }
+
+    /** Loads a borrowed Coil bitmap with the shared cache and URL fallback policy.
+     * [requestSize] bounds decoding for consumers that serialize small artwork.
+     * [qualityOverride] selects source quality for this request without changing phone preferences.
+     */
+    suspend fun loadBitmap(
+        url: String?,
+        allowHardware: Boolean = false,
+        requestSize: Int? = null,
+        qualityOverride: NetworkQuality? = null,
+        cacheOnly: Boolean = false,
+        cropToSquare: Boolean = false,
+    ): Bitmap? {
+        require(requestSize == null || requestSize > 0)
+        if (url.isNullOrBlank() || url == "null") {
+            return null
+        }
+
+        val defaultDecision = getDownloadDecision(url)
+        val decision = qualityOverride?.let { quality ->
+            defaultDecision.copy(
+                quality = quality,
+                original = false,
+                useNetwork = defaultDecision.useNetwork || quality.ordinal > defaultDecision.quality.ordinal,
+            )
+        } ?: defaultDecision
+        var currentUrl = url.thumbnail(decision.sourceSize)
+        // Timber.tag("ImageCache").d("URL (loadBitmap): original=%s, modified=%s", url, currentUrl)
+        var lastError: String? = null
+
+        while (currentUrl != null) {
+            val isLocalFile = isFileArtwork(currentUrl)
+
+            val requestBuilder = ImageRequest.Builder(appContext())
+                .data(currentUrl)
+                .diskCacheKey(generateCacheKeySync(currentUrl, decision.quality))
+                .memoryCacheKey(generateCacheKeySync(currentUrl, decision.quality))
+                .allowHardware(allowHardware)
+                .networkCachePolicy(if (cacheOnly) CachePolicy.DISABLED else CachePolicy.ENABLED)
+                .scale(if (cropToSquare) Scale.FILL else Scale.FIT)
+
+            val boundedSize = requestSize ?: 1000.takeIf { isLocalFile || decision.original }
+            if (boundedSize != null) {
+                requestBuilder.size(boundedSize, boundedSize)
+            }
+
+            val request = requestBuilder.build()
+
+            val result = LOADER.execute(request)
+            if (result.image != null) {
+                val dataSource = (result as? SuccessResult)?.dataSource
+
+                if (!cacheOnly && dataSource != null && dataSource != DataSource.MEMORY_CACHE) {
+                    val id = currentUrl.getYouTubeId()
+                    if (id != null) {
+                        PlaylistThumbnailStore.save(id, currentUrl, currentUrl.isYouTubeHighRes())
+                    }
+                }
+                if (!cacheOnly && decision.useNetwork) {
+                    CacheMetadataStore.save(url, decision.quality)
+                }
+                return result.image?.toBitmap() ?: run {
+                    Timber.w("Null bitmap for image result")
+                    return null
+                }
+            }
+
+            lastError = (result as? ErrorResult)?.throwable?.message ?: appTextResources().getString(R.string.image_error_unknown)
+            //Timber.tag("ImageCache").e("Error (loadBitmap): original=%s, modified=%s, error=%s", url, currentUrl, lastError)
+
+            // Un-swap fallback for loadBitmap
+            val id = currentUrl.getYouTubeId()
+            if (currentUrl != url && id != null && (currentUrl.contains("pl_c") || currentUrl.contains("podcasts"))) {
+
+                if (!cacheOnly) {
+                    clearCacheForKey(currentUrl, decision.quality, invalidateColors = false)
+                    PlaylistThumbnailStore.clear(id)
+                }
+                currentUrl = url
+                continue
+            }
+
+            if (lastError.contains("404") && currentUrl.contains("i.ytimg.com/vi/")) {
+                val fallback = currentUrl.getNextYouTubeFallback()
+                if (fallback != null) {
+
+                    currentUrl = fallback
+                    continue
+                }
+            }
+            break
+        }
+
+        return null
+    }
+
+    suspend fun preloadImage(thumbnailUrl: String?) {
+        if (thumbnailUrl.isNullOrBlank() || thumbnailUrl == "null") {
+            return
+        }
+
+        val decision = getDownloadDecision(thumbnailUrl)
+        val finalUrl = thumbnailUrl.thumbnail(decision.sourceSize)
+        // Timber.tag("ImageCache").d("URL (preload): original=%s, modified=%s", thumbnailUrl, finalUrl)
+
+        suspend fun executeWithFallback(url: String) {
+            val request = ImageRequest.Builder(appContext())
+                .data(url)
+                .apply { if (isFileArtwork(url) || decision.original) size(1000, 1000) }
+                .diskCacheKey(generateCacheKeySync(url, decision.quality))
+                .memoryCacheKey(generateCacheKeySync(url, decision.quality))
+                .build()
+
+            val result = LOADER.execute(request)
+            if (result is SuccessResult) {
+                if (decision.useNetwork) {
+                    CacheMetadataStore.save(thumbnailUrl, decision.quality)
+                }
+            } else if (result is ErrorResult) {
+                val errorMsg = result.throwable.message ?: ""
+                // Timber.tag("ImageCache").e(result.throwable, "Error (preload): original=%s, modified=%s, error=%s", thumbnailUrl, url, errorMsg)
+                if (errorMsg.contains("404") && url.contains("i.ytimg.com/vi/")) {
+                    val fallback = url.getNextYouTubeFallback()
+                    if (fallback != null) {
+                        executeWithFallback(fallback)
+                    }
+                }
+            }
+        }
+
+        if (finalUrl != null) executeWithFallback(finalUrl)
+    }
+
+    private fun isFileArtwork(url: String?): Boolean =
+        url != null && (url.startsWith("file://") || url.startsWith("/"))
+
+    fun isImageCached(thumbnailUrl: String?): Boolean = CacheMetadataStore.get(thumbnailUrl ?: "") != null
+
+    fun getDiskCache(): DiskCache = DISK_CACHE
+
+    /** Reads encoded cover bytes while the cache snapshot prevents eviction. */
+    internal suspend fun <T : Any> readCachedCover(url: String, read: suspend (InputStream) -> T?): T? {
+        val cache = getDiskCache()
+        val sources = coverSourceCandidates(url)
+        val tried = mutableSetOf<String>()
+        for (quality in NetworkQuality.entries.asReversed()) {
+            for (source in sources) {
+                val key = generateCacheKeySync(source, quality)
+                if (!tried.add(key)) continue
+                val snapshot = cache.openSnapshot(key) ?: continue
+                snapshot.use {
+                    val result = cache.fileSystem.source(snapshot.data).buffer().inputStream().use { read(it) }
+                    if (result != null) return result
+                }
+            }
+        }
+        return null
+    }
+
+    /** Includes the original URL and the variants the artwork renderer can display. */
+    internal fun coverSourceCandidates(url: String): List<String> = buildList {
+        add(url)
+        val host = url.toHttpUrl().host
+        if (host != "i.ytimg.com" && host != "yt3.ggpht.com" &&
+            host != "googleusercontent.com" && !host.endsWith(".googleusercontent.com")
+        ) return@buildList
+
+        for (quality in NetworkQuality.entries.asReversed()) {
+            generateSequence(url.thumbnail(quality.size)) { it.getNextYouTubeFallback() }.forEach {
+                if (it !in this) add(it)
+            }
+        }
+    }
+
+    fun clearImageCache() {
+        try {
+            clearImageCacheOrThrow()
+        } catch (e: Exception) {
+        }
+    }
+
+    internal fun clearImageCacheOrThrow() {
+        try {
+            LOADER.memoryCache?.clear()
+            DISK_CACHE.clear()
+            PlaylistThumbnailStore.clearAll()
+            CacheMetadataStore.clearAll()
+            cacheKeyMap.clear()
+            cooldownMap.clear()
+        } finally {
+            // Refresh observers even when only part of the cache could be cleared.
+            app.mousike.android.components.player.SharedArtworkColors.invalidate()
+        }
+    }
+
+    /** Uses the frozen owner for both metadata stores even if profile selection changes concurrently. */
+    internal fun clearBoundProfileCache(
+        context: Context,
+        owner: ProfileStorageIdentity,
+        expected: File,
+        revision: Long,
+        clearDisk: Boolean,
+        metadataFiles: Set<String>,
+        verify: () -> Boolean,
+    ): Boolean {
+        val cache = getDiskCache() as? CleanupCoilCache ?: return false
+        if (cache.directory.toFile().canonicalFile != expected) return false
+        val memoryCache = LOADER.memoryCache
+        return cache.whileIdle {
+            if (revision != metadataRevision || !verify()) return@whileIdle false
+            try {
+                memoryCache?.clear()
+                if (clearDisk) cache.clear()
+                val metadataCleared = listOf(PLAYLIST_THUMBNAIL_STORE, IMAGE_METADATA_STORE).map { base ->
+                    val name = "${base}_${owner.id}_${owner.generation}"
+                    if ("$name.xml" !in metadataFiles && "$name.xml.bak" !in metadataFiles) true
+                    else {
+                        metadataRevision++
+                        context.getSharedPreferences(name, Context.MODE_PRIVATE).edit().clear().commit()
+                    }
+                }.all { it }
+                cacheKeyMap.clear()
+                cooldownMap.clear()
+                metadataCleared && (!clearDisk || cache.size == 0L)
+            } finally {
+                app.mousike.android.components.player.SharedArtworkColors.invalidate()
+            }
+        }
+    }
+
+    fun getCacheSize(): Long = try { DISK_CACHE.size } catch (e: Exception) { 0L }
+}
+
+fun String.resize(width: Int? = null, height: Int? = null): String {
+    if (width == null && height == null) return this
+
+    if (contains("googleusercontent.com") || startsWith("https://yt3.ggpht.com")) {
+        val w = width ?: height ?: 0
+        val h = height ?: width ?: 0
+        val s = width ?: height ?: 0
+
+        if (contains("=")) {
+            val lastEquals = lastIndexOf('=')
+            val base = substring(0, lastEquals)
+            val params = substring(lastEquals)
+            val modParams = params
+                .replace(Regex("([=-])w\\d+(?![0-9a-zA-Z])"), "$1w$w")
+                .replace(Regex("([=-])h\\d+(?![0-9a-zA-Z])"), "$1h$h")
+                .replace(Regex("([=-])s\\d+(?![0-9a-zA-Z])"), "$1s$s")
+            return base + modParams
+        } else {
+            return replace(Regex("([=/-])w\\d+(?![0-9a-zA-Z])"), "$1w$w")
+                .replace(Regex("([=/-])h\\d+(?![0-9a-zA-Z])"), "$1h$h")
+                .replace(Regex("([=/-])s\\d+(?![0-9a-zA-Z])"), "$1s$s")
+        }
+    }
+
+    return this
+}
+
+private fun String.getYouTubeId(): String? {
+    return try {
+        when {
+            contains("i.ytimg.com/vi/") -> substringAfter("/vi/").substringBefore("/")
+            contains("i.ytimg.com/pl_c/") -> substringAfter("/pl_c/").substringBefore("/")
+            contains("i.ytimg.com/podcasts_artwork/") -> substringAfter("/podcasts_artwork/").substringBefore("/")
+            else -> null
+        }?.takeIf { it.isNotEmpty() && it != this }
+    } catch (e: Exception) { null }
+}
+
+private const val ORIGINAL_SOURCE_SIZE = 0
+
+fun String?.thumbnail(size: Int): String? {
+    if (this == null) return this
+
+    val original = size == ORIGINAL_SOURCE_SIZE
+    val targetSize = if (original) ImageCacheFactory.NetworkQuality.HIGH.size else size
+
+    // Threshold increased from 600 to 700 to ensure HQ cache usage (Learning Mode)
+    // We use >= 700 because the MEDIUM size is now 700.
+    val quality = if (targetSize >= 700) ImageCacheFactory.NetworkQuality.HIGH else ImageCacheFactory.NetworkQuality.LOW
+
+    if (contains("i.ytimg.com/pl_c/") || contains("i.ytimg.com/podcasts_artwork/")) {
+        val id = getYouTubeId()
+        if (id != null) {
+            // Absolute priority to the learned (HQ) version if it exists
+            val learnedHigh = ImageCacheFactory.PlaylistThumbnailStore.getHighUrl(id)
+            if (learnedHigh != null) {
+                return learnedHigh
+            }
+
+            // [STRICT LEARNING MODE]
+            // We only swap if there is no 'rs=' signature.
+//
+            // We manage mwEIC (Low) and mwEUC (Medium) towards mwEKC (High).
+            if (quality == ImageCacheFactory.NetworkQuality.HIGH) {
+                return if (!contains("rs=")) {
+                    replace("mwEIC", "mwEKC")
+                        .replace("mwEUC", "mwEKC")
+                        .replace("mwESC", "mwEKC")
+                } else {
+                    // If we have a signed "Medium" (EUC) link, still try to see if we can "clean" it
+                    // or if the store has better. (The store was already checked above via learnedHigh)
+                    this
+                }
+            } else {
+                val smallerUrl = ImageCacheFactory.PlaylistThumbnailStore.getLowUrl(id)
+                if (smallerUrl != null && smallerUrl != this) {
+                    return smallerUrl
+                }
+            }
+        }
+        return this
+    }
+
+    // i.ytimg: modify video thumbnails based on size (Un-signing)
+    when {
+        contains("i.ytimg.com/vi/") -> {
+            val suffix = when {
+                targetSize >= 700 -> "maxresdefault.jpg" // Forcer maxres si possible
+                targetSize > 300 -> "sddefault.jpg"
+                else -> "hqdefault.jpg"
+            }
+            // "Un-signing": Strip parameters and force suffix for best quality
+            // Remove all sqp/rs parameters for videos as they limit resolution
+            return replace(Regex("/[^/?]+\\.jpg(\\?.*)?$"), "/$suffix")
+        }
+        // Playlists and Podcasts (/pl_c/, /podcasts_artwork/) are usually signed
+        // and highly sensitive to path changes. We leave them as is.
+    }
+
+    // googleusercontent & yt3.ggpht: modify resolution parameters safely
+    if (contains("googleusercontent.com") || contains("yt3.ggpht.com")) {
+        if (original) {
+            val separator = lastIndexOf('=')
+            if (separator > lastIndexOf('/') && substring(separator + 1).matches(Regex("[swh]\\d+(?:-[a-zA-Z0-9]+)*"))) {
+                return substring(0, separator + 1) + "s0"
+            }
+            return this
+        }
+        if (contains("=")) {
+            val lastEquals = lastIndexOf('=')
+            val base = substring(0, lastEquals)
+            val params = substring(lastEquals)
+            val modParams = params
+                .replace(Regex("([=-])w\\d+(?![0-9a-zA-Z])"), "$1w$size")
+                .replace(Regex("([=-])h\\d+(?![0-9a-zA-Z])"), "$1h$size")
+                .replace(Regex("([=-])s\\d+(?![0-9a-zA-Z])"), "$1s$size")
+            return base + modParams
+        } else {
+            return replace(Regex("([=/-])w\\d+(?![0-9a-zA-Z])"), "$1w$size")
+                .replace(Regex("([=/-])h\\d+(?![0-9a-zA-Z])"), "$1h$size")
+                .replace(Regex("([=/-])s\\d+(?![0-9a-zA-Z])"), "$1s$size")
+        }
+    }
+
+    return this
+}
+
+private fun String?.getNextYouTubeFallback(): String? {
+    if (this == null || !contains("i.ytimg.com/vi/")) return null
+    return when {
+        contains("maxresdefault.jpg") -> replace("maxresdefault.jpg", "sddefault.jpg")
+        contains("sddefault.jpg") -> replace("sddefault.jpg", "hqdefault.jpg")
+        contains("hqdefault.jpg") -> replace("hqdefault.jpg", "mqdefault.jpg")
+        else -> null
+    }
+}
+
+fun String?.thumbnail(): String? = this
+
+fun Uri?.thumbnail(size: Int): Uri? = this?.toString()?.thumbnail(size)?.toUri()
+
+fun Thumbnail.size(size: Int): String = url.thumbnail(size) ?: url
+
+private fun String.getYouTubeQualityScore(): Int {
+    return when {
+        contains("mwEKC") || contains("maxresdefault") || contains("hq720") -> 10
+        contains("mwEHKC") -> 9
+        contains("mwEUC") -> 5
+        contains("mwEIC") -> 2
+        contains("mwESC") -> 1
+        else -> 0
+    }
+}
+
+private fun String.isYouTubeHighRes(): Boolean = getYouTubeQualityScore() >= 5

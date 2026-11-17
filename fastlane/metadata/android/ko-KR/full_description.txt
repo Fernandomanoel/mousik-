@@ -34,7 +34,7 @@ Glass 크레딧: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / B
 - MusicBrainz 아티스트 및 앨범 정보
 - Discord Rich Presence, 라이브 미리보기가 있는 고급 모드 포함
 - 대체 YouTube 스트리밍용 Invidious 통합
-- 재생 목록 가져오기/내보내기: RiPlay, Spotify, YouTube Music, N-Zik
+- 재생 목록 가져오기/내보내기: RiPlay, Spotify, YouTube Music, mousike
 
 👥 <b>함께 듣기</b>
 - 다른 사용자와 코드 또는 초대 링크로 라이브 청취 세션에 참여하거나 호스트하세요
@@ -53,12 +53,12 @@ Glass 크레딧: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / B
 - GitHub에서의 OTA 업데이트, 수면 타이머, 백그라운드 재생
 
 📦 <b>사용 가능한 빌드</b>
-- Release64/Beta64 (`com.nevar.nzik`): 전체 빌드, 64-bit 기기 전용
-- Release32/Beta32 (`com.nevar.nzik`): 전체 빌드, 32-bit 기기 전용
-- Minified64 (`com.nevar.nzik`): 경량 R8 빌드, 저사양 기기용 (64-bit)
-- Minified32 (`com.nevar.nzik`): 경량 R8 빌드 (32-bit)
-- FOSS (`com.nevar.nzik.foss`): 자동 업데이트 없음, F-Droid용 (모든 아키텍처)
-- Dev64/Dev32 (`com.nevar.nzik.dev`): 개발 빌드, 테스트 전용
+- Release64/Beta64 (`app.mousike`): 전체 빌드, 64-bit 기기 전용
+- Release32/Beta32 (`app.mousike`): 전체 빌드, 32-bit 기기 전용
+- Minified64 (`app.mousike`): 경량 R8 빌드, 저사양 기기용 (64-bit)
+- Minified32 (`app.mousike`): 경량 R8 빌드 (32-bit)
+- FOSS (`app.mousike.foss`): 자동 업데이트 없음, F-Droid용 (모든 아키텍처)
+- Dev64/Dev32 (`app.mousike.dev`): 개발 빌드, 테스트 전용
 
 어떤 빌드도 FFmpeg를 포함하지 않습니다: 이는 다운로드 가능한 확장 기능입니다(최초 사용 시 설치되며, 설정 → 확장 기능에서 관리). F-Droid에는 FOSS만 있습니다.
 

@@ -1,0 +1,435 @@
+package app.mousike.android.components.settings.common
+
+import android.net.Uri
+import androidx.compose.foundation.layout.Box
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
+import androidx.compose.foundation.rememberOverscrollEffect
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import app.mousike.android.components.navigation.rememberPageChromeContentPadding
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
+import app.mousike.android.components.glass.GlassFloatingActions
+import app.mousike.android.components.glass.glassFloatingActionContent
+import app.mousike.android.components.glass.rememberGlassFloatingActionBackdrop
+import app.mousike.android.components.pullrefresh.rememberPullRefreshOverlayInsetProvider
+import app.mousike.android.ui.styling.Dimensions
+import app.mousike.android.utils.pauseSearchHistoryKey
+import app.mousike.android.utils.preferences
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.R
+import app.mousike.android.colorPalette
+import app.mousike.android.components.search.SearchHistorySection
+import app.mousike.android.components.search.SearchHistoryStore
+import app.mousike.android.components.search.filterSearchHistory
+import app.mousike.android.components.search.rememberSearchHistory
+import app.mousike.android.components.settings.about.AboutSettingsContent
+import app.mousike.android.components.settings.accounts.AccountsSettingsContent
+import app.mousike.android.components.settings.ai.AIRecommendationSettingsContent
+import app.mousike.android.components.settings.appearance.AppearanceSettingsContent
+import app.mousike.android.components.settings.data.DataSettingsContent
+import app.mousike.android.utils.getActiveProfile
+import app.mousike.android.core.profiles.ProfileStorageIdentity
+import app.mousike.android.core.profiles.profileStorageIdentity
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import kotlinx.coroutines.withContext
+import app.mousike.android.components.settings.general.GeneralSettingsContent
+import app.mousike.android.components.settings.network.NetworkSettingsContent
+import app.mousike.android.components.settings.other.OtherSettingsContent
+import app.mousike.android.components.settings.privacy.PermissionUsageSettingsCard
+import app.mousike.android.components.settings.privacy.PrivacyRewindCard
+import app.mousike.android.components.settings.privacy.PrivacyScreenCaptureCard
+import app.mousike.android.components.settings.ui.UiSettingsContent
+import app.mousike.android.components.tab.Search
+import app.mousike.android.utils.StringResourceIdentity
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.math.roundToInt
+
+fun settingsCardTargetId(context: android.content.Context, tab: Int, titleRes: Int): String =
+    "card.$tab.${settingsSectionNavigationName(titleRes) ?: StringResourceIdentity.legacyName(context.resources.getResourceEntryName(titleRes))}"
+
+/** Detailed search uses the settings host graph; source content retains app-level navigation. */
+@OptIn(ExperimentalAnimationApi::class, ExperimentalFoundationApi::class)
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+fun SettingsCategoryPage(
+    categoryId: String,
+    navController: NavController,
+    target: String = "",
+    parentTarget: String = "",
+    onSearchResultNavigate: (String) -> Unit = { navController.navigate(it) },
+) {
+    val category = OrganizedSettingsCategories.firstOrNull { it.id == categoryId } ?: return
+    val context = LocalContext.current
+    val searchInput = rememberSaveable(categoryId, stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(""))
+    }
+    val search = Search(initialVisible = true, inputState = searchInput)
+    val contentSearch = Search(initialVisible = false)
+    val searchFocus = rememberSettingsSearchFocus(search.isFocused, search.inputValue.isBlank())
+    val registry = remember(categoryId) { SettingsTargetRegistry() }
+    DisposableEffect(registry, target) {
+        onDispose {
+            registry.nestedTarget?.nestedDestination?.let { settingsNestedDialog(it.dialogId)?.hideDialog() }
+            registry.nestedTarget = null
+            registry.storageProfileTarget = null
+            registry.storageEntryTarget = null
+        }
+    }
+    val scroll = rememberLazyListState()
+    val floatingBackdrop = rememberGlassFloatingActionBackdrop()
+    var pinnedFooterHeightPx by remember(categoryId) { mutableIntStateOf(0) }
+    var hasPinnedFooter by remember(categoryId) { mutableStateOf(false) }
+    val listPadding = rememberSettingsContentPadding(
+        base = PaddingValues(bottom = Dimensions.bottomSpacer),
+        bottomInsetHandledByFooter = hasPinnedFooter,
+    )
+    val density = LocalDensity.current
+    var listTopPx by remember { mutableFloatStateOf(0f) }
+    val visibleChromeInset = rememberPullRefreshOverlayInsetProvider()
+    val statusTopPx = WindowInsets.safeDrawing.getTop(density)
+    val searchClearancePx by rememberUpdatedState {
+        (maxOf(statusTopPx.toFloat(), with(density) { visibleChromeInset().toPx() }) - listTopPx)
+            .coerceAtLeast(0f)
+    }
+    var targetingListRow by remember { mutableStateOf(false) }
+    val defaultScrollSpec = LocalBringIntoViewSpec.current
+    val targetScrollSpec = remember(defaultScrollSpec) {
+        object : BringIntoViewSpec by defaultScrollSpec {
+            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float {
+                val clearance = if (targetingListRow) searchClearancePx().coerceAtMost(containerSize) else 0f
+                if (clearance > 0f && size > containerSize - clearance) return offset - clearance
+                return defaultScrollSpec.calculateScrollDistance(offset - clearance, size, containerSize - clearance)
+            }
+        }
+    }
+    val overscroll = rememberOverscrollEffect()
+    val showMessage = LocalSettingsSearchMessage.current
+    val unavailableMessage = stringResource(R.string.settings_target_unavailable)
+    val historyPage = "settings_category_$categoryId"
+    val paused by rememberPreference(pauseSearchHistoryKey, false)
+    val history = rememberSearchHistory(historyPage, paused)
+    fun recordQuery(query: String = search.inputValue) {
+        history.value = SearchHistoryStore.record(context.preferences, historyPage, query)
+    }
+    val cards = remember(categoryId) { cardsForCategory(categoryId) }
+    val isSearching = search.inputValue.isNotBlank()
+    val matches = searchSettingsCardResults(context, search.inputValue).filter { it.categoryId() == categoryId }
+    val entryMatches = searchSettingsEntries(context, search.inputValue)
+        .filter { it.parentCard().categoryId() == categoryId }
+    val sourceTabs = remember(categoryId) {
+        val preferred = when (categoryId) {
+            "player" -> listOf(2, 0)
+            "privacy" -> listOf(9, 4, 3)
+            "data" -> listOf(4, 7)
+            else -> cards.map { it.tab }.distinct()
+        }
+        preferred.filter { tab -> cards.any { it.tab == tab } }
+    }
+    val slots = remember(categoryId) { sourceTabs.associateWith { SettingsCardSlots() } }
+    val rows = if (isSearching) emptyList() else sourceTabs.flatMap { tab ->
+        val selected = cards.filter { it.tab == tab && it.titleRes != R.string.settings_reset }.map { it.titleRes }.toSet()
+        val titles = slots.getValue(tab).titles
+        val ordered = if (titles.isEmpty()) {
+            cards.filter { it.tab == tab && it.titleRes != R.string.settings_reset }.map { it.titleRes } +
+                if (tab in listOf(0, 2, 6)) listOf(SettingsSourceFooter) else emptyList()
+        } else titles.toList()
+        ordered.filter { it in selected }.map { tab to it }
+    }
+    val latestRows by rememberUpdatedState(rows)
+    val resetScopes = if (isSearching) emptyList() else cards.filter { it.titleRes == R.string.settings_reset }.map { it.tab }
+    SettingsSearchEmptyFeedback(search.inputValue, matches.isEmpty() && entryMatches.isEmpty())
+    LaunchedEffect(target, parentTarget) {
+        if (target.isBlank()) return@LaunchedEffect
+        val storageRoute = target.split('|', limit = 3)
+        val rawTarget = storageRoute.first()
+        // Two layout frames include children and their initial conditional composition.
+        withFrameNanos { }
+        withFrameNanos { }
+        val requestedTarget = when (rawTarget) {
+            "appearance.player_presets_and_layout.icon_like_button" -> "appearance.timeline_and_controls.icon_like_button"
+            "network.network_status.image_quality_format" -> "network.quality.image_quality_format"
+            "network.network_status.audio_quality_format" -> "network.quality.audio_quality_format"
+            "network.network_status.download_quality_format" -> "embedded.network.download_quality_format"
+            "card.6.network_status" -> "card.6.quality"
+            "card.6.settings_download_status" -> "card.6.settings_download_quality"
+            "card.4.cache" -> settingsCardTargetId(context, 4, R.string.storage_breakdown_title)
+            "card.4.auto_backup_title" -> "embedded.auto_backup.section"
+            "card.7.on_device" -> "other.on_device.section"
+            else -> rawTarget
+        }
+        val entry = AllSettingsEntryTargets.firstOrNull { it.id == requestedTarget }
+        val storageEntry = entry?.cardTitleRes == R.string.storage_breakdown_title
+        if (storageEntry && (requestedTarget.startsWith("data.cache.") ||
+                requestedTarget.startsWith("embedded.auto_backup.") || requestedTarget.startsWith("other.on_device.") ||
+                storageRoute.size == 3)
+        ) {
+            registry.storageEntryTarget = requestedTarget
+            val explicit = storageRoute.takeIf { it.size == 3 }?.let { ProfileStorageIdentity(it[2], it[1]) }
+            registry.storageProfileTarget = withContext(MousikeDispatchers.DATA) {
+                if (explicit == null) profileStorageIdentity(context, getActiveProfile(context))
+                else profileStorageIdentity(context, explicit.id)?.takeIf { it == explicit }
+            }
+            if (explicit != null && registry.storageProfileTarget == null) {
+                showMessage(unavailableMessage)
+                return@LaunchedEffect
+            }
+        }
+        val cardId = entry?.let { settingsCardTargetId(context, it.tab, it.cardTitleRes) }
+            ?: requestedTarget.takeIf { it.startsWith("card.") }
+            ?: parentTarget
+        val row = latestRows.indexOfFirst { (tab, title) ->
+            title != SettingsSourceFooter && settingsCardTargetId(context, tab, title) == cardId
+        }
+        val item = when {
+            resetScopeForTarget(requestedTarget) != null || resetScopeForTarget(parentTarget) != null -> latestRows.size + 1
+            row >= 0 -> row + 1
+            else -> null
+        }
+        if (item != null) {
+            // Lazy cards must be composed before exact-row availability can be evaluated.
+            scroll.scrollToItem(0)
+            val paddingPx = with(density) { listPadding.calculateTopPadding().roundToPx() }
+            scroll.animateScrollToItem(item, scrollOffset = paddingPx - searchClearancePx().roundToInt())
+            withFrameNanos { }
+            withFrameNanos { }
+        }
+        val nested = entry?.nestedDestination
+        if (storageEntry) {
+            withTimeoutOrNull(1500) {
+                snapshotFlow { registry.targets[requestedTarget] }.first { it != null }
+            }
+        }
+        if (nested != null) {
+            val opener = withTimeoutOrNull(1500) {
+                snapshotFlow { registry.targets[nested.openerId] }.first { it != null }
+            }
+            if (opener != null) {
+                registry.nestedTarget = entry
+                settingsNestedDialog(nested.dialogId)?.showDialog()
+                withTimeoutOrNull(1500) {
+                    snapshotFlow { registry.targets[requestedTarget] }.first { it != null }
+                }
+            }
+        }
+        val unavailable = !registry.targets.containsKey(requestedTarget)
+        if (unavailable) {
+            if (nested != null) {
+                settingsNestedDialog(nested.dialogId)?.hideDialog()
+                registry.nestedTarget = null
+            }
+            showMessage(unavailableMessage)
+        }
+        val resolved = if (!unavailable) requestedTarget else parentTarget
+        withFrameNanos { }
+        registry.targets[resolved]?.let {
+            // A tall card is already positioned by the list. Bringing the full card into view
+            // again can move its header behind the overlay to reveal more of its body.
+            if (item == null || resolved != cardId) {
+                targetingListRow = nested == null || unavailable
+                try {
+                    it.bringIntoView()
+                } finally {
+                    targetingListRow = false
+                }
+            }
+            registry.blink(resolved)
+        }
+    }
+    CompositionLocalProvider(
+        LocalSettingsTargets provides registry,
+        LocalBringIntoViewSpec provides targetScrollSpec,
+    ) {
+        Box {
+            Column(Modifier.glassFloatingActionContent(floatingBackdrop).testTag("settings.category.$categoryId").background(colorPalette().background0).fillMaxWidth().fillMaxHeight()) {
+                // One source composition owns shared restart state and singleton dialogs.
+                sourceTabs.forEach { tab ->
+                    val selection = cards.filter { it.tab == tab }.map { it.titleRes }.toSet() - R.string.settings_reset
+                    if (selection.isEmpty()) return@forEach
+                    CompositionLocalProvider(
+                        LocalSettingsCardSlots provides slots.getValue(tab),
+                        LocalSettingsResetScope provides (SettingsCategories.firstOrNull { it.tab == tab }?.labelRes ?: R.string.settings_category_privacy),
+                    ) {
+                        SettingsSourceContent(
+                            tab, contentSearch, navController, selection,
+                            { title -> Modifier.settingsSearchTarget(settingsCardTargetId(context, tab, title)) },
+                            normalizePreferences = target.isBlank(),
+                        )
+                    }
+                }
+                LazyColumn(
+                    state = scroll,
+                    contentPadding = listPadding,
+                    overscrollEffect = if (scroll.canScrollForward || scroll.canScrollBackward) overscroll else null,
+                    modifier = Modifier.weight(1f).fillMaxWidth().testTag("settings.category.list.$categoryId")
+                        .onGloballyPositioned { listTopPx = it.positionInWindow().y },
+                ) {
+                    item(key = "header", contentType = "header") {
+                        Column {
+                            settingsSearchTitle(searchFocus, category.labelRes, category.iconRes)
+                            settingsSearchDescription(searchFocus) {
+                                SettingsDescription(
+                                    text = stringResource(category.descriptionRes),
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                            if (categoryId != "about") {
+                                search.SearchBar(this, barPadding = searchFocus.barPadding, onSearch = { recordQuery() })
+                                SearchHistorySection(
+                                    visible = search.isFocused && filterSearchHistory(history.value, search.inputValue).isNotEmpty(),
+                                    queries = filterSearchHistory(history.value, search.inputValue),
+                                    onQueryClick = { search.input = TextFieldValue(it); recordQuery(it); search.isFocused = false },
+                                    onQueryDelete = { history.value = SearchHistoryStore.delete(context.preferences, historyPage, it) },
+                                    onQueryDeleteAll = { history.value = SearchHistoryStore.deleteAll(context.preferences, historyPage) },
+                                )
+                            }
+                        }
+                    }
+                    items(entryMatches, key = { "entry:${it.id}" }, contentType = { "entry" }) { entry ->
+                        SettingsEntryResultRow(
+                            result = entry,
+                            surfaceTag = "settings.category.result.entry.${entry.id}",
+                            rowTag = "settings.category.entry.${entry.id}",
+                            onClick = {
+                                recordQuery()
+                                onSearchResultNavigate(entry.destinationRoute(context))
+                            },
+                        )
+                    }
+                    items(matches, key = { "result:${it.tab}:${it.titleRes}" }, contentType = { "card_result" }) { card ->
+                        SettingsCardResultRow(
+                            card = card,
+                            surfaceTag = "settings.category.result.card.${card.tab}.${card.titleRes}",
+                            rowTag = "settings.category.card.${card.tab}.${card.titleRes}",
+                            onClick = {
+                                recordQuery()
+                                val cardTarget = Uri.encode(settingsCardTargetId(context, card.tab, card.titleRes))
+                                onSearchResultNavigate("settingsCategory/${card.categoryId()}?target=$cardTarget")
+                            },
+                        )
+                    }
+                    items(rows, key = { (tab, title) -> "$tab:$title" }, contentType = { "card" }) { (tab, title) ->
+                        CompositionLocalProvider(
+                            LocalSettingsResetScope provides (SettingsCategories.firstOrNull { it.tab == tab }?.labelRes ?: R.string.settings_category_privacy),
+                        ) {
+                            Column(Modifier.settingsSearchContentVisibility(searchFocus.contentAlpha)) {
+                                slots.getValue(tab).content[title]?.value?.invoke()
+                            }
+                        }
+                    }
+                    if (resetScopes.isNotEmpty()) {
+                        item(key = "reset", contentType = "reset") {
+                            Column(Modifier.settingsSearchContentVisibility(searchFocus.contentAlpha)) {
+                                SettingsResetCard(resetScopes, target) { tab ->
+                                    CompositionLocalProvider(
+                                        LocalSettingsCardSlots provides null,
+                                        LocalSettingsResetScope provides SettingsCategories.first { it.tab == tab }.labelRes,
+                                    ) {
+                                        SettingsSourceContent(
+                                            tab, contentSearch, navController, setOf(R.string.settings_reset),
+                                            { title -> Modifier.settingsSearchTarget(settingsCardTargetId(context, tab, title)) },
+                                            normalizePreferences = false,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Box(Modifier.testTag("settings.category.footer").onSizeChanged { pinnedFooterHeightPx = it.height }) {
+                    SettingsPinnedFooter(
+                        bottomSpacer = Dimensions.bottomSpacer,
+                        contentPadding = rememberPageChromeContentPadding(
+                            base = PaddingValues(bottom = Dimensions.bottomSpacer),
+                            topInsetProvider = { 0.dp },
+                        ),
+                        onVisibilityChanged = { hasPinnedFooter = it },
+                    ) {
+                        sourceTabs.forEach { tab ->
+                            CompositionLocalProvider(
+                                LocalSettingsResetScope provides (SettingsCategories.firstOrNull { it.tab == tab }?.labelRes ?: R.string.settings_category_privacy),
+                            ) {
+                                slots.getValue(tab).content[SettingsSourceFooter]?.value?.invoke()
+                            }
+                        }
+                    }
+                }
+            }
+            GlassFloatingActions(floatingBackdrop) {
+                SettingsScrollToTop(
+                    lazyListState = scroll,
+                    pinnedFooterHeightPx = pinnedFooterHeightPx,
+                    modifier = Modifier.testTag("settings.category.scrollToTop"),
+                )
+            }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalAnimationApi::class)
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+private fun SettingsSourceContent(
+    tab: Int,
+    search: Search,
+    navController: NavController,
+    selection: Set<Int>,
+    decorate: @Composable (Int) -> Modifier,
+    normalizePreferences: Boolean,
+) {
+    when (tab) {
+        0 -> GeneralSettingsContent(search, selectedCards = selection, cardModifier = decorate)
+        1 -> UiSettingsContent(search, navController, selectedCards = selection, cardModifier = decorate)
+        2 -> AppearanceSettingsContent(search, navController, selectedCards = selection, cardModifier = decorate, normalizePreferences = normalizePreferences)
+        3 -> AIRecommendationSettingsContent(search, navController, selectedCards = selection, cardModifier = decorate)
+        4 -> DataSettingsContent(search, navController, selectedCards = selection, cardModifier = decorate)
+        5 -> AccountsSettingsContent(search, navController, selectedCards = selection, cardModifier = decorate)
+        6 -> NetworkSettingsContent(search, navController, selectedCards = selection, cardModifier = decorate)
+        7 -> OtherSettingsContent(search, selectedCards = selection, cardModifier = decorate)
+        8 -> AboutSettingsContent(selectedCards = selection, cardModifier = decorate)
+        9 -> {
+            if (R.string.privacy_screen_protection in selection) SettingsCardSlot(R.string.privacy_screen_protection, modifier = { decorate(R.string.privacy_screen_protection) }) { PrivacyScreenCaptureCard() }
+            if (R.string.permissions_usage_journal in selection) SettingsCardSlot(R.string.permissions_usage_journal, modifier = { decorate(R.string.permissions_usage_journal) }) { PermissionUsageSettingsCard() }
+            if (R.string.rewind_settings_enabled in selection) SettingsCardSlot(R.string.rewind_settings_enabled, modifier = { decorate(R.string.rewind_settings_enabled) }) { PrivacyRewindCard() }
+        }
+    }
+}

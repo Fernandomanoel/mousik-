@@ -68,7 +68,7 @@ Fixed:
 
 Refactor:
 - Large code-quality pass across ~71 files to comply with CODE.md (structured coroutines, lifecycle-aware state collection, null-safety, no wildcard imports, keyed lazy lists).
-- Coroutine dispatchers centralized behind a single NzikDispatchers object, with hardened fire-and-forget scopes.
+- Coroutine dispatchers centralized behind a single MousikeDispatchers object, with hardened fire-and-forget scopes.
 - InnerTube request body objects removed in favor of named parameters.
 - Dislike handling centralized behind a DislikeMode enum.
 

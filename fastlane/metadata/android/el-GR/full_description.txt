@@ -1,8 +1,8 @@
 Ένα πολύγλωσσο frontend YouTube Music για το Android, επικεντρώθηκε στην απόδοση, UI / UX βελτιώσεις, επέκταση χαρακτηριστικών και μακροπρόθεσμη υποστήριξη.
 
-<b>N-Zik</b> είναι ένα πιρούνι ανοιχτού κώδικα του <a href="https://github.com/knighthat/Kreate">Kreate</a>.
+<b>mousike</b> είναι ένα πιρούνι ανοιχτού κώδικα του <a href="https://github.com/knighthat/Kreate">Kreate</a>.
 
-<b>Σημείωση:</b> Το N-Zik ξεκίνησε ως δευτερεύον έργο. Για πιο ώριμες εναλλακτικές λύσεις, ελέγξτε το <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>, ή <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
+<b>Σημείωση:</b> Το mousike ξεκίνησε ως δευτερεύον έργο. Για πιο ώριμες εναλλακτικές λύσεις, ελέγξτε το <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a>, ή <a href="https://github.com/fast4x/RiPlay">RiPlay</a>.
 
 <b>AI Χρήση:</b> Χρησιμοποιώ γενετική τεχνητή νοημοσύνη για κώδικα (μέσω <a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD Μέθοδος</a>), επανεξετάστηκε και δοκιμάστηκε πριν από την αποστολή.
 
@@ -38,7 +38,7 @@
 - MusicBrainz καλλιτέχνη και πληροφορίες άλμπουμ
 - Discord Rich Presence, συμπεριλαμβανομένης της προηγμένης λειτουργίας με ζωντανή προεπισκόπηση
 - Invidious ενσωμάτωση για την εναλλακτική ροή YouTube
-- Εισαγωγή / εξαγωγή λίστας αναπαραγωγής: RiPlay, Spotify, Μουσική YouTube, N-Zik
+- Εισαγωγή / εξαγωγή λίστας αναπαραγωγής: RiPlay, Spotify, Μουσική YouTube, mousike
 
 👥 <b>Listen Together</b>
 - Εγγραφείτε ή φιλοξενήστε ζωντανές συνεδρίες ακρόασης με άλλους χρήστες μέσω κώδικα ή συνδέσμου πρόσκλησης
@@ -57,12 +57,12 @@
 - Ενημερώσεις OTA από το GitHub, χρονόμετρο ύπνου, αναπαραγωγή φόντου
 
 📦 <b>Διαθέσιμες Κατασκευές</b>
-- Κυκλοφορία64/Beta64 (`com.nevar.nzik`): Πλήρης κατασκευή, μόνο 64-bit συσκευές
-- Κυκλοφορία32/Beta32 (`com.nevar.nzik`): Πλήρης κατασκευή, 32-bit συσκευές μόνο
-- Minified64 (`com.nevar.nzik`): Ελαφριά R8 κατασκευή, για συσκευές χαμηλού επιπέδου (64-bit)
-- Minified32 (`com.nevar.nzik`): Ελαφριά κατασκευή R8 (32 bit)
-- FOSS (`com.nevar.nzik.foss`): Χωρίς auto-updater, για το F-Droid (όλες οι αρχιτεκτονικές)
-- Dev64/Dev32 (`com.nevar.nzik.dev`): Ανάπτυξη κατασκευών, έλεγχος μόνο
+- Κυκλοφορία64/Beta64 (`app.mousike`): Πλήρης κατασκευή, μόνο 64-bit συσκευές
+- Κυκλοφορία32/Beta32 (`app.mousike`): Πλήρης κατασκευή, 32-bit συσκευές μόνο
+- Minified64 (`app.mousike`): Ελαφριά R8 κατασκευή, για συσκευές χαμηλού επιπέδου (64-bit)
+- Minified32 (`app.mousike`): Ελαφριά κατασκευή R8 (32 bit)
+- FOSS (`app.mousike.foss`): Χωρίς auto-updater, για το F-Droid (όλες οι αρχιτεκτονικές)
+- Dev64/Dev32 (`app.mousike.dev`): Ανάπτυξη κατασκευών, έλεγχος μόνο
 
 Δεν υπάρχουν δέσμες κατασκευής FFmpeg: είναι μια επέκταση με δυνατότητα λήψης (εγκατεστημένη κατά την πρώτη χρήση, που διαχειρίζεται στις Ρυθμίσεις → επεκτάσεις). Μόνο το FOSS είναι στο F-Droid.
 

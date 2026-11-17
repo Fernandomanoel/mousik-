@@ -1,0 +1,27 @@
+package app.mousike.android.updater.models
+
+import androidx.annotation.StringRes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import app.mousike.android.R
+
+/**
+ * The state of the "check for updates" setting: silent auto-check at
+ * startup, ask the user once per update, or disabled.
+ *
+ * Migrated from the legacy `app.mousike.android.enums.CheckUpdateState` —
+ * the composable [text] getter is kept self-contained instead of relying on
+ * the legacy `TextView` interface.
+ */
+enum class CheckUpdateState(
+    @field:StringRes val textId: Int
+) {
+    Enabled(R.string.common_state_enabled),
+    Disabled(R.string.common_option_disabled),
+    Ask(R.string.updates_check_mode_ask);
+
+    /** The localized display text of this state. */
+    val text: String
+        @Composable
+        get() = stringResource(textId)
+}

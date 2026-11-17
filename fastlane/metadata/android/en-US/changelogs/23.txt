@@ -1,12 +1,12 @@
 New:
-- New Logo (added N-Zik name)
+- New Logo (added mousike name)
 - New Settings UI, Changelogs UI, Update UI
 - Android 6+ (API 23) now minimum
 
 Changed:
 - Moved Update section to About
 - Quickpicks renamed to AI recommendations
-- Updated the logs and interface to use the N-Zik name
+- Updated the logs and interface to use the mousike name
 
 Improved:
 - AutoUpdate and Beta updates enabled by default

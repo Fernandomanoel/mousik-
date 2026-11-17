@@ -1,0 +1,1290 @@
+package app.mousike.android.components.menu.lyrics
+
+import app.mousike.android.components.glass.NativeIconActionSize
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridScope
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.UnstableApi
+import app.mousike.android.enums.Languages
+import app.mousike.android.utils.contentTranslationChoices
+import app.mousike.android.enums.MenuStyle
+import app.mousike.android.ui.components.LocalMenuState
+import app.mousike.android.ui.components.MenuState
+import app.mousike.android.ui.components.tab.toolbar.Button
+import app.mousike.android.ui.components.tab.toolbar.Menu
+import app.mousike.android.ui.components.tab.toolbar.MenuIcon
+import app.mousike.android.utils.clickOnLyricsTextKey
+import app.mousike.android.utils.karaokeRespectAgentPositionKey
+import app.mousike.android.utils.landscapeControlsKey
+import app.mousike.android.utils.lyricsAlignmentKey
+import app.mousike.android.utils.lyricsBackgroundKey
+import app.mousike.android.utils.lyricsColorKey
+import app.mousike.android.utils.lyricsCustomColorKey
+import app.mousike.android.utils.lyricsFontSizeKey
+import app.mousike.android.utils.lyricsHighlightKey
+import app.mousike.android.utils.lyricsIntervalIndicatorKey
+import app.mousike.android.utils.lyricsOutlineKey
+import app.mousike.android.utils.lyricsSizeAnimateKey
+import app.mousike.android.utils.lyricsTypeKey
+import app.mousike.android.utils.otherLanguageAppLyricsKey
+import app.mousike.android.utils.menuStyleKey
+import app.mousike.android.utils.playerEnableLyricsPopupMessageKey
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.utils.romanizationEnabledKey
+import app.mousike.android.utils.semiBold
+import app.mousike.android.utils.showBackgroundLyricsKey
+import app.mousike.android.utils.showButtonPlayerLyricsKey
+import app.mousike.android.utils.showLyricsStateKey
+import app.mousike.android.utils.showSecondLineKey
+import app.mousike.android.utils.showlyricsthumbnailKey
+import app.mousike.android.utils.thumbnailTapEnabledKey
+import app.mousike.android.components.dialog.common.DialogPresence
+import app.mousike.android.R
+import app.mousike.android.appContext
+import app.mousike.android.core.network.OfflineMode
+import app.mousike.android.components.ui.iconBadgeBackground
+import app.mousike.android.colorPalette
+import app.mousike.android.components.menu.GridMenu
+import app.mousike.android.components.menu.ListMenu
+import app.mousike.android.components.player.lyrics.karaokeClipRectsDebugKey
+import app.mousike.android.components.ui.toggles.Switch
+import app.mousike.android.enums.lyrics.LyricsAlignment
+import app.mousike.android.enums.lyrics.LyricsBackground
+import app.mousike.android.enums.lyrics.LyricsColor
+import app.mousike.android.enums.lyrics.LyricsFontSize
+import app.mousike.android.enums.lyrics.LyricsHighlight
+import app.mousike.android.enums.lyrics.LyricsOutline
+import app.mousike.android.enums.lyrics.LyricsType
+import app.mousike.android.typography
+import app.mousike.android.uiRoundnessShape
+import app.mousike.android.components.dialog.common.ValueSelectorDialog
+
+@UnstableApi
+class LyricsSettingsMenu private constructor(
+    private val isLandscape: Boolean,
+    private val translateEnabled: MutableState<Boolean>,
+    private val isLyricsNotNull: () -> Boolean,
+    private val actualLyricsType: () -> LyricsType?,
+    private val onShowLyricsSizeDialog: () -> Unit,
+    private val onEditLyrics: () -> Unit,
+    private val onCopyLyrics: () -> Unit,
+    private val onSearchLyricsOnline: () -> Unit,
+    private val onFetchLyricsAgain: () -> Unit,
+    private val onPickFromLrcLib: () -> Unit,
+    private val onShowProviders: () -> Unit,
+    private val onShowOffsetDialog: () -> Unit,
+    override val menuState: MenuState,
+    styleState: MutableState<MenuStyle>
+) : Menu {
+
+    companion object {
+        @Composable
+        operator fun invoke(
+            isLandscape: Boolean,
+            translateEnabled: MutableState<Boolean>,
+            isLyricsNotNull: () -> Boolean,
+            actualLyricsType: () -> LyricsType?,
+            onShowLyricsSizeDialog: () -> Unit,
+            onEditLyrics: () -> Unit,
+            onCopyLyrics: () -> Unit,
+            onSearchLyricsOnline: () -> Unit,
+            onFetchLyricsAgain: () -> Unit,
+            onPickFromLrcLib: () -> Unit,
+            onShowProviders: () -> Unit,
+            onShowOffsetDialog: () -> Unit
+        ): LyricsSettingsMenu =
+            LyricsSettingsMenu(
+                isLandscape = isLandscape,
+                translateEnabled = translateEnabled,
+                isLyricsNotNull = isLyricsNotNull,
+                actualLyricsType = actualLyricsType,
+                onShowLyricsSizeDialog = onShowLyricsSizeDialog,
+                onEditLyrics = onEditLyrics,
+                onCopyLyrics = onCopyLyrics,
+                onSearchLyricsOnline = onSearchLyricsOnline,
+                onFetchLyricsAgain = onFetchLyricsAgain,
+                onPickFromLrcLib = onPickFromLrcLib,
+                onShowProviders = onShowProviders,
+                onShowOffsetDialog = onShowOffsetDialog,
+                menuState = LocalMenuState.current,
+                styleState = rememberPreference(menuStyleKey, MenuStyle.List)
+            )
+    }
+
+    private lateinit var buttons: List<Button>
+    override var menuStyle: MenuStyle by styleState
+
+    @Composable
+    override fun ListMenu() { /* Handled in MenuComponent */ }
+
+    @Composable
+    override fun GridMenu() { /* Handled in MenuComponent */ }
+
+    @Composable
+    override fun MenuComponent() {
+        // Network-only actions hidden in full offline mode
+        val offlineMode = OfflineMode.enabled(appContext())
+        // Preferences
+        var landscapeControls by rememberPreference(landscapeControlsKey, true)
+        var lyricsAlignment by rememberPreference(lyricsAlignmentKey, LyricsAlignment.Center)
+        // Shared default: the lyrics screen renders with the same fallback,
+        // so the menu and the rendered size always agree on fresh installs
+        var fontSize by rememberPreference(lyricsFontSizeKey, LyricsFontSize.DEFAULT)
+        var showClipRectsDebug by rememberPreference(karaokeClipRectsDebugKey, false)
+        var lyricsColor by rememberPreference(lyricsColorKey, LyricsColor.White)
+        var lyricsCustomColor by rememberPreference(lyricsCustomColorKey, android.graphics.Color.WHITE)
+        var lyricsOutline by rememberPreference(lyricsOutlineKey, LyricsOutline.None)
+        var romanizationEnabled by rememberPreference(romanizationEnabledKey, true)
+        var showIntervalIndicator by rememberPreference(lyricsIntervalIndicatorKey, true)
+        var showSecondLine by rememberPreference(showSecondLineKey, false)
+        var lyricsSizeAnimate by rememberPreference(lyricsSizeAnimateKey, false)
+        var lyricsHighlight by rememberPreference(lyricsHighlightKey, LyricsHighlight.None)
+        var lyricsBackground by rememberPreference(lyricsBackgroundKey, LyricsBackground.Black)
+        var lyricsType by rememberPreference(lyricsTypeKey, LyricsType.Auto)
+        var showlyricsthumbnail by rememberPreference(showlyricsthumbnailKey, true)
+        var showButtonPlayerLyrics by rememberPreference(showButtonPlayerLyricsKey, true)
+        var thumbnailTapEnabled by rememberPreference(thumbnailTapEnabledKey, true)
+        var clickLyricsText by rememberPreference(clickOnLyricsTextKey, true)
+        var showLyricsStateKeyPref by rememberPreference(showLyricsStateKey, false)
+        var showBackgroundLyrics by rememberPreference(showBackgroundLyricsKey, false)
+        var playerEnableLyricsPopupMessage by rememberPreference(playerEnableLyricsPopupMessageKey, true)
+        var karaokeRespectAgentPosition by rememberPreference(karaokeRespectAgentPositionKey, true)
+        var otherLanguageApp by rememberPreference(otherLanguageAppLyricsKey, Languages.System)
+
+        @Composable
+        fun providerSettingsEntry() {
+            ActionSettingEntry(
+                title = stringResource(R.string.lyrics_provider_settings_title),
+                icon = R.drawable.search,
+                onClick = {
+                    menuState.hide()
+                    onShowProviders()
+                }
+            )
+        }
+
+        // Settings content for list
+        @Composable
+        fun settingsContent() {
+            // Section: Display Mode
+            SectionTitle(stringResource(R.string.lyrics_display_section_title))
+
+            // Lyrics Type
+            EnumSettingEntry(
+                title = stringResource(R.string.recommendations_show_section_label),
+                icon = R.drawable.time,
+                selectedValue = lyricsType,
+                values = LyricsType.entries.toList(),
+                valueText = { value ->
+                    when (value) {
+                        LyricsType.Karaoke -> stringResource(R.string.lyrics_mode_karaoke_label)
+                        LyricsType.Synced -> stringResource(R.string.lyrics_mode_synchronized_label)
+                        LyricsType.Unsynced -> stringResource(R.string.lyrics_mode_unsynchronized_label)
+                        LyricsType.Auto -> stringResource(R.string.lyrics_mode_automatic_label)
+                    }
+                },
+                onValueSelected = { lyricsType = it }
+            )
+
+            providerSettingsEntry()
+
+            val actualStateString = actualLyricsType()?.let {
+                when (it) {
+                    LyricsType.Karaoke -> stringResource(R.string.lyrics_mode_karaoke_label)
+                    LyricsType.Synced -> stringResource(R.string.lyrics_mode_synchronized_label)
+                    LyricsType.Unsynced -> stringResource(R.string.lyrics_mode_unsynchronized_label)
+                    LyricsType.Auto -> stringResource(R.string.lyrics_mode_automatic_label)
+                }
+            }
+
+            AnimatedContent(
+                targetState = actualStateString,
+                label = "LyricsStateAnimation"
+            ) { stateString ->
+                if (stateString != null) {
+                    ActionSettingEntry(
+                        title = stringResource(R.string.lyrics_current_state_format, stateString),
+                        icon = R.drawable.information,
+                        enabled = false,
+                        onClick = {}
+                    )
+                }
+            }
+
+            // Show Lyrics Thumbnail
+            ToggleSettingEntry(
+                title = stringResource(R.string.settings_lyrics_artwork_visible_label),
+                icon = R.drawable.image,
+                isChecked = showlyricsthumbnail,
+                onCheckedChange = { showlyricsthumbnail = it }
+            )
+
+            // Show Button Player Lyrics
+            ToggleSettingEntry(
+                title = stringResource(R.string.settings_action_bar_show_lyrics_button),
+                icon = R.drawable.song_lyrics,
+                isChecked = showButtonPlayerLyrics,
+                onCheckedChange = { showButtonPlayerLyrics = it }
+            )
+
+            // Landscape Controls
+            if (isLandscape && !showlyricsthumbnail) {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.lyrics_action_toggle_landscape_controls),
+                    icon = R.drawable.play,
+                    isChecked = landscapeControls,
+                    onCheckedChange = { landscapeControls = it }
+                )
+            }
+
+            // Section: Text Style
+            SectionTitle(stringResource(R.string.lyrics_text_style_section_title))
+
+            // Font Size
+            EnumSettingEntry(
+                title = stringResource(R.string.lyrics_size),
+                icon = R.drawable.text,
+                selectedValue = fontSize,
+                values = LyricsFontSize.entries.toList(),
+                valueText = { value ->
+                    when (value) {
+                        LyricsFontSize.Light -> stringResource(R.string.lyrics_font_size_small_label)
+                        LyricsFontSize.Medium -> stringResource(R.string.common_size_medium)
+                        LyricsFontSize.Heavy -> stringResource(R.string.lyrics_font_size_large_label)
+                        LyricsFontSize.Large -> stringResource(R.string.lyrics_font_size_extra_large_label)
+                        LyricsFontSize.Custom -> stringResource(R.string.common_option_custom)
+                    }
+                },
+                onValueSelected = { fontSize = it },
+                trailingContent = {
+                    if (fontSize == LyricsFontSize.Custom) {
+                        Box(
+                            modifier = Modifier
+                                .size(NativeIconActionSize)
+                                .clip(uiRoundnessShape())
+                                .iconBadgeBackground(colorPalette().accent.copy(alpha = 0.1f), uiRoundnessShape())
+                                .clickable { onShowLyricsSizeDialog() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.text),
+                                tint = colorPalette().accent,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            )
+
+            // Debug: karaoke clip rects overlay
+            ToggleSettingEntry(
+                title = stringResource(R.string.lyrics_show_clip_rects),
+                icon = R.drawable.eye,
+                isChecked = showClipRectsDebug,
+                onCheckedChange = { showClipRectsDebug = it }
+            )
+
+            // Color
+            EnumSettingEntry(
+                title = stringResource(R.string.lyrics_color),
+                icon = R.drawable.droplet,
+                selectedValue = lyricsColor,
+                values = LyricsColor.entries.toList(),
+                valueText = { value ->
+                    when (value) {
+                        LyricsColor.White -> stringResource(R.string.lyrics_color_white)
+                        LyricsColor.Thememode -> stringResource(R.string.common_color_source_theme)
+                        LyricsColor.Cover -> stringResource(R.string.common_color_source_artwork)
+                        LyricsColor.Custom -> stringResource(R.string.common_color_custom)
+                    }
+                },
+                onValueSelected = { lyricsColor = it }
+            )
+
+            // Custom Color
+            if (lyricsColor == LyricsColor.Custom) {
+                ListMenu.Entry(
+                    text = stringResource(R.string.common_color_custom),
+                    icon = {
+                        SettingIcon(R.drawable.droplet)
+                    },
+                    trailingContent = {
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(Color(lyricsCustomColor), shape = uiRoundnessShape())
+                        )
+                    }
+                )
+            }
+
+            // Alignment
+            if (!(lyricsType == LyricsType.Karaoke && karaokeRespectAgentPosition)) {
+                EnumSettingEntry(
+                    title = stringResource(R.string.lyrics_alignment_label),
+                    icon = R.drawable.text,
+                    selectedValue = lyricsAlignment,
+                    values = LyricsAlignment.entries.toList(),
+                    valueText = { value ->
+                        when (value) {
+                            LyricsAlignment.Left -> stringResource(R.string.lyrics_alignment_left_label)
+                            LyricsAlignment.Center -> stringResource(R.string.lyrics_alignment_center_label)
+                            LyricsAlignment.Right -> stringResource(R.string.lyrics_alignment_right_label)
+                        }
+                    },
+                    onValueSelected = { lyricsAlignment = it }
+                )
+            }
+
+            // Outline
+            if (!showlyricsthumbnail && lyricsType == LyricsType.Synced) {
+                EnumSettingEntry(
+                    title = stringResource(R.string.lyrics_text_outline_label),
+                    icon = R.drawable.horizontal_bold_line,
+                    selectedValue = lyricsOutline,
+                    values = LyricsOutline.entries.filter {
+                        it != LyricsOutline.Glow || lyricsType != LyricsType.Unsynced
+                    },
+                    valueText = { value ->
+                        when (value) {
+                            LyricsOutline.None -> stringResource(R.string.common_option_none)
+                            LyricsOutline.Thememode -> stringResource(R.string.common_color_source_theme)
+                            LyricsOutline.White -> stringResource(R.string.lyrics_color_white)
+                            LyricsOutline.Black -> stringResource(R.string.common_color_black)
+                            LyricsOutline.Rainbow -> stringResource(R.string.lyrics_style_fluid_rainbow_label)
+                            LyricsOutline.Glow -> stringResource(R.string.lyrics_text_glow_label)
+                        }
+                    },
+                    onValueSelected = { lyricsOutline = it }
+                )
+            }
+
+            // Highlight
+            if (!showlyricsthumbnail) {
+                EnumSettingEntry(
+                    title = stringResource(R.string.lyrics_text_highlight_label),
+                    icon = R.drawable.horizontal_bold_line_rounded,
+                    selectedValue = lyricsHighlight,
+                    values = LyricsHighlight.entries.toList(),
+                    valueText = { value ->
+                        when (value) {
+                            LyricsHighlight.None -> stringResource(R.string.common_option_none)
+                            LyricsHighlight.White -> stringResource(R.string.lyrics_color_white)
+                            LyricsHighlight.Black -> stringResource(R.string.common_color_black)
+                        }
+                    },
+                    onValueSelected = { lyricsHighlight = it }
+                )
+            }
+
+            // Background
+            if (!showlyricsthumbnail) {
+                EnumSettingEntry(
+                    title = stringResource(R.string.lyrics_background_label),
+                    icon = R.drawable.droplet,
+                    selectedValue = lyricsBackground,
+                    values = LyricsBackground.entries.toList(),
+                    valueText = { value ->
+                        when (value) {
+                            LyricsBackground.None -> stringResource(R.string.common_option_none)
+                            LyricsBackground.Black -> stringResource(R.string.common_color_black)
+                            LyricsBackground.White -> stringResource(R.string.lyrics_color_white)
+                        }
+                    },
+                    onValueSelected = { lyricsBackground = it }
+                )
+            }
+
+            // Section: Behavior
+            SectionTitle(stringResource(R.string.lyrics_behavior_section_title))
+
+            // Toggle Lyrics
+            ToggleSettingEntry(
+                title = stringResource(R.string.settings_player_tap_artwork_toggle_lyrics_label),
+                subtitle = stringResource(R.string.settings_player_tap_artwork_toggle_lyrics_description),
+                icon = R.drawable.song_lyrics,
+                isChecked = thumbnailTapEnabled,
+                onCheckedChange = { thumbnailTapEnabled = it }
+            )
+
+            // Click Lyrics Text
+            ToggleSettingEntry(
+                title = stringResource(R.string.settings_lyrics_seek_on_line_press_label),
+                icon = R.drawable.arrow_down,
+                isChecked = clickLyricsText,
+                onCheckedChange = { clickLyricsText = it }
+            )
+
+            // Save Lyrics State
+            ToggleSettingEntry(
+                title = stringResource(R.string.settings_lyrics_remember_state_label),
+                subtitle = stringResource(R.string.settings_lyrics_remember_state_description),
+                icon = R.drawable.bookmark,
+                isChecked = showLyricsStateKeyPref,
+                onCheckedChange = { showLyricsStateKeyPref = it }
+            )
+
+            // Show Background Lyrics
+            if (showlyricsthumbnail) {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.settings_lyrics_match_player_background_label),
+                    icon = R.drawable.image,
+                    isChecked = showBackgroundLyrics,
+                    onCheckedChange = { showBackgroundLyrics = it }
+                )
+            }
+
+            // Popup Message
+            ToggleSettingEntry(
+                title = stringResource(R.string.player_enable_lyrics_popup_message),
+                icon = R.drawable.alert,
+                isChecked = playerEnableLyricsPopupMessage,
+                onCheckedChange = { playerEnableLyricsPopupMessage = it }
+            )
+
+            // Interval Indicator
+            if (lyricsType != LyricsType.Unsynced) {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.lyrics_interval_loader_label),
+                    icon = R.drawable.close,
+                    isChecked = showIntervalIndicator,
+                    onCheckedChange = { showIntervalIndicator = it }
+                )
+            }
+
+            // Size Animate
+            if (!showlyricsthumbnail && lyricsType != LyricsType.Unsynced) {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.lyrics_font_size_animation_label),
+                    icon = R.drawable.close,
+                    isChecked = lyricsSizeAnimate,
+                    onCheckedChange = { lyricsSizeAnimate = it }
+                )
+            }
+
+            // Karaoke Respect Agent Position
+            ToggleSettingEntry(
+                title = stringResource(R.string.lyrics_karaoke_respect_agent_position_label),
+                icon = R.drawable.text,
+                isChecked = karaokeRespectAgentPosition,
+                onCheckedChange = { karaokeRespectAgentPosition = it }
+            )
+
+            // Section: Translation
+            SectionTitle(stringResource(R.string.lyrics_translation_section_title))
+
+            // Translate Toggle
+            ToggleSettingEntry(
+                title = stringResource(R.string.lyrics_action_translate_to_language_format, otherLanguageApp.text),
+                subtitle = otherLanguageApp.text,
+                icon = R.drawable.translate,
+                isChecked = translateEnabled.value,
+                onCheckedChange = { translateEnabled.value = it }
+            )
+
+            // Translate Language
+            EnumSettingEntry(
+                title = stringResource(R.string.lyrics_action_choose_translation_language),
+                icon = R.drawable.translate,
+                selectedValue = otherLanguageApp,
+                values = contentTranslationChoices,
+                valueText = { it.text },
+                onValueSelected = { lang ->
+                    otherLanguageApp = lang
+                    translateEnabled.value = true
+                }
+            )
+
+            // Romanization
+            ToggleSettingEntry(
+                title = stringResource(R.string.lyrics_action_toggle_romanization),
+                icon = R.drawable.text,
+                isChecked = romanizationEnabled,
+                onCheckedChange = { romanizationEnabled = it }
+            )
+
+            // Show Second Line
+            ToggleSettingEntry(
+                title = stringResource(R.string.lyrics_translation_second_line_label),
+                icon = R.drawable.close,
+                isChecked = showSecondLine,
+                onCheckedChange = { showSecondLine = it }
+            )
+
+            // Section: Actions
+            SectionTitle(stringResource(R.string.lyrics_actions_section_title))
+
+            // Edit Lyrics
+            ActionSettingEntry(
+                title = stringResource(R.string.lyrics_action_edit),
+                icon = R.drawable.title_edit,
+                onClick = {
+                    menuState.hide()
+                    onEditLyrics()
+                }
+            )
+
+            // Copy Lyrics
+            ActionSettingEntry(
+                title = stringResource(R.string.lyrics_action_copy),
+                icon = R.drawable.copy,
+                onClick = {
+                    menuState.hide()
+                    onCopyLyrics()
+                }
+            )
+
+            // Search Lyrics Online
+            ActionSettingEntry(
+                title = stringResource(R.string.search_lyrics_online),
+                icon = R.drawable.search,
+                onClick = {
+                    menuState.hide()
+                    onSearchLyricsOnline()
+                }
+            )
+
+            // Fetch Lyrics Again (network)
+            if (!offlineMode) {
+                ActionSettingEntry(
+                    title = stringResource(R.string.lyrics_action_refetch),
+                    icon = R.drawable.sync,
+                    enabled = isLyricsNotNull(),
+                    onClick = {
+                        if (isLyricsNotNull()) {
+                            menuState.hide()
+                            onFetchLyricsAgain()
+                        }
+                    }
+                )
+            }
+
+            // Lyrics Offset
+            ActionSettingEntry(
+                title = stringResource(R.string.lyrics_offset),
+                icon = R.drawable.time,
+                onClick = {
+                    menuState.hide()
+                    onShowOffsetDialog()
+                }
+            )
+
+            // Pick from LrcLib (network)
+            if (lyricsType == LyricsType.Synced || lyricsType == LyricsType.Unsynced) {
+                if (!offlineMode) {
+                    ActionSettingEntry(
+                        title = stringResource(R.string.lyrics_provider_picker_label, stringResource(R.string.lyrics_brand_lrclib)),
+                        icon = R.drawable.search,
+                        onClick = {
+                            menuState.hide()
+                            onPickFromLrcLib()
+                        }
+                    )
+                }
+            }
+
+            // Spacer
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Settings content for grid (each item in its own block)
+        fun LazyGridScope.settingsGridContent() {
+            // Section: Display Mode
+            item(span = { GridItemSpan(maxLineSpan) }) { SectionTitle(stringResource(R.string.lyrics_display_section_title)) }
+
+            // Lyrics Type
+            item {
+                EnumSettingEntry(
+                    title = stringResource(R.string.recommendations_show_section_label),
+                    icon = R.drawable.time,
+                    selectedValue = lyricsType,
+                    values = LyricsType.entries.toList(),
+                    valueText = { value ->
+                        when (value) {
+                            LyricsType.Karaoke -> stringResource(R.string.lyrics_mode_karaoke_label)
+                            LyricsType.Synced -> stringResource(R.string.lyrics_mode_synchronized_label)
+                            LyricsType.Unsynced -> stringResource(R.string.lyrics_mode_unsynchronized_label)
+                            LyricsType.Auto -> stringResource(R.string.lyrics_mode_automatic_label)
+                        }
+                    },
+                    onValueSelected = { lyricsType = it }
+                )
+            }
+
+            item { providerSettingsEntry() }
+
+            item {
+                val actualStateString = when (actualLyricsType()) {
+                    LyricsType.Karaoke -> stringResource(R.string.lyrics_mode_karaoke_label)
+                    LyricsType.Synced -> stringResource(R.string.lyrics_mode_synchronized_label)
+                    LyricsType.Unsynced -> stringResource(R.string.lyrics_mode_unsynchronized_label)
+                    LyricsType.Auto -> stringResource(R.string.lyrics_mode_automatic_label)
+                    null -> null
+                }
+
+                AnimatedContent(
+                    targetState = actualStateString,
+                    label = "LyricsStateGridAnimation"
+                ) { stateString ->
+                    if (stateString != null) {
+                        ActionSettingEntry(
+                            title = stringResource(R.string.lyrics_current_state_format, stateString),
+                            icon = R.drawable.information,
+                            enabled = false,
+                            onClick = {}
+                        )
+                    }
+                }
+            }
+
+            // Show Lyrics Thumbnail
+            item {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.settings_lyrics_artwork_visible_label),
+                    icon = R.drawable.image,
+                    isChecked = showlyricsthumbnail,
+                    onCheckedChange = { showlyricsthumbnail = it }
+                )
+            }
+
+            // Show Button Player Lyrics
+            item {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.settings_action_bar_show_lyrics_button),
+                    icon = R.drawable.song_lyrics,
+                    isChecked = showButtonPlayerLyrics,
+                    onCheckedChange = { showButtonPlayerLyrics = it }
+                )
+            }
+
+            // Landscape Controls
+            if (isLandscape && !showlyricsthumbnail) {
+                item {
+                    ToggleSettingEntry(
+                        title = stringResource(R.string.lyrics_action_toggle_landscape_controls),
+                        icon = R.drawable.play,
+                        isChecked = landscapeControls,
+                        onCheckedChange = { landscapeControls = it }
+                    )
+                }
+            }
+
+            // Section: Text Style
+            item(span = { GridItemSpan(maxLineSpan) }) { SectionTitle(stringResource(R.string.lyrics_text_style_section_title)) }
+
+            // Font Size
+            item {
+                EnumSettingEntry(
+                    title = stringResource(R.string.lyrics_size),
+                    icon = R.drawable.text,
+                    selectedValue = fontSize,
+                    values = LyricsFontSize.entries.toList(),
+                    valueText = { value ->
+                        when (value) {
+                            LyricsFontSize.Light -> stringResource(R.string.lyrics_font_size_small_label)
+                            LyricsFontSize.Medium -> stringResource(R.string.common_size_medium)
+                            LyricsFontSize.Heavy -> stringResource(R.string.lyrics_font_size_large_label)
+                            LyricsFontSize.Large -> stringResource(R.string.lyrics_font_size_extra_large_label)
+                            LyricsFontSize.Custom -> stringResource(R.string.common_option_custom)
+                        }
+                    },
+                    onValueSelected = { fontSize = it },
+                    trailingContent = {
+                        if (fontSize == LyricsFontSize.Custom) {
+                            Box(
+                                modifier = Modifier
+                                    .size(NativeIconActionSize)
+                                    .clip(uiRoundnessShape())
+                                    .iconBadgeBackground(colorPalette().accent.copy(alpha = 0.1f), uiRoundnessShape())
+                                    .clickable { onShowLyricsSizeDialog() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.text),
+                                    tint = colorPalette().accent,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                )
+            }
+
+            // Debug: karaoke clip rects overlay
+            item {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.lyrics_show_clip_rects),
+                    icon = R.drawable.eye,
+                    isChecked = showClipRectsDebug,
+                    onCheckedChange = { showClipRectsDebug = it }
+                )
+            }
+
+            // Color
+            item {
+                EnumSettingEntry(
+                    title = stringResource(R.string.lyrics_color),
+                    icon = R.drawable.droplet,
+                    selectedValue = lyricsColor,
+                    values = LyricsColor.entries.toList(),
+                    valueText = { value ->
+                        when (value) {
+                            LyricsColor.White -> stringResource(R.string.lyrics_color_white)
+                            LyricsColor.Thememode -> stringResource(R.string.common_color_source_theme)
+                            LyricsColor.Cover -> stringResource(R.string.common_color_source_artwork)
+                            LyricsColor.Custom -> stringResource(R.string.common_color_custom)
+                        }
+                    },
+                    onValueSelected = { lyricsColor = it }
+                )
+            }
+
+            // Custom Color
+            if (lyricsColor == LyricsColor.Custom) {
+                item {
+                    GridMenu.Entry(
+                        text = stringResource(R.string.common_color_custom),
+                        icon = { SettingIcon(R.drawable.droplet) },
+                        trailingContent = {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .background(Color(lyricsCustomColor), shape = uiRoundnessShape())
+                            )
+                        }
+                    )
+                }
+            }
+
+            // Alignment
+            if (!(lyricsType == LyricsType.Karaoke && karaokeRespectAgentPosition)) {
+                item {
+                    EnumSettingEntry(
+                        title = stringResource(R.string.lyrics_alignment_label),
+                        icon = R.drawable.text,
+                        selectedValue = lyricsAlignment,
+                        values = LyricsAlignment.entries.toList(),
+                        valueText = { value ->
+                            when (value) {
+                                LyricsAlignment.Left -> stringResource(R.string.lyrics_alignment_left_label)
+                                LyricsAlignment.Center -> stringResource(R.string.lyrics_alignment_center_label)
+                                LyricsAlignment.Right -> stringResource(R.string.lyrics_alignment_right_label)
+                            }
+                        },
+                        onValueSelected = { lyricsAlignment = it }
+                    )
+                }
+            }
+
+            // Outline
+            if (!showlyricsthumbnail && lyricsType == LyricsType.Synced) {
+                item {
+                    EnumSettingEntry(
+                        title = stringResource(R.string.lyrics_text_outline_label),
+                        icon = R.drawable.horizontal_bold_line,
+                        selectedValue = lyricsOutline,
+                        values = LyricsOutline.entries.filter {
+                            it != LyricsOutline.Glow || lyricsType != LyricsType.Unsynced
+                        },
+                        valueText = { value ->
+                            when (value) {
+                                LyricsOutline.None -> stringResource(R.string.common_option_none)
+                                LyricsOutline.Thememode -> stringResource(R.string.common_color_source_theme)
+                                LyricsOutline.White -> stringResource(R.string.lyrics_color_white)
+                                LyricsOutline.Black -> stringResource(R.string.common_color_black)
+                                LyricsOutline.Rainbow -> stringResource(R.string.lyrics_style_fluid_rainbow_label)
+                                LyricsOutline.Glow -> stringResource(R.string.lyrics_text_glow_label)
+                            }
+                        },
+                        onValueSelected = { lyricsOutline = it }
+                    )
+                }
+            }
+
+            // Highlight
+            if (!showlyricsthumbnail) {
+                item {
+                    EnumSettingEntry(
+                        title = stringResource(R.string.lyrics_text_highlight_label),
+                        icon = R.drawable.horizontal_bold_line_rounded,
+                        selectedValue = lyricsHighlight,
+                        values = LyricsHighlight.entries.toList(),
+                        valueText = { value ->
+                            when (value) {
+                                LyricsHighlight.None -> stringResource(R.string.common_option_none)
+                                LyricsHighlight.White -> stringResource(R.string.lyrics_color_white)
+                                LyricsHighlight.Black -> stringResource(R.string.common_color_black)
+                            }
+                        },
+                        onValueSelected = { lyricsHighlight = it }
+                    )
+                }
+            }
+
+            // Background
+            if (!showlyricsthumbnail) {
+                item {
+                    EnumSettingEntry(
+                        title = stringResource(R.string.lyrics_background_label),
+                        icon = R.drawable.droplet,
+                        selectedValue = lyricsBackground,
+                        values = LyricsBackground.entries.toList(),
+                        valueText = { value ->
+                            when (value) {
+                                LyricsBackground.None -> stringResource(R.string.common_option_none)
+                                LyricsBackground.Black -> stringResource(R.string.common_color_black)
+                                LyricsBackground.White -> stringResource(R.string.lyrics_color_white)
+                            }
+                        },
+                        onValueSelected = { lyricsBackground = it }
+                    )
+                }
+            }
+
+            // Section: Behavior
+            item(span = { GridItemSpan(maxLineSpan) }) { SectionTitle(stringResource(R.string.lyrics_behavior_section_title)) }
+
+            // Toggle Lyrics
+            item {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.settings_player_tap_artwork_toggle_lyrics_label),
+                    subtitle = stringResource(R.string.settings_player_tap_artwork_toggle_lyrics_description),
+                    icon = R.drawable.song_lyrics,
+                    isChecked = thumbnailTapEnabled,
+                    onCheckedChange = { thumbnailTapEnabled = it }
+                )
+            }
+
+            // Click Lyrics Text
+            item {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.settings_lyrics_seek_on_line_press_label),
+                    icon = R.drawable.arrow_down,
+                    isChecked = clickLyricsText,
+                    onCheckedChange = { clickLyricsText = it }
+                )
+            }
+
+            // Save Lyrics State
+            item {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.settings_lyrics_remember_state_label),
+                    subtitle = stringResource(R.string.settings_lyrics_remember_state_description),
+                    icon = R.drawable.bookmark,
+                    isChecked = showLyricsStateKeyPref,
+                    onCheckedChange = { showLyricsStateKeyPref = it }
+                )
+            }
+
+            // Show Background Lyrics
+            if (showlyricsthumbnail) {
+                item {
+                    ToggleSettingEntry(
+                        title = stringResource(R.string.settings_lyrics_match_player_background_label),
+                        icon = R.drawable.image,
+                        isChecked = showBackgroundLyrics,
+                        onCheckedChange = { showBackgroundLyrics = it }
+                    )
+                }
+            }
+
+            // Popup Message
+            item {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.player_enable_lyrics_popup_message),
+                    icon = R.drawable.alert,
+                    isChecked = playerEnableLyricsPopupMessage,
+                    onCheckedChange = { playerEnableLyricsPopupMessage = it }
+                )
+            }
+
+            // Interval Indicator
+            if (lyricsType != LyricsType.Unsynced) {
+                item {
+                    ToggleSettingEntry(
+                        title = stringResource(R.string.lyrics_interval_loader_label),
+                        icon = R.drawable.close,
+                        isChecked = showIntervalIndicator,
+                        onCheckedChange = { showIntervalIndicator = it }
+                    )
+                }
+            }
+
+            // Size Animate
+            if (!showlyricsthumbnail && lyricsType != LyricsType.Unsynced) {
+                item {
+                    ToggleSettingEntry(
+                        title = stringResource(R.string.lyrics_font_size_animation_label),
+                        icon = R.drawable.close,
+                        isChecked = lyricsSizeAnimate,
+                        onCheckedChange = { lyricsSizeAnimate = it }
+                    )
+                }
+            }
+
+            // Karaoke Respect Agent Position
+            item {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.lyrics_karaoke_respect_agent_position_label),
+                    icon = R.drawable.text,
+                    isChecked = karaokeRespectAgentPosition,
+                    onCheckedChange = { karaokeRespectAgentPosition = it }
+                )
+            }
+
+            // Section: Translation
+            item(span = { GridItemSpan(maxLineSpan) }) { SectionTitle(stringResource(R.string.lyrics_translation_section_title)) }
+
+            // Translate Toggle
+            item {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.lyrics_action_translate_to_language_format, otherLanguageApp.text),
+                    subtitle = otherLanguageApp.text,
+                    icon = R.drawable.translate,
+                    isChecked = translateEnabled.value,
+                    onCheckedChange = { translateEnabled.value = it }
+                )
+            }
+
+            // Translate Language
+            item {
+                EnumSettingEntry(
+                    title = stringResource(R.string.lyrics_action_choose_translation_language),
+                    icon = R.drawable.translate,
+                    selectedValue = otherLanguageApp,
+                    values = contentTranslationChoices,
+                    valueText = { it.text },
+                    onValueSelected = { lang ->
+                        otherLanguageApp = lang
+                        translateEnabled.value = true
+                    }
+                )
+            }
+
+            // Romanization
+            item {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.lyrics_action_toggle_romanization),
+                    icon = R.drawable.text,
+                    isChecked = romanizationEnabled,
+                    onCheckedChange = { romanizationEnabled = it }
+                )
+            }
+
+            // Show Second Line
+            item {
+                ToggleSettingEntry(
+                    title = stringResource(R.string.lyrics_translation_second_line_label),
+                    icon = R.drawable.close,
+                    isChecked = showSecondLine,
+                    onCheckedChange = { showSecondLine = it }
+                )
+            }
+
+            // Section: Actions
+            item(span = { GridItemSpan(maxLineSpan) }) { SectionTitle(stringResource(R.string.lyrics_actions_section_title)) }
+
+            // Edit Lyrics
+            item {
+                ActionSettingEntry(
+                    title = stringResource(R.string.lyrics_action_edit),
+                    icon = R.drawable.title_edit,
+                    onClick = {
+                        menuState.hide()
+                        onEditLyrics()
+                    }
+                )
+            }
+
+            // Copy Lyrics
+            item {
+                ActionSettingEntry(
+                    title = stringResource(R.string.lyrics_action_copy),
+                    icon = R.drawable.copy,
+                    onClick = {
+                        menuState.hide()
+                        onCopyLyrics()
+                    }
+                )
+            }
+
+            // Search Lyrics Online
+            item {
+                ActionSettingEntry(
+                    title = stringResource(R.string.search_lyrics_online),
+                    icon = R.drawable.search,
+                    onClick = {
+                        menuState.hide()
+                        onSearchLyricsOnline()
+                    }
+                )
+            }
+
+            // Fetch Lyrics Again (network)
+            if (!offlineMode) {
+                item {
+                    ActionSettingEntry(
+                        title = stringResource(R.string.lyrics_action_refetch),
+                        icon = R.drawable.sync,
+                        enabled = isLyricsNotNull(),
+                        onClick = {
+                            if (isLyricsNotNull()) {
+                                menuState.hide()
+                                onFetchLyricsAgain()
+                            }
+                        }
+                    )
+                }
+            }
+
+            // Lyrics Offset
+            item {
+                ActionSettingEntry(
+                    title = stringResource(R.string.lyrics_offset),
+                    icon = R.drawable.time,
+                    onClick = {
+                        menuState.hide()
+                        onShowOffsetDialog()
+                    }
+                )
+            }
+
+            // Pick from LrcLib (network)
+            if (lyricsType == LyricsType.Synced || lyricsType == LyricsType.Unsynced) {
+                if (!offlineMode) {
+                    item {
+                        ActionSettingEntry(
+                            title = stringResource(R.string.lyrics_provider_picker_label, stringResource(R.string.lyrics_brand_lrclib)),
+                            icon = R.drawable.search,
+                            onClick = {
+                                menuState.hide()
+                                onPickFromLrcLib()
+                            }
+                        )
+                    }
+                }
+            }
+
+            // Spacer
+            item { Spacer(modifier = Modifier.height(16.dp)) }
+        }
+
+        // Show menu based on style preference
+        if (menuStyle == MenuStyle.List) {
+            ListMenu.Menu(title = stringResource(R.string.lyrics_title)) {
+                settingsContent()
+            }
+        } else {
+            GridMenu.Menu(title = stringResource(R.string.lyrics_title)) {
+                settingsGridContent()
+            }
+        }
+    }
+
+    // Helper composables
+
+    @Composable
+    private fun SettingIcon(icon: Int) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .iconBadgeBackground(
+                    color = colorPalette().accent.copy(alpha = 0.1f),
+                    shape = uiRoundnessShape()
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                tint = colorPalette().accent,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+
+    @Composable
+    private fun SectionTitle(title: String) {
+        BasicText(
+            text = title,
+            style = typography().xxs.semiBold.copy(
+                color = colorPalette().accent,
+                textAlign = TextAlign.Start
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 4.dp)
+        )
+    }
+
+    @Composable
+    private fun ToggleSettingEntry(
+        title: String,
+        icon: Int,
+        isChecked: Boolean,
+        onCheckedChange: (Boolean) -> Unit,
+        subtitle: String? = null
+    ) {
+        if (menuStyle == MenuStyle.List) {
+            ListMenu.Entry(
+                text = title,
+                icon = { SettingIcon(icon) },
+                subtitle = subtitle,
+                onClick = { onCheckedChange(!isChecked) },
+                trailingContent = {
+                    Switch(
+                        checked = isChecked,
+                        onCheckedChange = null,
+                        modifier = Modifier.scale(0.8f),
+                        checkedThumbColor = colorPalette().textSecondary,
+                        checkedTrackColor = colorPalette().accent.copy(alpha = 0.3f),
+                        uncheckedThumbColor = colorPalette().textSecondary,
+                        uncheckedTrackColor = colorPalette().textSecondary.copy(alpha = 0.3f)
+                    )
+                }
+            )
+        } else {
+            GridMenu.Entry(
+                text = title,
+                icon = { SettingIcon(icon) },
+                subtitle = subtitle,
+                onClick = { onCheckedChange(!isChecked) },
+                trailingContent = {
+                    Switch(
+                        checked = isChecked,
+                        onCheckedChange = null,
+                        modifier = Modifier.scale(0.8f),
+                        checkedThumbColor = colorPalette().textSecondary,
+                        checkedTrackColor = colorPalette().accent.copy(alpha = 0.3f),
+                        uncheckedThumbColor = colorPalette().textSecondary,
+                        uncheckedTrackColor = colorPalette().textSecondary.copy(alpha = 0.3f)
+                    )
+                }
+            )
+        }
+    }
+
+    @Composable
+    private fun ActionSettingEntry(
+        title: String,
+        icon: Int,
+        enabled: Boolean = true,
+        onClick: () -> Unit
+    ) {
+        if (menuStyle == MenuStyle.List) {
+            ListMenu.Entry(
+                text = title,
+                icon = { SettingIcon(icon) },
+                enabled = enabled,
+                onClick = onClick,
+                trailingContent = {
+                    Icon(
+                        painter = painterResource(R.drawable.chevron_forward),
+                        tint = colorPalette().textSecondary,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            )
+        } else {
+            GridMenu.Entry(
+                text = title,
+                icon = { SettingIcon(icon) },
+                enabled = enabled,
+                onClick = onClick,
+                trailingContent = {
+                    Icon(
+                        painter = painterResource(R.drawable.chevron_forward),
+                        tint = colorPalette().textSecondary,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            )
+        }
+    }
+
+    @Composable
+    private inline fun <reified T : Enum<T>> EnumSettingEntry(
+        title: String,
+        icon: Int,
+        selectedValue: T,
+        values: List<T>,
+        noinline valueText: @Composable (T) -> String,
+        noinline onValueSelected: (T) -> Unit,
+        noinline trailingContent: @Composable () -> Unit = {
+            Icon(
+                painter = painterResource(R.drawable.chevron_forward),
+                tint = colorPalette().textSecondary,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    ) {
+        var isShowingDialog by remember { mutableStateOf(false) }
+
+        DialogPresence(visible = isShowingDialog) {
+            ValueSelectorDialog(
+                onDismiss = { isShowingDialog = false },
+                title = title,
+                selectedValue = selectedValue,
+                values = values,
+                onValueSelected = {
+                    onValueSelected(it)
+                    isShowingDialog = false
+                },
+                valueText = valueText
+            )
+        }
+
+        if (menuStyle == MenuStyle.List) {
+            ListMenu.Entry(
+                text = title,
+                icon = { SettingIcon(icon) },
+                subtitle = valueText(selectedValue),
+                onClick = { isShowingDialog = true },
+                trailingContent = trailingContent
+            )
+        } else {
+            GridMenu.Entry(
+                text = title,
+                icon = { SettingIcon(icon) },
+                subtitle = valueText(selectedValue),
+                onClick = { isShowingDialog = true },
+                trailingContent = trailingContent
+            )
+        }
+    }
+}

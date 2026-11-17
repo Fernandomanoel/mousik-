@@ -1,8 +1,8 @@
 Android için hızlı, özelleştirilebilir ve uzun süre desteklenen çok dilli YouTube Music uygulaması.
 
-<b>N-Zik</b>, <a href="https://github.com/knighthat/Kreate">Kreate</a>'nin açık kaynaklı bir çatalıdır.
+<b>mousike</b>, <a href="https://github.com/knighthat/Kreate">Kreate</a>'nin açık kaynaklı bir çatalıdır.
 
-<b>Not:</b> N-Zik bir yan proje olarak başladı. Daha olgun alternatifler için <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a> veya <a href="https://github.com/fast4x/RiPlay">RiPlay</a>'e göz atın.
+<b>Not:</b> mousike bir yan proje olarak başladı. Daha olgun alternatifler için <a href="https://github.com/MetrolistGroup/Metrolist">Metrolist</a>, <a href="https://github.com/vivizzz007/vivi-music">VIVI Music</a> veya <a href="https://github.com/fast4x/RiPlay">RiPlay</a>'e göz atın.
 
 <b>AI Kullanımı:</b> Kod için üretken AI kullanıyorum (<a href="https://github.com/bmad-code-org/BMAD-METHOD">BMAD Method</a> aracılığıyla), her şey yayına alınmadan önce incelenir ve test edilir.
 
@@ -38,7 +38,7 @@ Cam katkıları: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / B
 - MusicBrainz sanatçı ve albüm bilgileri
 - Discord Zengin Varlık, canlı önizlemeli gelişmiş mod dahil
 - Alternatif YouTube akışı için Invidious entegrasyonu
-- Çalma listesi içe/dışa aktarma: RiPlay, Spotify, YouTube Music, N-Zik
+- Çalma listesi içe/dışa aktarma: RiPlay, Spotify, YouTube Music, mousike
 
 👥 <b>Birlikte Dinleyin</b>
 - Kod veya davet bağlantısıyla canlı oturum başlatın ya da katılın
@@ -57,12 +57,12 @@ Cam katkıları: Square / Convx Project (GPL-3.0); Kyant0 AndroidLiquidGlass / B
 - GitHub'dan OTA güncellemeleri, uyku zamanlayıcısı, arka plan oynatma
 
 📦 <b>Mevcut Yapılar</b>
-- Release64/Beta64 (`com.nevar.nzik`): Tam yapı, yalnızca 64-bit cihazlar
-- Release32/Beta32 (`com.nevar.nzik`): Tam yapı, yalnızca 32-bit cihazlar
-- Minified64 (`com.nevar.nzik`): Hafif R8 yapı, düşük özellikli cihazlar için (64-bit)
-- Minified32 (`com.nevar.nzik`): Hafif R8 yapı (32-bit)
-- FOSS (`com.nevar.nzik.foss`): Otomatik güncelleyicisiz, F-Droid için (tüm mimariler)
-- Dev64/Dev32 (`com.nevar.nzik.dev`): Geliştirme yapıları, yalnızca test için
+- Release64/Beta64 (`app.mousike`): Tam yapı, yalnızca 64-bit cihazlar
+- Release32/Beta32 (`app.mousike`): Tam yapı, yalnızca 32-bit cihazlar
+- Minified64 (`app.mousike`): Hafif R8 yapı, düşük özellikli cihazlar için (64-bit)
+- Minified32 (`app.mousike`): Hafif R8 yapı (32-bit)
+- FOSS (`app.mousike.foss`): Otomatik güncelleyicisiz, F-Droid için (tüm mimariler)
+- Dev64/Dev32 (`app.mousike.dev`): Geliştirme yapıları, yalnızca test için
 
 Hiçbir yapı FFmpeg içermez: indirilebilir bir eklentidir (ilk kullanımda kurulur, Ayarlar → Eklentiler içinde yönetilir). F-Droid'de yalnızca FOSS var.
 

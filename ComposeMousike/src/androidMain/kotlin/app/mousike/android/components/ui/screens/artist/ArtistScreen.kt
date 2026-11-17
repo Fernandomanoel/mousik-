@@ -1,0 +1,993 @@
+// Adapted from RiPlay (GPL-3.0, license checked at upstream revision f69d6760bd09b29e18591cdc1339d3dd8b6bdf55).
+package app.mousike.android.components.ui.screens.artist
+
+import app.mousike.android.appTextResources
+import app.mousike.android.components.ui.screens.CollectionArtworkHeader
+import app.mousike.android.components.ui.screens.CollectionPageStatus
+import app.mousike.android.components.navigation.rememberTopContentInsetProvider
+import app.mousike.android.components.navigation.rememberPageChromeContentPadding
+import android.content.Intent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.fastAll
+import androidx.compose.ui.util.fastFirstOrNull
+import androidx.compose.ui.util.fastMap
+import androidx.media3.common.MediaItem
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.offline.Download
+import androidx.navigation.NavController
+import app.mousike.android.compose.persist.PersistMapCleanup
+import app.mousike.android.EXPLICIT_PREFIX
+import app.mousike.android.MODIFIED_PREFIX
+import app.mousike.android.cleanPrefix
+import app.mousike.android.enums.Languages
+import app.mousike.android.enums.NavRoutes
+import app.mousike.android.enums.PlayerPosition
+import app.mousike.android.enums.TransitionEffect
+import app.mousike.android.enums.DownloadedStateMedia
+import app.mousike.android.models.Artist
+import app.mousike.android.models.Song
+import app.mousike.android.ui.components.LocalMenuState
+import app.mousike.android.components.navigation.Skeleton
+import app.mousike.android.ui.components.SwipeablePlaylistItem
+import app.mousike.android.ui.components.tab.toolbar.Descriptive
+import app.mousike.android.ui.components.tab.toolbar.MenuIcon
+import app.mousike.android.ui.components.themed.Enqueue
+import app.mousike.android.components.ui.HeaderIconAction
+import app.mousike.android.components.ui.CollectionButtonToolbar
+import app.mousike.android.components.ui.FullPageLoader
+import app.mousike.android.ui.components.themed.PlayNext
+import app.mousike.android.components.dialog.common.DialogPresence
+import app.mousike.android.components.dialog.common.ValueSelectorDialog
+import app.mousike.android.ui.items.AlbumItem
+import app.mousike.android.ui.items.ArtistItem
+import app.mousike.android.ui.items.PlaylistItem
+import app.mousike.android.ui.items.VideoItem
+import app.mousike.android.ui.styling.Dimensions
+import app.mousike.android.ui.styling.px
+import app.mousike.android.ui.screens.artist.ArtistLocalSongs
+import app.mousike.android.utils.addNext
+import app.mousike.android.utils.align
+import app.mousike.android.utils.asMediaItem
+import app.mousike.android.utils.asSong
+import app.mousike.android.utils.color
+import app.mousike.android.utils.conditional
+import app.mousike.android.utils.disableScrollingTextKey
+import app.mousike.android.utils.fadingEdge
+import app.mousike.android.utils.forcePlay
+import app.mousike.android.utils.forcePlayAtIndex
+import app.mousike.android.utils.isLandscape
+import app.mousike.android.utils.otherLanguageAppArtistKey
+import app.mousike.android.utils.parentalControlEnabledKey
+import app.mousike.android.utils.playerPositionKey
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.utils.semiBold
+import app.mousike.android.utils.transitionEffectKey
+import app.mousike.android.core.utils.PropUtils
+import app.mousike.android.core.utils.Toaster
+import app.mousike.android.LocalDownloadStatesMap
+import app.mousike.android.LocalPlayerServiceBinder
+import app.mousike.android.R
+import app.mousike.android.appContext
+import app.mousike.android.components.SongItem
+import app.mousike.android.components.glass.GlassSectionAction
+import app.mousike.android.components.glass.GlassSectionActions
+import app.mousike.android.components.glass.NativeIconActionSize
+import app.mousike.android.components.glass.GlassActionCellWidth
+import app.mousike.android.components.glass.GlassArea
+import app.mousike.android.components.glass.rememberGlassSettings
+import app.mousike.android.components.glass.usesGlassMaterial
+import app.mousike.android.components.shuffleButtonIconRes
+import app.mousike.android.components.artist.FollowButton
+import app.mousike.android.components.artist.artistStatisticsText
+import app.mousike.android.components.dialog.tab.DeleteAllDownloadedSongsDialog
+import app.mousike.android.components.dialog.tab.DownloadAllSongsDialog
+import app.mousike.android.components.menu.album.OnlineAlbumItemMenu
+import app.mousike.android.components.menu.artist.OnlineArtistItemMenu
+import app.mousike.android.components.menu.playlist.OnlinePlaylistItemMenu
+import app.mousike.android.components.menu.video.VideoItemMenu
+import app.mousike.android.components.musicbrainz.InfoAndCommunity
+import app.mousike.android.components.tab.ItemSelector
+import app.mousike.android.components.tab.Radio
+import app.mousike.android.components.ui.screens.DynamicOrientationLayout
+import app.mousike.android.components.ui.screens.album.Translate
+import app.mousike.android.core.coil.ImageCacheFactory
+import app.mousike.android.components.OfflineAwareLoader
+import app.mousike.android.components.ui.InlineCircularLoader
+import app.mousike.android.core.database.Database
+import app.mousike.android.core.database.LikeStateManager
+import app.mousike.android.core.database.PlaylistStateManager
+import app.mousike.android.core.network.OfflineMode
+import app.mousike.android.core.network.client.NetworkClientFactory
+import app.mousike.android.core.network.utils.NetworkQualityHelper
+import app.mousike.android.download.utils.MyDownloadHelper
+import app.mousike.android.extensions.musicbrainz.MBMetadataHelper
+import app.mousike.android.playback.utils.Shuffler
+import app.mousike.android.uiRoundnessShape
+import app.mousike.android.artistThumbnailShape
+import app.mousike.android.colorPalette
+import app.mousike.android.typography
+import dev.rebelonion.translator.Language
+import dev.rebelonion.translator.Translator
+import app.mousike.innertube.Innertube
+import app.mousike.innertube.YtMusic
+import app.mousike.innertube.requests.ArtistPage
+import app.mousike.innertube.requests.ArtistSection
+import app.mousike.innertube.requests.queue
+import app.mousike.android.utils.contentTranslationChoices
+import app.mousike.android.utils.contentTranslationLanguage
+import app.mousike.android.utils.contentTranslationTarget
+import java.util.Locale
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import app.mousike.android.utils.player.addNextOffMain
+import app.mousike.android.utils.player.enqueueOffMain
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
+private const val ARTIST_INSIGHTS_ROUTE = "artistInsights"
+
+/**
+ * Offline-mode tab index of the artist screen (spec-full-offline-mode): the
+ * overview tab (online data) is removed offline, so the local library tab
+ * (index 1) is forced; online the index passes through unchanged.
+ */
+internal fun artistScreenTabIndex(offlineMode: Boolean, tabIndex: Int): Int =
+    if (offlineMode) 1 else tabIndex
+
+@OptIn(androidx.compose.animation.ExperimentalAnimationApi::class, ExperimentalTextApi::class)
+@UnstableApi
+@ExperimentalFoundationApi
+@ExperimentalComposeUiApi
+@Composable
+fun ArtistScreen(
+    navController: NavController,
+    browseId: String,
+    modifier: Modifier = Modifier,
+    miniPlayer: @Composable () -> Unit = {}
+) {
+    val preview = app.mousike.android.components.settings.appearance.preview.LocalThemePreview.current
+    PersistMapCleanup("artist/$browseId/")
+
+    val saveableStateHolder = rememberSaveableStateHolder()
+
+    val transitionEffect by rememberPreference(transitionEffectKey, TransitionEffect.Fade)
+    val playerPosition by rememberPreference(playerPositionKey, PlayerPosition.Bottom)
+
+    var selectedTabIndex by remember { mutableStateOf(0) }
+
+    var localArtist: Artist? by remember { mutableStateOf(null) }
+    var mbSyncing by remember { mutableStateOf(false) }
+    var mbPausedSeconds by remember { mutableStateOf(0L) }
+    LaunchedEffect(Unit) {
+        if (preview != null) return@LaunchedEffect
+        Database.artistTable
+            .findById(browseId)
+            .flowOn(MousikeDispatchers.DATA)
+            .distinctUntilChanged()
+            .collect { localArtist = it }
+    }
+
+    var artistPage: ArtistPage? by remember(preview) {
+        mutableStateOf(preview?.let { app.mousike.android.components.settings.appearance.preview.themePreviewArtistPage() })
+    }
+
+    val context = LocalContext.current
+    val isOnline by NetworkQualityHelper.isNetworkAvailableComposable(context)
+
+    // Full offline mode (spec-full-offline-mode): the artist page collapses to the
+    // local library tab — the online overview is removed, not just failed.
+    val offlineMode by OfflineMode.rememberEnabled()
+    LaunchedEffect(offlineMode) {
+        if (offlineMode && selectedTabIndex != 1) selectedTabIndex = 1
+    }
+
+    val scope = rememberCoroutineScope()
+
+    fun fetchArtistPage() {
+        scope.launch {
+            withContext(MousikeDispatchers.DATA) {
+                YtMusic.getArtistPage(browseId.removePrefix(MODIFIED_PREFIX))
+            }
+                .onSuccess { online ->
+                    artistPage = online
+
+                    Database.asyncTransaction {
+                        syncTransaction {
+                            val now = System.currentTimeMillis()
+                            val inserted = artistTable.insertMetadata(
+                                id = browseId,
+                                name = online.artist.title,
+                                thumbnailUrl = online.artist.thumbnail?.url,
+                                timestamp = now,
+                                isYoutubeArtist = false,
+                                position = -1
+                            )
+                            if (inserted == -1L) {
+                                val current = artistTable.findByIdDirect(browseId)
+                                artistTable.updateMetadata(
+                                    id = browseId,
+                                    name = PropUtils.retainIfModified(current?.name, online.artist.title),
+                                    thumbnailUrl = PropUtils.retainIfModified(current?.thumbnailUrl, online.artist.thumbnail?.url),
+                                    isYoutubeArtist = current?.isYoutubeArtist == true,
+                                    position = current?.position ?: -1
+                                )
+                            }
+
+                            online.sections
+                                .fastFirstOrNull { section ->
+                                    section.items.fastAll { it is Innertube.SongItem }
+                                }
+                                ?.items
+                                ?.map { (it as Innertube.SongItem).asMediaItem }
+                                ?.also {
+                                    artistTable.findByIdDirect(browseId)?.let { artist -> mapIgnore(artist, *it.toTypedArray()) }
+                                }
+
+                            // Store the YouTube description so the Insights page can reuse it
+                            // as a bio fallback without refetching the artist page.
+                            val ytDescription = online.description?.takeIf { it.isNotBlank() }
+                            if (ytDescription != null) {
+                                artistTable.findByIdDirect(browseId)?.let { current ->
+                                    if (current.description != ytDescription) {
+                                        artistTable.update(current.copy(description = ytDescription))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    val itemsToFetch = online.sections.flatMap { it.items }
+                        .filter { (it is Innertube.VideoItem && it.durationText == null) || (it is Innertube.SongItem && it.durationText == null) }
+                        .map { it.key }
+                        .distinct()
+
+                    if (itemsToFetch.isNotEmpty()) {
+                        Innertube.queue(videoIds = itemsToFetch)?.onSuccess { queueItems ->
+                            val durationsMap = queueItems?.associate { it.key to it.durationText } ?: emptyMap()
+                            artistPage = artistPage?.withUpdatedVideoDurations(durationsMap)
+                        }
+                    }
+                }
+        }
+    }
+
+    // Refetch when full offline mode turns off (overview becomes visible again);
+    // never triggers while the mode is on.
+    LaunchedEffect(offlineMode) {
+        if (preview == null && !offlineMode) fetchArtistPage()
+    }
+
+    LaunchedEffect(localArtist?.id) {
+        val artist = localArtist ?: return@LaunchedEffect
+        mbSyncing = true
+        try {
+            withContext(MousikeDispatchers.DATA) {
+                val channelId = browseId.removePrefix(MODIFIED_PREFIX)
+                Database.transaction {
+                    val current = artistTable.findByIdDirect(artist.id)
+                    if (current != null && current.youtubeChannelId != channelId) {
+                        artistTable.update(current.copy(youtubeChannelId = channelId))
+                    }
+                }
+                MBMetadataHelper.Default.onArtistViewed(artist.id)
+            }
+        } finally {
+            mbSyncing = false
+            mbPausedSeconds = MBMetadataHelper.Default.circuitOpenRemainingSeconds()
+        }
+    }
+
+    val thumbnailPainter = ImageCacheFactory.Painter(
+        if (preview != null) artistPage?.artist?.thumbnail?.url else localArtist?.thumbnailUrl,
+    )
+
+    val topContentInset = rememberTopContentInsetProvider(hasNavBar = !offlineMode)
+
+    Skeleton(
+        navController = navController,
+        tabIndex = selectedTabIndex,
+        onTabChanged = { index -> selectedTabIndex = index },
+        miniPlayer = miniPlayer,
+        topInsetHandledByContent = true,
+        topContentInsetProvider = topContentInset,
+        navBarContent = { item ->
+            if (offlineMode)
+                item(1, stringResource(R.string.library_title), R.drawable.library)
+            else {
+                item(0, stringResource(R.string.artist_overview_title), R.drawable.artist)
+                item(1, stringResource(R.string.library_title), R.drawable.library)
+            }
+        }
+    ) { currentTabIndex ->
+        val contentPadding = rememberPageChromeContentPadding(
+            PaddingValues(bottom = Dimensions.bottomSpacer), topContentInset
+        )
+        // Full offline mode: the overview (online data) tab is removed, so the
+        // content is always the local library tab regardless of the raw index.
+        when (artistScreenTabIndex(offlineMode, currentTabIndex)) {
+            0 -> {
+                if (artistPage == null) {
+                    CollectionPageStatus(contentPadding) {
+                        OfflineAwareLoader(
+                            isOnline = isOnline,
+                            modifier = Modifier.fillMaxSize(),
+                            onReconnect = ::fetchArtistPage
+                        )
+                    }
+                } else {
+                    ArtistOverview(
+                        navController, localArtist, artistPage, thumbnailPainter,
+                        mbSyncing, { mbSyncing = it },
+                        mbPausedSeconds, { mbPausedSeconds = it }, contentPadding
+                    )
+                }
+            }
+            1 -> {
+                if (localArtist == null) {
+                    CollectionPageStatus(contentPadding) { FullPageLoader() }
+                } else {
+                    ArtistLocalSongs(navController, localArtist, artistPage, thumbnailPainter, contentPadding)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(androidx.compose.animation.ExperimentalAnimationApi::class, ExperimentalTextApi::class)
+@UnstableApi
+@ExperimentalFoundationApi
+@Composable
+fun ArtistOverview(
+    navController: NavController,
+    localArtist: Artist?,
+    artistPage: ArtistPage?,
+    thumbnailPainter: Painter,
+    mbSyncing: Boolean = false,
+    onMbSyncingChange: (Boolean) -> Unit = {},
+    mbPausedSeconds: Long = 0,
+    onMbPausedSecondsChange: (Long) -> Unit = {},
+    contentPadding: PaddingValues = rememberPageChromeContentPadding(PaddingValues(bottom = Dimensions.bottomSpacer)),
+) {
+    artistPage ?: return
+
+    val context = LocalContext.current
+    val binder = LocalPlayerServiceBinder.current
+    val menuState = LocalMenuState.current
+    val hapticFeedback = LocalHapticFeedback.current
+    val lazyListState = rememberLazyListState()
+
+    val disableScrollingText by rememberPreference(disableScrollingTextKey, false)
+    val parentalControlEnabled by rememberPreference(parentalControlEnabledKey, false)
+
+    val sectionTextModifier = Modifier
+        .padding(horizontal = 16.dp)
+        .padding(top = 24.dp, bottom = 8.dp)
+    val albumThumbnailSizeDp = 108.dp
+    val albumThumbnailSizePx = albumThumbnailSizeDp.px
+
+    var isGlobalLoading by remember { mutableStateOf(false) }
+    var sectionLoadingId by remember { mutableStateOf<String?>(null) }
+
+    val songs = remember(artistPage, parentalControlEnabled) {
+        artistPage.sections
+            .fastFirstOrNull { section ->
+                section.items.fastAll { it is Innertube.SongItem }
+            }
+            ?.items
+            ?.mapNotNull {
+                (it as? Innertube.SongItem)?.asSong
+            }
+            ?.filter { !parentalControlEnabled || it.title.startsWith(EXPLICIT_PREFIX, true) != true }
+            .orEmpty()
+    }
+
+    val itemSelector = ItemSelector<Song>()
+    val scope = rememberCoroutineScope()
+
+    fun getSongs() = itemSelector.ifEmpty { songs }
+    fun getMediaItems() = getSongs().map(Song::asMediaItem)
+
+    val followButton = localArtist?.let { artist -> FollowButton { artist } }
+    val isPreview = app.mousike.android.components.settings.appearance.preview.LocalThemePreview.current != null
+    val followAction: @Composable () -> Unit = {
+        if (isPreview) {
+            app.mousike.android.components.artist.ArtistFollowButton(likeState = null, onClick = {})
+        } else {
+            followButton?.ToolBarButton()
+        }
+    }
+    val shuffler = object : MenuIcon, Descriptive {
+        // Issue #866 (gh-866): app-wide shuffle confirmation flash — the icon follows the
+        // binder's flash state (shuffle_ok ~1 s), triggered in onShortClick below.
+        override val iconId: Int get() = shuffleButtonIconRes(binder)
+        override val messageId: Int = R.string.player_action_shuffle_hint
+        override val menuIconTitle: String
+            @Composable get() = stringResource(R.string.player_action_shuffle)
+
+        override fun onShortClick() {
+            binder?.triggerShuffleOkFlash()
+            scope.launch {
+                isGlobalLoading = true
+                // Shuffler.play() is fire-and-forget (issue #606 M2): when it's actually invoked,
+                // isGlobalLoading is cleared from its onComplete once work actually finishes, not
+//
+                // as soon as play() returns. shufflerWillClear guards the `finally` below so an
+//
+                // exception thrown before reaching Shuffler.play() (e.g. getSongs()) still clears
+                // the flag, matching this block's original exception-safety.
+                var shufflerWillClear = false
+                try {
+                    val allSongs = getSongs()
+                    if (allSongs.isNotEmpty()) {
+                        val b = binder
+                        if (b != null) {
+                            shufflerWillClear = true
+                            Shuffler.play(b, allSongs, onComplete = { isGlobalLoading = false })
+                        }
+                    } else {
+                        Toaster.i(R.string.player_shuffle_empty_message)
+                    }
+                } finally {
+                    if (!shufflerWillClear) isGlobalLoading = false
+                }
+            }
+        }
+    }
+
+    val downloadAllDialog = DownloadAllSongsDialog(::getSongs)
+    val deleteAllDownloadsDialog = DeleteAllDownloadedSongsDialog(::getSongs)
+    val radio = Radio(::getSongs)
+    val playNext = PlayNext {
+        scope.launch {
+            isGlobalLoading = true
+            try {
+                val allSongs = getSongs().toList()
+                val mediaItems = withContext(MousikeDispatchers.DATA) { allSongs.map(Song::asMediaItem) }
+                binder?.player?.addNextOffMain(mediaItems, appContext())
+                itemSelector.isActive = false
+            } finally {
+                isGlobalLoading = false
+            }
+        }
+    }
+    val enqueue = Enqueue {
+        scope.launch {
+            isGlobalLoading = true
+            try {
+                val allSongs = getSongs().toList()
+                val mediaItems = withContext(MousikeDispatchers.DATA) { allSongs.map(Song::asMediaItem) }
+                binder?.player?.enqueueOffMain(mediaItems, appContext())
+                itemSelector.isActive = false
+            } finally {
+                isGlobalLoading = false
+            }
+        }
+    }
+
+    var showTranslateLanguageDialog by remember { mutableStateOf(false) }
+    val translate = Translate.init(onLongClick = { showTranslateLanguageDialog = true })
+    val translator = Translator(NetworkClientFactory.getTranslatorClient())
+    var otherLanguageApp by rememberPreference(otherLanguageAppArtistKey, Languages.System)
+    val appLang = Locale.getDefault()
+    val activeTranslateLang = remember(otherLanguageApp, appLang) {
+        if (otherLanguageApp != Languages.System) otherLanguageApp
+        else contentTranslationLanguage(appLang)
+    }
+    val languageDestination = activeTranslateLang.contentTranslationTarget
+
+    downloadAllDialog.Render()
+    deleteAllDownloadsDialog.Render()
+
+    DialogPresence(visible = showTranslateLanguageDialog) {
+        ValueSelectorDialog(
+            title = stringResource(R.string.common_translation_title),
+            selectedValue = otherLanguageApp,
+            onValueSelected = {
+                otherLanguageApp = it
+                translate.isActive = it.translatorLanguage != Language.ENGLISH
+                showTranslateLanguageDialog = false
+            },
+            valueText = { it.text },
+            values = contentTranslationChoices,
+            onDismiss = { showTranslateLanguageDialog = false }
+        )
+    }
+
+    val songIds = remember(songs) { songs.map { it.id } }
+    val likeStatesMap by remember(songIds) {
+        LikeStateManager.getLikeStates(songIds)
+    }.collectAsStateWithLifecycle(emptyMap(), context = MousikeDispatchers.DATA)
+    val playlistStatesMap by remember(songIds) {
+        PlaylistStateManager.getPlaylistStates(songIds)
+    }.collectAsStateWithLifecycle(emptyMap(), context = MousikeDispatchers.DATA)
+
+    val downloadsMapState by MyDownloadHelper.downloads.collectAsStateWithLifecycle(initialValue = MyDownloadHelper.downloads.value, context = MousikeDispatchers.DATA)
+    val downloadedIds by remember {
+        derivedStateOf {
+            downloadsMapState.values
+                .filter { it.state == Download.STATE_COMPLETED }
+                .mapTo(HashSet()) { it.request.id }
+        }
+    }
+    val downloadStatesMap by remember {
+        derivedStateOf {
+            songs.associate { song ->
+                song.id to when {
+                    song.id in downloadedIds -> DownloadedStateMedia.DOWNLOADED
+                    else -> DownloadedStateMedia.NOT_CACHED_OR_DOWNLOADED
+                }
+            }
+        }
+    }
+
+    DynamicOrientationLayout(thumbnailPainter, artistThumbnailShape(), thumbnailContentPadding = contentPadding) {
+        CompositionLocalProvider(LocalDownloadStatesMap provides downloadStatesMap) {
+            LazyColumn(
+                state = lazyListState,
+                contentPadding = contentPadding,
+            ) {
+                item("header") {
+                    CollectionArtworkHeader(
+                        localArtist?.name ?: artistPage.artist.title ?: "...",
+                        thumbnailPainter,
+                        disableScrollingText,
+                        subtitle = {
+                            val statsText = artistStatisticsText(artistPage.subscribers, artistPage.listeners)
+                            if (statsText.isNotBlank()) {
+                                BasicText(statsText, style = typography().s.copy(colorPalette().textSecondary))
+                            }
+                        },
+                    ) {
+                        HeaderIconAction(
+                            icon = R.drawable.share_social,
+                            color = colorPalette().text,
+                            iconSize = 24.dp,
+                            onClick = {
+                                val url = "https://music.youtube.com/channel/${localArtist?.id ?: artistPage.artist.key}"
+                                val sendIntent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, url)
+                                }
+
+                                context.startActivity(
+                                    Intent.createChooser(sendIntent, null)
+                                )
+                            }
+                        )
+                    }
+                }
+
+                item("action_buttons") {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                            if (isGlobalLoading) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp),
+                                ) {
+                                    followAction()
+                                    Box(Modifier.size(176.dp, 40.dp),
+                                        contentAlignment = Alignment.Center) {
+                                        InlineCircularLoader(
+                                            modifier = Modifier.size(24.dp),
+                                            strokeWidth = 2.dp,
+                                            color = colorPalette().accent,
+                                        )
+                                    }
+                                }
+                            } else {
+                                CollectionButtonToolbar(
+                                    bookmark = followAction,
+                                    buttons = listOf(shuffler, playNext, enqueue, radio, itemSelector,
+                                        downloadAllDialog, deleteAllDownloadsDialog),
+                                    bookmarkWidth = 100.dp,
+                                    actionCellWidth = GlassActionCellWidth,
+                                    originalBookmarkGap = 10.dp,
+                                    modifier = Modifier.padding(start = 12.dp, end = 12.dp,
+                                        top = 12.dp, bottom = 8.dp),
+                                )
+                            }
+                    }
+                }
+
+                item("info_and_community") {
+                    InfoAndCommunity(
+                        rating = localArtist?.rating,
+                        ratingVotes = localArtist?.ratingVotes,
+                        year = localArtist?.beginYear?.toString(),
+                        countryCode = localArtist?.countryCode,
+                        keywords = localArtist?.keywords,
+                        links = localArtist?.links,
+                        bio = localArtist?.wikipediaBio ?: artistPage.description,
+                        translate = translate,
+                        translator = translator,
+                        languageDestination = languageDestination,
+                        lastSyncAt = localArtist?.mbLastFetch,
+                        lastSyncFailed = localArtist?.mbLastFetch != null && localArtist?.genres == null,
+                        pausedForSeconds = mbPausedSeconds,
+                        isSyncing = mbSyncing,
+                        onResyncClick = {
+                            val id = localArtist?.id ?: artistPage.artist.key
+                            scope.launch(MousikeDispatchers.DATA) {
+                                onMbSyncingChange(true)
+                                try {
+                                    val success = MBMetadataHelper.Default.onArtistViewed(id, force = true)
+                                    val paused = MBMetadataHelper.Default.circuitOpenRemainingSeconds()
+                                    onMbPausedSecondsChange(paused)
+                                    when {
+                                        success -> Toaster.s(R.string.metadata_musicbrainz_resync_success)
+                                        paused > 0 -> Toaster.e(
+                                            appTextResources().getString(R.string.metadata_musicbrainz_resync_paused, (paused / 60).coerceAtLeast(1))
+                                        )
+                                        else -> Toaster.e(R.string.metadata_musicbrainz_resync_error)
+                                    }
+                                } finally {
+                                    onMbSyncingChange(false)
+                                }
+                            }
+                        },
+                        onInsightsClick = {
+                            val id = localArtist?.id ?: artistPage.artist.key
+                            navController.navigate("$ARTIST_INSIGHTS_ROUTE/$id")
+                        }
+                    )
+                }
+
+                items(
+                    items = artistPage.sections,
+                    key = ArtistSection::title
+                ) { section ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = sectionTextModifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = section.title,
+                            style = typography().m.semiBold,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        val sectionId = section.title
+                        val canPlaySection = !section.items.fastAll { it is Innertube.ArtistItem }
+                        val isSectionLoading = canPlaySection && sectionLoadingId == sectionId
+                        val shuffleDescription = stringResource(R.string.glass_effect_action_shuffle)
+                        val playDescription = stringResource(R.string.glass_effect_action_play_all)
+                        if (isSectionLoading) {
+                            val loadingModifier = if (rememberGlassSettings().usesGlassMaterial(GlassArea.ActionButtons))
+                                Modifier.padding(end = 12.dp).size(24.dp)
+                            else Modifier.size(NativeIconActionSize * 2, NativeIconActionSize)
+                            Box(loadingModifier, contentAlignment = Alignment.Center) {
+                                InlineCircularLoader(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp,
+                                    color = colorPalette().textSecondary,
+                                )
+                            }
+                        }
+                        val sectionActions = buildList {
+                            if (canPlaySection && !isSectionLoading) {
+                                add(GlassSectionAction(
+                                    icon = R.drawable.dice,
+                                    contentDescription = shuffleDescription,
+                                    nativeEndPadding = 12.dp,
+                                    onClick = {
+                                        scope.launch(MousikeDispatchers.DATA) {
+                                            sectionLoadingId = sectionId
+                                            // Shuffler.play() is fire-and-forget (issue #606 M2): when it's actually
+                                            // invoked, sectionLoadingId is cleared from its onComplete once playback
+                                            // dispatch actually finishes. shufflerWillClear guards the `finally`
+                                            // below so an exception before reaching Shuffler.play() still clears it.
+                                            var shufflerWillClear = false
+                                            try {
+                                                val allMediaItems = mutableListOf<MediaItem>()
+                                                val moreBrowseId = section.moreEndpoint?.browseId
+                                                if (section.items.fastAll { it is Innertube.SongItem } && moreBrowseId != null) {
+                                                    YtMusic.getPlaylist(moreBrowseId).getOrNull()?.songs?.map { it.asMediaItem }?.let { allMediaItems.addAll(it) }
+                                                }
+                                                if (allMediaItems.isEmpty()) {
+                                                    section.items.forEach { item ->
+                                                        when (item) {
+                                                            is Innertube.SongItem -> item.asSong?.asMediaItem?.let { allMediaItems.add(it) }
+                                                            is Innertube.VideoItem -> allMediaItems.add(item.asMediaItem)
+                                                            is Innertube.AlbumItem -> YtMusic.getAlbum(item.key).getOrNull()?.songs?.map { it.asMediaItem }?.let { allMediaItems.addAll(it) }
+                                                            is Innertube.PlaylistItem -> YtMusic.getPlaylist(item.key).getOrNull()?.songs?.map { it.asMediaItem }?.let { allMediaItems.addAll(it) }
+                                                            else -> {}
+                                                        }
+                                                    }
+                                                }
+                                                if (allMediaItems.isNotEmpty()) {
+                                                    val b = binder
+                                                    if (b != null) {
+                                                        shufflerWillClear = true
+                                                        Shuffler.play(b, allMediaItems, onComplete = { sectionLoadingId = null })
+                                                    }
+                                                } else {
+                                                    withContext(MousikeDispatchers.UI) {
+                                                        Toaster.e(R.string.player_no_song_found)
+                                                    }
+                                                }
+                                            } finally {
+                                                if (!shufflerWillClear) sectionLoadingId = null
+                                            }
+                                        }
+                                    },
+                                ))
+                                add(GlassSectionAction(
+                                    icon = R.drawable.play,
+                                    contentDescription = playDescription,
+                                    nativeEndPadding = 12.dp,
+                                    onClick = {
+                                        scope.launch(MousikeDispatchers.DATA) {
+                                            sectionLoadingId = sectionId
+                                            try {
+                                                val allMediaItems = mutableListOf<MediaItem>()
+                                                val moreBrowseId = section.moreEndpoint?.browseId
+                                                if (section.items.fastAll { it is Innertube.SongItem } && moreBrowseId != null) {
+                                                    YtMusic.getPlaylist(moreBrowseId).getOrNull()?.songs?.map { it.asMediaItem }?.let { allMediaItems.addAll(it) }
+                                                }
+                                                if (allMediaItems.isEmpty()) {
+                                                    section.items.forEach { item ->
+                                                        when (item) {
+                                                            is Innertube.SongItem -> item.asSong?.asMediaItem?.let { allMediaItems.add(it) }
+                                                            is Innertube.VideoItem -> allMediaItems.add(item.asMediaItem)
+                                                            is Innertube.AlbumItem -> YtMusic.getAlbum(item.key).getOrNull()?.songs?.map { it.asMediaItem }?.let { allMediaItems.addAll(it) }
+                                                            is Innertube.PlaylistItem -> YtMusic.getPlaylist(item.key).getOrNull()?.songs?.map { it.asMediaItem }?.let { allMediaItems.addAll(it) }
+                                                            else -> {}
+                                                        }
+                                                    }
+                                                }
+                                                if (allMediaItems.isNotEmpty()) {
+                                                    withContext(MousikeDispatchers.UI) {
+                                                        binder?.stopRadio()
+                                                        binder?.player?.forcePlay(allMediaItems.first())
+                                                        binder?.player?.addMediaItems(allMediaItems.drop(1))
+                                                    }
+                                                } else {
+                                                    withContext(MousikeDispatchers.UI) {
+                                                        Toaster.e(R.string.player_no_song_found)
+                                                    }
+                                                }
+                                            } finally {
+                                                sectionLoadingId = null
+                                            }
+                                        }
+                                    },
+                                ))
+                            }
+                            section.moreEndpoint?.browseId?.let { browseId ->
+                                add(GlassSectionAction(
+                                    icon = R.drawable.chevron_forward,
+                                    separateBefore = true,
+                                    contentDescription = section.title,
+                                    onClick = onMore@ {
+                                        val path = "$browseId?params=${section.moreEndpoint?.params}"
+
+                                        val route: NavRoutes = if (section.items.fastAll { it is Innertube.SongItem })
+                                            NavRoutes.playlist
+                                        else if (section.items.fastAll { it is Innertube.AlbumItem })
+                                            NavRoutes.artistAlbums
+                                        else if (section.items.fastAll { it is Innertube.VideoItem })
+                                            NavRoutes.artistVideos
+                                        else if (section.items.fastAll { it is Innertube.PlaylistItem })
+                                            NavRoutes.artistPlaylists
+                                        else
+                                            return@onMore
+
+                                        route.navigateHere(navController, path)
+                                    },
+                                ))
+                            }
+                        }
+                        GlassSectionActions(sectionActions)
+                    }
+
+                    if (section.items.fastAll { it is Innertube.SongItem })
+                        songs.forEachIndexed { index, song ->
+                            SwipeablePlaylistItem(
+                                mediaItem = song.asMediaItem,
+                                onPlayNext = {
+                                    binder?.player?.addNext(song.asMediaItem)
+                                }
+                            ) {
+                                SongItem(
+                                    song = song,
+                                    isLiked = likeStatesMap[song.id],
+                                    inPlaylist = playlistStatesMap[song.id],
+                                    itemSelector = itemSelector,
+                                    navController = navController,
+                                    showThumbnail = true,
+                                    modifier = Modifier.background(colorPalette().background0),
+                                    onClick = {
+                                        binder?.stopRadio()
+                                        binder?.player?.forcePlayAtIndex(
+                                            songs.map(Song::asMediaItem),
+                                            index
+                                        )
+                                    }
+                                )
+                            }
+                        }
+
+                    if (section.items.fastAll { it is Innertube.AlbumItem })
+                        LazyRow {
+                            items(
+                                items = section.items.fastMap { it as Innertube.AlbumItem },
+                                key = Innertube.AlbumItem::key
+                            ) { album ->
+                                AlbumItem(
+                                    album = album,
+                                    alternative = true,
+                                    thumbnailSizePx = albumThumbnailSizePx,
+                                    thumbnailSizeDp = albumThumbnailSizeDp,
+                                    disableScrollingText = disableScrollingText,
+                                    modifier = Modifier.clip(uiRoundnessShape()).combinedClickable(
+                                        onClick = {
+                                            navController.navigate("${NavRoutes.album.name}/${album.key}")
+                                        },
+                                        onLongClick = {
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            menuState.display {
+                                                OnlineAlbumItemMenu(
+                                                    navController = navController,
+                                                    album = album
+                                                ).MenuComponent()
+                                            }
+                                        }
+                                    )
+                                )
+                            }
+                        }
+
+                    if (section.items.fastAll { it is Innertube.PlaylistItem })
+                        LazyRow {
+                            items(
+                                items = section.items.fastMap { it as Innertube.PlaylistItem },
+                                key = Innertube.PlaylistItem::key
+                            ) { playlist ->
+                                PlaylistItem(
+                                    playlist = playlist,
+                                    alternative = true,
+                                    thumbnailSizePx = albumThumbnailSizePx,
+                                    thumbnailSizeDp = albumThumbnailSizeDp,
+                                    disableScrollingText = disableScrollingText,
+                                    modifier = Modifier.clip(uiRoundnessShape()).combinedClickable(
+                                        onClick = { navController.navigate("${NavRoutes.playlist.name}/${playlist.key}") },
+                                        onLongClick = {
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            menuState.display {
+                                                OnlinePlaylistItemMenu(
+                                                    navController = navController,
+                                                    playlist = playlist
+                                                ).MenuComponent()
+                                            }
+                                        }
+                                    )
+                                )
+                            }
+                        }
+
+                    if (section.items.fastAll { it is Innertube.VideoItem }) {
+                        val videoKeys = remember(section.items) { section.items.fastMap { (it as Innertube.VideoItem).key } }
+                        val videoLikeStatesMap by remember(videoKeys) {
+                            LikeStateManager.getLikeStates(videoKeys)
+                        }.collectAsStateWithLifecycle(emptyMap(), context = MousikeDispatchers.DATA)
+                        LazyRow {
+                            items(
+                                items = section.items.fastMap { it as Innertube.VideoItem },
+                                key = Innertube.VideoItem::key
+                            ) { video ->
+                                VideoItem(
+                                    video = video,
+                                    thumbnailHeightDp = 72.dp,
+                                    thumbnailWidthDp = 128.dp,
+                                    alternative = true,
+                                    likeState = videoLikeStatesMap[video.key],
+                                    disableScrollingText = disableScrollingText,
+                                    modifier = Modifier.clip(uiRoundnessShape()).combinedClickable(
+                                        onLongClick = {
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            menuState.display {
+                                                VideoItemMenu(
+                                                    navController = navController,
+                                                    song = video.asMediaItem.asSong
+                                                ).MenuComponent()
+                                            }
+                                        },
+                                        onClick = {
+                                            binder?.stopRadio()
+                                            binder?.player?.forcePlay(video.asMediaItem)
+                                        }
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    if (section.items.fastAll { it is Innertube.ArtistItem })
+                        LazyRow {
+                            items(
+                                items = section.items.fastMap { it as Innertube.ArtistItem },
+                                key = Innertube.ArtistItem::key
+                            ) { artist ->
+                                ArtistItem(
+                                    artist = artist,
+                                    alternative = true,
+                                    thumbnailSizePx = albumThumbnailSizePx,
+                                    thumbnailSizeDp = albumThumbnailSizeDp,
+                                    disableScrollingText = disableScrollingText,
+                                    modifier = Modifier.clip(uiRoundnessShape()).combinedClickable(
+                                        onClick = { navController.navigate("${NavRoutes.artist.name}/${artist.key}") },
+                                        onLongClick = {
+                                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            menuState.display {
+                                                OnlineArtistItemMenu(
+                                                    navController = navController,
+                                                    artist = artist
+                                                ).MenuComponent()
+                                            }
+                                        }
+                                    )
+                                )
+                            }
+                        }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,681 @@
+package app.mousike.android.components.menu.video
+
+import android.content.Intent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.offline.Download
+import androidx.navigation.NavController
+import app.mousike.innertube.Innertube
+import app.mousike.innertube.requests.nextPage
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import timber.log.Timber
+import app.mousike.android.enums.DownloadedStateMedia
+import app.mousike.android.enums.MenuStyle
+import app.mousike.android.enums.NavRoutes
+import app.mousike.android.enums.PlayerTimelineType
+import app.mousike.android.models.Info
+import app.mousike.android.models.Song
+import app.mousike.android.ui.components.LocalMenuState
+import app.mousike.android.ui.components.MenuState
+import app.mousike.android.ui.components.navigation.header.TabToolBar
+import app.mousike.android.ui.components.tab.toolbar.Button
+import app.mousike.android.ui.components.tab.toolbar.Clickable
+import app.mousike.android.ui.components.tab.toolbar.Descriptive
+import app.mousike.android.ui.components.tab.toolbar.Menu
+import app.mousike.android.ui.components.tab.toolbar.MenuIcon
+import app.mousike.android.ui.components.themed.Enqueue
+import app.mousike.android.ui.components.themed.IconButton
+import app.mousike.android.ui.components.themed.PlayNext
+import app.mousike.android.ui.components.themed.PlaylistsMenu
+import app.mousike.android.ui.screens.info.VideoOrSongInfoScreen
+import app.mousike.android.ui.styling.favoritesIcon
+import app.mousike.android.utils.asMediaItem
+import app.mousike.android.utils.durationTextToMillis
+import app.mousike.android.utils.forcePlay
+import app.mousike.android.utils.getActiveProfile
+import app.mousike.android.utils.getDownloadStateMedia
+import app.mousike.android.utils.menuStyleKey
+import app.mousike.android.utils.playerTimelineTypeKey
+import app.mousike.android.utils.rememberEncryptedPreference
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.utils.semiBold
+import app.mousike.android.utils.splitArtistNames
+import app.mousike.android.core.sync.YouTubeSync
+import app.mousike.android.core.utils.Toaster
+import app.mousike.android.BuildConfig
+import app.mousike.android.LocalPlayerServiceBinder
+import app.mousike.android.R
+import app.mousike.android.appContext
+import app.mousike.android.colorPalette
+import app.mousike.android.components.SongItem
+import app.mousike.android.components.dialog.album.ChangeAlbumBrowseIdDialog
+import app.mousike.android.components.dialog.artist.ChangeArtistBrowseIdDialog
+import app.mousike.android.components.dialog.common.DialogPresence
+import app.mousike.android.components.dialog.common.ListenOnDialog
+import app.mousike.android.components.dialog.song.ChangeAuthorDialog
+import app.mousike.android.components.dialog.song.ChangeCoverDialog
+import app.mousike.android.components.dialog.song.RenameSongDialog
+import app.mousike.android.components.glass.GlassHorizontalSeparator
+import app.mousike.android.components.menu.artistMoreFromTitle
+import app.mousike.android.components.menu.GridMenu
+import app.mousike.android.components.menu.ListMenu
+import app.mousike.android.components.menu.MenuSheetDragHandle
+import app.mousike.android.components.menu.MenuSheetSurface
+import app.mousike.android.components.menu.menuSheetSectionBackground
+import app.mousike.android.components.menu.song.ObserveSongMenuSnapshot
+import app.mousike.android.components.menu.song.SongMenuSnapshot
+import app.mousike.android.components.song.GoToArtist
+import app.mousike.android.components.tab.Radio
+import app.mousike.android.components.ui.screens.listentogether.ListenTogetherMenu
+import app.mousike.android.core.database.Database
+import app.mousike.android.core.network.OfflineMode
+import app.mousike.android.download.utils.MyDownloadHelper
+import app.mousike.android.extensions.audiobar.utils.WaveformExtractor
+import app.mousike.android.extensions.audiobar.utils.WaveformResult
+import app.mousike.android.extensions.lastfm.LastFmActions
+import app.mousike.android.extensions.lastfm.isLastfmScrobblingEnabledKey
+import app.mousike.android.extensions.lastfm.lastfmSessionKey
+import app.mousike.android.listentogether.ListenTogetherManager
+import app.mousike.android.listentogether.TrackInfo
+import app.mousike.android.playback.services.isLocal
+import app.mousike.android.surfaceColor
+import app.mousike.android.typography
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import app.mousike.android.utils.player.addNextOffMain
+import app.mousike.android.utils.player.enqueueOffMain
+
+@UnstableApi
+@ExperimentalFoundationApi
+class VideoItemMenu private constructor(
+    private val navController: NavController,
+    song: Song,
+    override val menuState: MenuState,
+    styleState: MutableState<MenuStyle>
+): Menu {
+
+    private val snapshot = SongMenuSnapshot(song, getActiveProfile(appContext()))
+    private val song: Song get() = snapshot.song
+
+    companion object {
+        @Composable
+        operator fun invoke( navController: NavController, song: Song ) : VideoItemMenu =
+            VideoItemMenu(
+                navController = navController,
+                song = song,
+                menuState = LocalMenuState.current,
+                styleState = rememberPreference( menuStyleKey, MenuStyle.List )
+            )
+    }
+
+    lateinit var buttons: List<Button>
+    var refreshBtn: Button? = null
+    private var showLastFmSection = false
+    private var showListenTogetherSection = false
+    private var offlineMode = false
+    private var listenTogetherDialogBtn: Button? = null
+    private var listenTogetherBtn: Button? = null
+    override var menuStyle: MenuStyle by styleState
+
+    @Composable
+    override fun ListMenu() = ListMenu.Menu(title = null, showDragHandle = false) {
+        val lastFmSectionSize = if (showLastFmSection) 2 else 0
+        // Section: Info
+        SectionTitle(stringResource(R.string.common_information_title))
+        buttons.getOrNull(0)?.let { if (it is MenuIcon) it.ListMenuItem() }
+
+        // Section: Playback
+        SectionTitle(stringResource(R.string.common_playback_section_title))
+        if (!offlineMode) buttons.getOrNull(4)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        buttons.getOrNull(5)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        buttons.getOrNull(6)?.let { if (it is MenuIcon) it.ListMenuItem() }
+
+        // Section: Listen Together (room menu, then suggest-to-host for guests in a room)
+        if (!offlineMode) {
+            SectionTitle(stringResource(R.string.listen_together_title))
+            listenTogetherDialogBtn?.let { if (it is MenuIcon) it.ListMenuItem() }
+            listenTogetherBtn?.let { if (it is MenuIcon) it.ListMenuItem() }
+        }
+
+        // Section: Management
+        SectionTitle(stringResource(R.string.library_management_section_title))
+        buttons.getOrNull(1)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        buttons.getOrNull(2)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        buttons.getOrNull(3)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        buttons.filterIsInstance<ChangeAlbumBrowseIdDialog>().firstOrNull()?.let { it.ListMenuItem() }
+        buttons.filterIsInstance<ChangeArtistBrowseIdDialog>().firstOrNull()?.let { it.ListMenuItem() }
+        buttons.getOrNull(7)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        refreshBtn?.let { if (it is MenuIcon) it.ListMenuItem() }
+
+        // Section: Navigation
+        SectionTitle(stringResource(R.string.common_navigation_section_title))
+        for (i in 10 until buttons.size - lastFmSectionSize) {
+            val btn = buttons.getOrNull(i)
+            if (btn is ChangeAlbumBrowseIdDialog || btn is ChangeArtistBrowseIdDialog) continue
+            btn?.let { if (it is MenuIcon) it.ListMenuItem() }
+        }
+
+        if (showLastFmSection && !offlineMode) {
+            // Section: Last.fm
+            SectionTitle(stringResource(R.string.settings_lastfm_title))
+            buttons.getOrNull(buttons.size - 2)?.let { if (it is MenuIcon) it.ListMenuItem() }
+            buttons.getOrNull(buttons.size - 1)?.let { if (it is MenuIcon) it.ListMenuItem() }
+        }
+    }
+
+    @Composable
+    override fun GridMenu() = GridMenu.Menu(title = null, showDragHandle = false) {
+        val lastFmSectionSize = if (showLastFmSection) 2 else 0
+        // Section: Info
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            SectionTitle(stringResource(R.string.common_information_title))
+        }
+        buttons.getOrNull(0)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+
+        // Section: Playback
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            SectionTitle(stringResource(R.string.common_playback_section_title))
+        }
+        if (!offlineMode) buttons.getOrNull(4)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        buttons.getOrNull(5)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        buttons.getOrNull(6)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+
+        // Section: Listen Together (room menu, then suggest-to-host for guests in a room)
+        if (!offlineMode) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                SectionTitle(stringResource(R.string.listen_together_title))
+            }
+            listenTogetherDialogBtn?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+            listenTogetherBtn?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        }
+
+        // Section: Management
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            SectionTitle(stringResource(R.string.library_management_section_title))
+        }
+        buttons.getOrNull(1)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        buttons.getOrNull(2)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        buttons.getOrNull(3)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        buttons.filterIsInstance<ChangeAlbumBrowseIdDialog>().firstOrNull()?.let { item { it.GridMenuItem() } }
+        buttons.filterIsInstance<ChangeArtistBrowseIdDialog>().firstOrNull()?.let { item { it.GridMenuItem() } }
+        buttons.getOrNull(7)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        refreshBtn?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+
+        // Section: Navigation
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            SectionTitle(stringResource(R.string.common_navigation_section_title))
+        }
+        for (i in 10 until buttons.size - lastFmSectionSize) {
+            val btn = buttons.getOrNull(i)
+            if (btn is ChangeAlbumBrowseIdDialog || btn is ChangeArtistBrowseIdDialog) continue
+            btn?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        }
+
+        if (showLastFmSection && !offlineMode) {
+            // Section: Last.fm
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                SectionTitle(stringResource(R.string.settings_lastfm_title))
+            }
+            buttons.getOrNull(buttons.size - 2)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+            buttons.getOrNull(buttons.size - 1)?.let { item { if (it is MenuIcon) it.GridMenuItem() } }
+        }
+    }
+
+    @Composable
+    override fun MenuComponent() {
+        ObserveSongMenuSnapshot(snapshot, onProfileChanged = menuState::hide)
+        val context = LocalContext.current
+        offlineMode = OfflineMode.enabled(context)
+        val uriHandler = LocalUriHandler.current
+        val binder = LocalPlayerServiceBinder.current
+        val coroutineScope = rememberCoroutineScope()
+
+        val playerTimelineType by rememberPreference(playerTimelineTypeKey, PlayerTimelineType.Wavy)
+        val downloadStateMediaState = rememberUpdatedState(
+            binder?.let { getDownloadStateMedia(it, song.id) } ?: DownloadedStateMedia.NOT_CACHED_OR_DOWNLOADED
+        )
+        val isDownloadInProgress by remember(song.id) {
+            MyDownloadHelper.getDownload(song.id)
+                .map {
+                    it?.state == Download.STATE_QUEUED ||
+                        it?.state == Download.STATE_DOWNLOADING ||
+                        it?.state == Download.STATE_RESTARTING
+                }
+        }.collectAsStateWithLifecycle(initialValue = false, context = MousikeDispatchers.DATA)
+        val isDownloadInProgressState = rememberUpdatedState(isDownloadInProgress)
+
+        refreshBtn = if (playerTimelineType == PlayerTimelineType.AudioWaves) {
+            remember {
+                object : MenuIcon, Descriptive, Clickable {
+                    override val iconId: Int = R.drawable.playing_indicator
+                    override val messageId: Int = R.string.audio_waveform_action_refresh
+                    @get:Composable
+                    override val menuIconTitle: String get() = stringResource(R.string.audio_waveform_action_refresh)
+
+                    override val modifier: Modifier
+                        get() = Modifier.alpha(
+                            if (downloadStateMediaState.value == DownloadedStateMedia.NOT_CACHED_OR_DOWNLOADED ||
+                                isDownloadInProgressState.value
+                            ) 0.5f else 1f
+                        )
+
+                    override fun onShortClick() {
+                        if (downloadStateMediaState.value == DownloadedStateMedia.NOT_CACHED_OR_DOWNLOADED ||
+                            isDownloadInProgressState.value
+                        ) {
+                            Toaster.w(R.string.audio_waveform_complete_file_required_message)
+                        } else {
+                            Toaster.i(R.string.audio_waveform_updating_message)
+                            val caches = listOfNotNull(binder?.cache, binder?.downloadCache)
+                            WaveformExtractor.requestUpdateWaveform(appContext(), song.id, caches) { result ->
+                                when (result) {
+                                    is WaveformResult.Success -> Toaster.s(R.string.audio_waveform_updated_message)
+                                    is WaveformResult.NotReady -> Toaster.i(R.string.audio_waveform_waiting_for_download_message)
+                                    is WaveformResult.NoCache, is WaveformResult.Failed -> Toaster.e(R.string.audio_waveform_update_failed_message)
+                                }
+                            }
+                            menuState.hide()
+                        }
+                    }
+                    override fun onLongClick() {}
+                }
+            }
+        } else null
+
+        //region Buttons
+
+        val renameVideo = RenameSongDialog{ song }
+        val changeAuthor = ChangeAuthorDialog{ song }
+        val changeCover = ChangeCoverDialog{ song }
+        val startRadio = Radio { listOf(song) }
+        val playNext = PlayNext {
+            // Issue #606 review fix: launch on a scope independent of the popup menu's lifecycle.
+            // MenuComponent.kt hides the menu (cancelling its rememberCoroutineScope()) right after
+//
+            // onShortClick() returns, so a coroutineScope.launch here could be cancelled mid-flight
+            // before player.addNextOffMain ever runs, silently dropping the tap.
+            MousikeDispatchers.fireAndForget(MousikeDispatchers.UI).launch {
+                val mediaItem = withContext(MousikeDispatchers.DATA) { song.asMediaItem }
+                binder?.player?.addNextOffMain( listOf(mediaItem), appContext() )
+            }
+        }
+        val enqueue = Enqueue {
+            MousikeDispatchers.fireAndForget(MousikeDispatchers.UI).launch {
+                val mediaItem = withContext(MousikeDispatchers.DATA) { song.asMediaItem }
+                binder?.player?.enqueueOffMain( listOf(mediaItem), appContext() )
+            }
+        }
+        val addToPlaylist = PlaylistsMenu.init(
+            navController = navController,
+            mediaItems = { _ -> listOf(song.asMediaItem) },
+            onFailure = { throwable, preview ->
+                Timber.tag("VideoItemMenu").e(throwable, "Failed to add songs to playlist ${preview.playlist.name}")
+            },
+            finalAction = {},
+            onDismiss = { openMenu() }
+        )
+
+        val albumForInfo by remember(song.id) {
+            Database.albumTable.findBySongId(song.id)
+        }.collectAsStateWithLifecycle(null, context = MousikeDispatchers.DATA)
+
+        val infoButton = remember {
+            object : MenuIcon, Descriptive, Clickable {
+                override val iconId: Int = R.drawable.information
+                override val messageId: Int = R.string.common_information_title
+                @get:Composable
+                override val menuIconTitle: String get() = stringResource(messageId)
+
+                override fun onShortClick() {
+                    menuState.display {
+                        VideoOrSongInfoScreen(
+                            videoId = song.id,
+                            songTitle = song.title,
+                            songArtist = song.artistsText ?: "",
+                            songThumbnailUrl = song.thumbnailUrl ?: "",
+                            albumId = albumForInfo?.id ?: "",
+                            albumTitle = albumForInfo?.title ?: "",
+                            navController = navController,
+                            onNavigateUp = { menuState.pop() },
+                            onClose = { menuState.hide() },
+                            onPlay = {
+                                coroutineScope.launch {
+                                    val mediaItem = withContext(MousikeDispatchers.DATA) { song.asMediaItem }
+                                    binder?.player?.forcePlay(mediaItem)
+                                }
+                            }
+                        )
+                    }
+                }
+                override fun onLongClick() {}
+            }
+        }
+
+        // Listen On
+        var showListenOnDialog by remember { mutableStateOf(false) }
+        val listenOnButton = remember {
+            object : MenuIcon, Descriptive, Clickable {
+                override val iconId: Int = R.drawable.play
+                override val messageId: Int = R.string.player_listen_on_title
+                @get:Composable
+                override val menuIconTitle: String get() = stringResource(messageId)
+                override fun onShortClick() {
+                    showListenOnDialog = true
+                }
+                override fun onLongClick() {}
+            }
+        }
+        // Reactively collect artists from DB for per-artist "More of" buttons
+        val artistsData by remember(song.id) {
+            Database.artistTable.findBySongId(song.id)
+        }.collectAsStateWithLifecycle(emptyList(), context = MousikeDispatchers.DATA)
+
+        val goToArtistFallback = remember(song) {
+            GoToArtist( navController, song, menuState )
+        }
+
+        val changeAlbumId = ChangeAlbumBrowseIdDialog(menuState = menuState) { albumForInfo }
+        val changeArtistId = ChangeArtistBrowseIdDialog(menuState = menuState) { artistsData.firstOrNull() }
+
+        val isLastfmScrobblingEnabled by rememberEncryptedPreference(isLastfmScrobblingEnabledKey, false)
+        val lastfmSession by rememberEncryptedPreference(lastfmSessionKey, "")
+        showLastFmSection = !song.isLocal &&
+            isLastfmScrobblingEnabled &&
+            lastfmSession.isNotEmpty() &&
+            BuildConfig.LASTFM_API_KEY.isNotEmpty() &&
+            BuildConfig.LASTFM_API_SECRET.isNotEmpty()
+
+        // Listen Together: guests in a room can suggest tracks to the host
+        // (remote songs only — the host resolves YouTube ids to play).
+        val ltManager = ListenTogetherManager.getInstance()
+        showListenTogetherSection = !song.isLocal &&
+            ltManager?.let { it.isInRoom && !it.isHost } == true
+
+        listenTogetherBtn = if (showListenTogetherSection) {
+            remember {
+                object : MenuIcon, Descriptive, Clickable {
+                    override val iconId: Int = R.drawable.musical_notes
+                    override val messageId: Int = R.string.listen_together_suggest
+                    @get:Composable
+                    override val menuIconTitle: String get() = stringResource(R.string.listen_together_suggest)
+
+                    override fun onShortClick() {
+                        menuState.hide()
+                        val manager = ListenTogetherManager.getInstance() ?: return
+                        if (!manager.isInRoom || manager.isHost) return
+                        val durationMs = song.durationText
+                            ?.let { durationTextToMillis(it) }
+                            ?.takeIf { it > 0 }
+                            ?: 180000L
+                        manager.suggestTrack(
+                            TrackInfo(
+                                id = song.id,
+                                title = song.cleanTitle(),
+                                artist = song.cleanArtistsText(),
+                                duration = durationMs,
+                                thumbnail = song.thumbnailUrl.orEmpty(),
+                            )
+                        )
+                    }
+                    override fun onLongClick() {}
+                }
+            }
+        } else null
+
+        // Listen Together room dialog (Metrolist PlayerMenu dialog port): opens the
+        // create/join/manage room popup through the shared menu state. Shown for every
+//
+        // video regardless of room state or role — it is the menu entry point to a room.
+        listenTogetherDialogBtn = remember {
+            object : MenuIcon, Descriptive, Clickable {
+                override val iconId: Int = R.drawable.people
+                override val messageId: Int = R.string.listen_together_title
+                @get:Composable
+                override val menuIconTitle: String get() = stringResource(R.string.listen_together_title)
+
+                override fun onShortClick() {
+                    menuState.display {
+                        ListenTogetherMenu()
+                    }
+                }
+                override fun onLongClick() {}
+            }
+        }
+
+        buttons = mutableListOf<Button>().apply {
+            add( infoButton )
+            add( renameVideo )
+            add( changeAuthor )
+            add( changeCover )
+            add( startRadio )
+            add( playNext )
+            add( enqueue )
+            add( addToPlaylist )
+            add( changeAlbumId )
+            add( changeArtistId )
+            
+            if (artistsData.isEmpty()) {
+                val artistNames = song.artistsText
+                    .splitArtistNames()
+
+                if (artistNames.size <= 1) {
+                    add( goToArtistFallback )
+                } else {
+                    artistNames.forEach { artistName ->
+                        add(object : MenuIcon, Descriptive, Clickable {
+                            override val iconId: Int = R.drawable.people
+                            override val messageId: Int = R.string.library_artists_title
+                            @get:Composable
+                            override val menuIconTitle: String get() = artistMoreFromTitle(artistName)
+                            override fun onShortClick() {
+                                menuState.hide()
+                                coroutineScope.launch(MousikeDispatchers.DATA) {
+                                    // Try DB by name first (works after search online populated it)
+                                    val dbArtist = try {
+                                        Database.artistTable.findByName(artistName).first()
+                                    } catch (_: Exception) { null }
+                                    if (dbArtist != null) {
+                                        NavRoutes.artist.navigateHere(navController, dbArtist.id)
+                                        return@launch
+                                    }
+                                    // Fallback: Innertube nextPage
+                                    Innertube.nextPage(videoId = song.id)
+                                        ?.getOrNull()
+                                        ?.itemsPage?.items?.firstOrNull()
+                                        ?.authors
+                                        ?.find { it.name?.equals(artistName, ignoreCase = true) == true }
+                                        ?.endpoint
+                                        ?.takeIf { !it.browseId.isNullOrBlank() }
+                                        ?.let {
+                                            val path = "${it.browseId}?params=${it.params.orEmpty()}"
+                                            NavRoutes.artist.navigateHere(navController, path)
+                                        }
+                                }
+                            }
+                            override fun onLongClick() {}
+                        })
+                    }
+                }
+            } else {
+                artistsData.forEach { artist ->
+                    add(object : MenuIcon, Descriptive, Clickable {
+                        override val iconId: Int = R.drawable.people
+                        override val messageId: Int = R.string.library_artists_title
+                        @get:Composable
+                        override val menuIconTitle: String get() = artistMoreFromTitle(artist.name)
+                        override fun onShortClick() {
+                            menuState.hide()
+                            navController.navigate("${app.mousike.android.enums.NavRoutes.artist.name}/${artist.id}")
+                        }
+                        override fun onLongClick() {}
+                    })
+                }
+            }
+
+            add( listenOnButton )
+
+            if (showLastFmSection) {
+                add( object : MenuIcon, Descriptive, Clickable {
+                    override val iconId: Int = R.drawable.heart
+                    override val messageId: Int = R.string.lastfm_love
+                    @get:Composable
+                    override val menuIconTitle: String get() = stringResource(R.string.lastfm_love)
+
+                    override fun onShortClick() {
+                        menuState.hide()
+                        LastFmActions.setLoveStatus(song.cleanArtistsText(), song.cleanTitle(), love = true)
+                    }
+                    override fun onLongClick() {}
+                })
+                add( object : MenuIcon, Descriptive, Clickable {
+                    override val iconId: Int = R.drawable.heart_dislike
+                    override val messageId: Int = R.string.lastfm_unlove
+                    @get:Composable
+                    override val menuIconTitle: String get() = stringResource(R.string.lastfm_unlove)
+
+                    override fun onShortClick() {
+                        menuState.hide()
+                        LastFmActions.setLoveStatus(song.cleanArtistsText(), song.cleanTitle(), love = false)
+                    }
+                    override fun onLongClick() {}
+                })
+            }
+        }
+        //endregion
+
+        //region Dialog renders
+        renameVideo.Render()
+        changeAuthor.Render()
+        changeCover.Render()
+        changeAlbumId.Render()
+        changeArtistId.Render()
+        DialogPresence(visible = showListenOnDialog) {
+            ListenOnDialog(
+                mediaId = song.id,
+                onDismiss = { showListenOnDialog = false },
+                onPlayOnUrl = {
+                    showListenOnDialog = false
+                    menuState.hide()
+                    uriHandler.openUri(it)
+                }
+            )
+        }
+        //endregion
+
+        MenuSheetSurface {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.menuSheetSectionBackground(surfaceColor(colorPalette().background1))
+            ) {
+                MenuSheetDragHandle()
+
+                SongItem(
+                    song = song,
+                    backgroundColor = androidx.compose.ui.graphics.Color.Transparent,
+                    modifier = Modifier.padding(
+                        top = 5.dp,
+                        bottom = 10.dp
+                    ),
+                    trailingContent = {
+                        val likeState by remember(song.id) {
+                            Database.songTable
+                                    .likeState( song.id )
+                                    .distinctUntilChanged()
+                        }.collectAsStateWithLifecycle(null, context = MousikeDispatchers.DATA)
+
+                        Column(
+                            Modifier.width( TabToolBar.TOOLBAR_ICON_SIZE )
+                        ) {
+                            IconButton(
+                                icon = when(likeState) {
+                                    false -> R.drawable.heart_dislike
+                                    null -> R.drawable.heart_outline
+                                    else -> R.drawable.heart
+                                },
+                                color = when(likeState) {
+                                    false -> colorPalette().red
+                                    null -> colorPalette().text
+                                    else -> colorPalette().favoritesIcon
+                                },
+                                onClick = {
+                                    coroutineScope.launch( MousikeDispatchers.DATA ) {
+                                        YouTubeSync.rotateSongLikeState( context, song.asMediaItem )
+                                    }
+                                },
+                                modifier = Modifier.padding( all = 4.dp ).size( 20.dp )
+                            )
+
+                            IconButton(
+                                icon = R.drawable.share_social,
+                                color = colorPalette().text,
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra( Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${song.id}" )
+                                    }
+
+                                    context.startActivity(
+                                        Intent.createChooser( intent, null )
+                                    )
+                                },
+                                modifier = Modifier.padding( all = 4.dp ).size( 20.dp )
+                            )
+                        }
+                    }
+                )
+
+                GlassHorizontalSeparator( Modifier.height(1.dp) )
+            }
+
+            if( menuStyle == MenuStyle.List )
+                ListMenu()
+            else
+                GridMenu()
+        }
+    }
+
+    @Composable
+    private fun SectionTitle(title: String) {
+        BasicText(
+            text = title,
+            style = typography().xxs.semiBold.copy(
+                color = colorPalette().accent,
+                textAlign = TextAlign.Start
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 4.dp)
+        )
+    }
+}

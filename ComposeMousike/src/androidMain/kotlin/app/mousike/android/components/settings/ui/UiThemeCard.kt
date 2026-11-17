@@ -1,0 +1,439 @@
+package app.mousike.android.components.settings.ui
+
+import app.mousike.android.components.dialog.common.DialogPresence
+import app.mousike.android.components.settings.common.settingsSearchTarget
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import app.mousike.android.enums.ColorPaletteMode
+import app.mousike.android.enums.ColorPaletteName
+import app.mousike.android.ui.styling.DefaultDarkColorPalette
+import app.mousike.android.ui.styling.DefaultLightColorPalette
+import app.mousike.android.utils.colorPaletteModeKey
+import app.mousike.android.utils.colorPaletteNameKey
+import app.mousike.android.utils.customColorKey
+import app.mousike.android.utils.customThemeDark_accentKey
+import app.mousike.android.utils.customThemeDark_Background0Key
+import app.mousike.android.utils.customThemeDark_Background1Key
+import app.mousike.android.utils.customThemeDark_Background2Key
+import app.mousike.android.utils.customThemeDark_Background3Key
+import app.mousike.android.utils.customThemeDark_Background4Key
+import app.mousike.android.utils.customThemeDark_iconButtonPlayerKey
+import app.mousike.android.utils.customThemeDark_textDisabledKey
+import app.mousike.android.utils.customThemeDark_TextKey
+import app.mousike.android.utils.customThemeDark_textSecondaryKey
+import app.mousike.android.utils.customThemeLight_accentKey
+import app.mousike.android.utils.customThemeLight_Background0Key
+import app.mousike.android.utils.customThemeLight_Background1Key
+import app.mousike.android.utils.customThemeLight_Background2Key
+import app.mousike.android.utils.customThemeLight_Background3Key
+import app.mousike.android.utils.customThemeLight_Background4Key
+import app.mousike.android.utils.customThemeLight_iconButtonPlayerKey
+import app.mousike.android.utils.customThemeLight_textDisabledKey
+import app.mousike.android.utils.customThemeLight_TextKey
+import app.mousike.android.utils.customThemeLight_textSecondaryKey
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.components.dialog.common.ConfirmationDialog
+import app.mousike.android.components.dialog.common.ValueSelectorDialog
+import app.mousike.android.components.settings.common.ButtonBarSettingEntry
+import app.mousike.android.components.settings.common.ColorSettingEntry
+import app.mousike.android.components.settings.common.OtherSettingsEntry
+import app.mousike.android.components.settings.common.OtherSwitchSettingEntry
+import app.mousike.android.components.settings.common.settingsCardEnter
+import app.mousike.android.components.settings.common.settingsCardExit
+import app.mousike.android.components.settings.common.settingsEntryEnter
+import app.mousike.android.components.settings.common.settingsEntryExit
+import app.mousike.android.components.settings.common.SettingsSectionCard
+import app.mousike.android.components.tab.Search
+import app.mousike.android.R
+import app.mousike.android.components.theme.DYNAMIC_THEME_RESPECT_BRIGHTNESS_DEFAULT
+import app.mousike.android.components.theme.dynamicThemeRespectBrightnessKey
+
+/** Owns appearance preferences and palette confirmations. */
+@Composable
+internal fun UiThemeCard(search: Search) {
+    val context = LocalContext.current
+    var colorPaletteName by rememberPreference(colorPaletteNameKey, ColorPaletteName.PureBlack)
+    var colorPaletteMode by rememberPreference(colorPaletteModeKey, ColorPaletteMode.Dark)
+    var respectThemeBrightness by rememberPreference(dynamicThemeRespectBrightnessKey, DYNAMIC_THEME_RESPECT_BRIGHTNESS_DEFAULT)
+    var customThemeLight_Background0 by rememberPreference(customThemeLight_Background0Key, DefaultLightColorPalette.background0.hashCode())
+    var customThemeLight_Background1 by rememberPreference(customThemeLight_Background1Key, DefaultLightColorPalette.background1.hashCode())
+    var customThemeLight_Background2 by rememberPreference(customThemeLight_Background2Key, DefaultLightColorPalette.background2.hashCode())
+    var customThemeLight_Background3 by rememberPreference(customThemeLight_Background3Key, DefaultLightColorPalette.background3.hashCode())
+    var customThemeLight_Background4 by rememberPreference(customThemeLight_Background4Key, DefaultLightColorPalette.background4.hashCode())
+    var customThemeLight_Text by rememberPreference(customThemeLight_TextKey, DefaultLightColorPalette.text.hashCode())
+    var customThemeLight_TextSecondary by rememberPreference(customThemeLight_textSecondaryKey, DefaultLightColorPalette.textSecondary.hashCode())
+    var customThemeLight_TextDisabled by rememberPreference(customThemeLight_textDisabledKey, DefaultLightColorPalette.textDisabled.hashCode())
+    var customThemeLight_IconButtonPlayer by rememberPreference(customThemeLight_iconButtonPlayerKey, DefaultLightColorPalette.iconButtonPlayer.hashCode())
+    var customThemeLight_Accent by rememberPreference(customThemeLight_accentKey, DefaultLightColorPalette.accent.hashCode())
+    var customThemeDark_Background0 by rememberPreference(customThemeDark_Background0Key, DefaultDarkColorPalette.background0.hashCode())
+    var customThemeDark_Background1 by rememberPreference(customThemeDark_Background1Key, DefaultDarkColorPalette.background1.hashCode())
+    var customThemeDark_Background2 by rememberPreference(customThemeDark_Background2Key, DefaultDarkColorPalette.background2.hashCode())
+    var customThemeDark_Background3 by rememberPreference(customThemeDark_Background3Key, DefaultDarkColorPalette.background3.hashCode())
+    var customThemeDark_Background4 by rememberPreference(customThemeDark_Background4Key, DefaultDarkColorPalette.background4.hashCode())
+    var customThemeDark_Text by rememberPreference(customThemeDark_TextKey, DefaultDarkColorPalette.text.hashCode())
+    var customThemeDark_TextSecondary by rememberPreference(customThemeDark_textSecondaryKey, DefaultDarkColorPalette.textSecondary.hashCode())
+    var customThemeDark_TextDisabled by rememberPreference(customThemeDark_textDisabledKey, DefaultDarkColorPalette.textDisabled.hashCode())
+    var customThemeDark_IconButtonPlayer by rememberPreference(customThemeDark_iconButtonPlayerKey, DefaultDarkColorPalette.iconButtonPlayer.hashCode())
+    var customThemeDark_Accent by rememberPreference(customThemeDark_accentKey, DefaultDarkColorPalette.accent.hashCode())
+    var customColor by rememberPreference(customColorKey, Color.Green.hashCode())
+    var resetCustomLightThemeDialog by rememberSaveable { mutableStateOf(false) }
+    var resetCustomDarkThemeDialog by rememberSaveable { mutableStateOf(false) }
+    DialogPresence(visible = resetCustomLightThemeDialog) {
+        ConfirmationDialog(
+            title = stringResource(R.string.settings_theme_light_colors_reset_title),
+            confirmText = stringResource(R.string.common_action_reset),
+            text = stringResource(R.string.settings_theme_light_colors_reset_confirmation),
+            onDismiss = { resetCustomLightThemeDialog = false },
+            onConfirm = {
+                resetCustomLightThemeDialog = false
+                resetUiPalette(context, dark = false)
+            }
+        )
+    }
+
+    DialogPresence(visible = resetCustomDarkThemeDialog) {
+        ConfirmationDialog(
+            title = stringResource(R.string.settings_theme_dark_colors_reset_title),
+            confirmText = stringResource(R.string.common_action_reset),
+            text = stringResource(R.string.settings_theme_dark_colors_reset_confirmation),
+            onDismiss = { resetCustomDarkThemeDialog = false },
+            onConfirm = {
+                resetCustomDarkThemeDialog = false
+                resetUiPalette(context, dark = true)
+            }
+        )
+    }
+
+    val brightnessTitle = stringResource(R.string.settings_theme_keep_dark_mode_label)
+    val brightnessDescription = stringResource(R.string.settings_theme_keep_dark_mode_description)
+    val brightnessSearchMatch = search.inputValue.isBlank() ||
+        brightnessTitle.contains(search.inputValue, true) ||
+        brightnessDescription.contains(search.inputValue, true) ||
+        stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)
+    val uiSearchContextMatch = search.inputValue.isBlank() ||
+        stringResource(R.string.common_color_source_theme).contains(search.inputValue, true) ||
+        stringResource(R.string.settings_theme_mode_label).contains(search.inputValue, true) ||
+        (colorPaletteName == ColorPaletteName.Dynamic && brightnessSearchMatch)
+
+    AnimatedVisibility(
+        visible = uiSearchContextMatch,
+        enter = settingsCardEnter,
+        exit = settingsCardExit
+    ) {
+        SettingsSectionCard(
+            modifier = Modifier.testTag("ui.card.theme"),
+            title = stringResource(R.string.common_color_source_theme),
+            icon = R.drawable.color_palette,
+            content = {
+                var showThemeDialog by remember { mutableStateOf(false) }
+                if (search.inputValue.isBlank() || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.theme.theme"),
+                        title = stringResource(R.string.common_color_source_theme),
+                        text = stringResource(R.string.theme_palette_description),
+                        selectedValueText = colorPaletteName.text,
+                        icon = R.drawable.color_palette,
+                        onClick = { showThemeDialog = true }
+                    )
+                }
+
+                DialogPresence(visible = showThemeDialog) {
+                    ValueSelectorDialog(
+                        title = stringResource(R.string.common_color_source_theme),
+                        selectedValue = colorPaletteName,
+                        onValueSelected = {
+                            colorPaletteName = it
+                            when (it) {
+                                ColorPaletteName.PureBlack,
+                                ColorPaletteName.ModernBlack -> colorPaletteMode = ColorPaletteMode.System
+                                else -> {}
+                            }
+                        },
+                        valueText = { it.text },
+                        values = ColorPaletteName.values().toList(),
+                        onDismiss = { showThemeDialog = false }
+                    )
+                }
+
+                AnimatedVisibility(visible = colorPaletteName == ColorPaletteName.CustomColor, enter = settingsEntryEnter, exit = settingsEntryExit) {
+                    Column {
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_custom_colors_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                title = stringResource(R.string.settings_theme_custom_colors_label),
+                                text = stringResource(R.string.theme_custom_accent_description),
+                                color = Color(customColor),
+                                onColorSelected = { customColor = it.hashCode() },
+                                modifier = (Modifier.padding(start = 25.dp)).settingsSearchTarget("ui.theme.customcolor")
+                            )
+                        }
+                    }
+                }
+
+                AnimatedVisibility(visible = colorPaletteName == ColorPaletteName.Customized, enter = settingsEntryEnter, exit = settingsEntryExit) {
+                    Column(modifier = Modifier.padding(start = 25.dp)) {
+
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_light_colors_reset_description).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true) || stringResource(R.string.settings_theme_light_colors_reset_title).contains(search.inputValue, true)) {
+                            ButtonBarSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.title_reset_customized_light_colors"),
+                                title = stringResource(R.string.settings_theme_light_colors_reset_title),
+                                text = stringResource(R.string.settings_theme_light_colors_reset_description),
+                                icon = R.drawable.trash,
+                                onClick = { resetCustomLightThemeDialog = true }
+                            )
+                        }
+
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_light_mode_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_background_1_color_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_background_1"),
+                                title = stringResource(R.string.settings_theme_background_1_color_label),
+                                text = stringResource(R.string.theme_light_palette_background_1_description),
+                                color = Color(customThemeLight_Background0),
+                                onColorSelected = { customThemeLight_Background0 = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_light_mode_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_background_2_color_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_background_2"),
+                                title = stringResource(R.string.settings_theme_background_2_color_label),
+                                text = stringResource(R.string.theme_light_palette_background_2_description),
+                                color = Color(customThemeLight_Background1),
+                                onColorSelected = { customThemeLight_Background1 = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_light_mode_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_background_3_color_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_background_3"),
+                                title = stringResource(R.string.settings_theme_background_3_color_label),
+                                text = stringResource(R.string.theme_light_palette_background_3_description),
+                                color = Color(customThemeLight_Background2),
+                                onColorSelected = { customThemeLight_Background2 = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_light_mode_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_background_4_color_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_background_4"),
+                                title = stringResource(R.string.settings_theme_background_4_color_label),
+                                text = stringResource(R.string.theme_light_palette_background_4_description),
+                                color = Color(customThemeLight_Background3),
+                                onColorSelected = { customThemeLight_Background3 = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_light_mode_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_background_5_color_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_background_5"),
+                                title = stringResource(R.string.settings_theme_background_5_color_label),
+                                text = stringResource(R.string.theme_light_palette_background_5_description),
+                                color = Color(customThemeLight_Background4),
+                                onColorSelected = { customThemeLight_Background4 = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_light_mode_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_primary_text_color_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_text"),
+                                title = stringResource(R.string.settings_theme_primary_text_color_label),
+                                text = stringResource(R.string.theme_light_palette_text_description),
+                                color = Color(customThemeLight_Text),
+                                onColorSelected = { customThemeLight_Text= it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_light_mode_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_secondary_text_color_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_text_secondary"),
+                                title = stringResource(R.string.settings_theme_secondary_text_color_label),
+                                text = stringResource(R.string.theme_light_palette_text_secondary_description),
+                                color = Color(customThemeLight_TextSecondary),
+                                onColorSelected = { customThemeLight_TextSecondary = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_light_mode_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_disabled_text_color_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_text_disabled"),
+                                title = stringResource(R.string.settings_theme_disabled_text_color_label),
+                                text = stringResource(R.string.theme_light_palette_text_disabled_description),
+                                color = Color(customThemeLight_TextDisabled),
+                                onColorSelected = { customThemeLight_TextDisabled = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_light_mode_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_player_button_icon_color_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_icon_button_player"),
+                                title = stringResource(R.string.settings_theme_player_button_icon_color_label),
+                                text = stringResource(R.string.theme_light_palette_icon_button_player_description),
+                                color = Color(customThemeLight_IconButtonPlayer),
+                                onColorSelected = { customThemeLight_IconButtonPlayer = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_light_mode_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_accent_color_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_accent"),
+                                title = stringResource(R.string.settings_theme_accent_color_label),
+                                text = stringResource(R.string.theme_light_palette_accent_description),
+                                color = Color(customThemeLight_Accent),
+                                onColorSelected = { customThemeLight_Accent = it.hashCode() }
+                            )
+                        }
+
+
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_dark_colors_reset_description).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true) || stringResource(R.string.settings_theme_dark_colors_reset_title).contains(search.inputValue, true)) {
+                            ButtonBarSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.title_reset_customized_dark_colors"),
+                                title = stringResource(R.string.settings_theme_dark_colors_reset_title),
+                                text = stringResource(R.string.settings_theme_dark_colors_reset_description),
+                                icon = R.drawable.trash,
+                                onClick = { resetCustomDarkThemeDialog = true }
+                            )
+                        }
+
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_background_1_color_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_dark_mode_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_background_1.dark"),
+                                title = stringResource(R.string.settings_theme_background_1_color_label),
+                                text = stringResource(R.string.theme_dark_palette_background_1_description),
+                                color = Color(customThemeDark_Background0),
+                                onColorSelected = { customThemeDark_Background0 = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_background_2_color_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_dark_mode_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_background_2.dark"),
+                                title = stringResource(R.string.settings_theme_background_2_color_label),
+                                text = stringResource(R.string.theme_dark_palette_background_2_description),
+                                color = Color(customThemeDark_Background1),
+                                onColorSelected = { customThemeDark_Background1 = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_background_3_color_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_dark_mode_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_background_3.dark"),
+                                title = stringResource(R.string.settings_theme_background_3_color_label),
+                                text = stringResource(R.string.theme_dark_palette_background_3_description),
+                                color = Color(customThemeDark_Background2),
+                                onColorSelected = { customThemeDark_Background2 = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_background_4_color_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_dark_mode_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_background_4.dark"),
+                                title = stringResource(R.string.settings_theme_background_4_color_label),
+                                text = stringResource(R.string.theme_dark_palette_background_4_description),
+                                color = Color(customThemeDark_Background3),
+                                onColorSelected = { customThemeDark_Background3 = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_background_5_color_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_dark_mode_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_background_5.dark"),
+                                title = stringResource(R.string.settings_theme_background_5_color_label),
+                                text = stringResource(R.string.theme_dark_palette_background_5_description),
+                                color = Color(customThemeDark_Background4),
+                                onColorSelected = { customThemeDark_Background4 = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_primary_text_color_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_dark_mode_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_text.dark"),
+                                title = stringResource(R.string.settings_theme_primary_text_color_label),
+                                text = stringResource(R.string.theme_dark_palette_text_description),
+                                color = Color(customThemeDark_Text),
+                                onColorSelected = { customThemeDark_Text= it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_secondary_text_color_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_dark_mode_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_text_secondary.dark"),
+                                title = stringResource(R.string.settings_theme_secondary_text_color_label),
+                                text = stringResource(R.string.theme_dark_palette_text_secondary_description),
+                                color = Color(customThemeDark_TextSecondary),
+                                onColorSelected = { customThemeDark_TextSecondary = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_disabled_text_color_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_dark_mode_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_text_disabled.dark"),
+                                title = stringResource(R.string.settings_theme_disabled_text_color_label),
+                                text = stringResource(R.string.theme_dark_palette_text_disabled_description),
+                                color = Color(customThemeDark_TextDisabled),
+                                onColorSelected = { customThemeDark_TextDisabled = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_player_button_icon_color_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_dark_mode_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_icon_button_player.dark"),
+                                title = stringResource(R.string.settings_theme_player_button_icon_color_label),
+                                text = stringResource(R.string.theme_dark_palette_icon_button_player_description),
+                                color = Color(customThemeDark_IconButtonPlayer),
+                                onColorSelected = { customThemeDark_IconButtonPlayer = it.hashCode() }
+                            )
+                        }
+                        if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_accent_color_label).contains(search.inputValue, true) || stringResource(R.string.settings_theme_dark_mode_label).contains(search.inputValue, true) || stringResource(R.string.common_color_source_theme).contains(search.inputValue, true)) {
+                            ColorSettingEntry(
+                                modifier = Modifier.settingsSearchTarget("ui.theme.color_accent.dark"),
+                                title = stringResource(R.string.settings_theme_accent_color_label),
+                                text = stringResource(R.string.theme_dark_palette_accent_description),
+                                color = Color(customThemeDark_Accent),
+                                onColorSelected = { customThemeDark_Accent = it.hashCode() }
+                            )
+                        }
+
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = colorPaletteName == ColorPaletteName.Dynamic && brightnessSearchMatch,
+                    enter = settingsEntryEnter,
+                    exit = settingsEntryExit,
+                ) {
+                    OtherSwitchSettingEntry(
+                        modifier = Modifier.padding(start = 25.dp).settingsSearchTarget("ui.theme.respect_brightness"),
+                        title = brightnessTitle,
+                        text = brightnessDescription,
+                        isChecked = respectThemeBrightness,
+                        onCheckedChange = { respectThemeBrightness = it },
+                        icon = R.drawable.theme_brightness,
+                    )
+                }
+
+                var showThemeModeDialog by remember { mutableStateOf(false) }
+                val themeModeEnabled = when (colorPaletteName) {
+                    ColorPaletteName.PureBlack -> false
+                    ColorPaletteName.ModernBlack -> false
+                    else -> true
+                }
+                if (search.inputValue.isBlank() || stringResource(R.string.settings_theme_mode_label).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.theme.theme_mode"),
+                        title = stringResource(R.string.settings_theme_mode_label),
+                        text = stringResource(R.string.theme_mode_description),
+                        selectedValueText = colorPaletteMode.text,
+                        icon = R.drawable.sparkles,
+                        onClick = { if(themeModeEnabled) showThemeModeDialog = true }
+                    )
+                }
+
+                DialogPresence(visible = showThemeModeDialog) {
+                    ValueSelectorDialog(
+                        title = stringResource(R.string.settings_theme_mode_label),
+                        selectedValue = colorPaletteMode,
+                        onValueSelected = { colorPaletteMode = it },
+                        valueText = { it.text },
+                        values = ColorPaletteMode.values().toList(),
+                        onDismiss = { showThemeModeDialog = false }
+                    )
+                }
+            }
+        )
+    }
+}

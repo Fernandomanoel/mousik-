@@ -1,4 +1,4 @@
-# Changelog Convention (N-Zik)
+# Changelog Convention (mousike)
 
 To maintain a clean and consistent project history, for the 'Done.txt' file:
 each entry must be detailed — one-line summaries are not enough. Follow the format below.

@@ -23,7 +23,7 @@ Changed:
 - Rename BuiltInPlaylist "Songs" to "All"
 - Rename ImportSongsFromSpotifyCSV to ImportSongsFromServices
 - YouTube Music icon detection via browseId starts with VL (gray, not red)
-- N-Zik playlists show N-Zik icon instead of YouTube Music icon
+- mousike playlists show mousike icon instead of YouTube Music icon
 - RiPlay import: create playlist, force 00:00 duration, detect unmatched songs
 - Remove 44 hardcoded user-facing strings, add 21 new string resources
 - Changelog: load from cache first, fetch network async, update cache on success

@@ -1,5 +1,5 @@
 New:
-- New Logo (removed music logo, added N-Zik name)
+- New Logo (removed music logo, added mousike name)
 - New Settings UI (partially complete, Player UI still missing)
 - New Changelogs UI
 - New Update UI with Ask-related improvements
@@ -11,8 +11,8 @@ Changed:
 - Updated dependencies
 - Moved Update section to About
 - Quickpicks settings renamed to AI recommendations (now includes all AI settings)
-- Renamed app logs → N-Zik logs
-- Renamed the interface → N-Zik
+- Renamed app logs → mousike logs
+- Renamed the interface → mousike
 - Translated Easter eggs messages
 
 Improved:

@@ -1,5 +1,5 @@
 New:
-- New OTA (Over-The-Air) update mechanism directly inside NZik
+- New OTA (Over-The-Air) update mechanism directly inside Mousike
 - New automatic installation for downloaded updates (requires user permission)
 - New wavy progress loader in the Update screen
 - New "Download again" button in the Updater menu to easily re-download the currently installed version
@@ -16,7 +16,7 @@ Improved:
 Fixed:
 - Fixed a bug where the Explicit badge would not show up in Android Auto
 - Fixed a bug where the notification player would unnecessarily display "e: e:"
-- Fixed an issue where downloading updates from NZik was getting stuck (now utilizing native download progress)
+- Fixed an issue where downloading updates from Mousike was getting stuck (now utilizing native download progress)
 - Fixed an issue where the "Clear Cache" option in the updater didn't force a fresh download
 - Fixed a bug where reinstalling an update incorrectly showed the changelog of the upcoming version instead of the current one
 - Fixed a bug where the "Major Update" warning incorrectly showed up on a fresh installation

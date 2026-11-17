@@ -1,0 +1,214 @@
+package app.mousike.android.components.ui.screens.home
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.MutableFloatState
+import androidx.compose.runtime.MutableIntState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import app.mousike.android.colorPalette
+import app.mousike.android.components.player.APP_HEADER_HEIGHT
+import app.mousike.android.surfaceColor
+import app.mousike.android.components.navigation.LocalSideRailContentInsets
+import app.mousike.android.components.navigation.nav.topNavigationBarShape
+import app.mousike.android.uiRoundnessShape
+import app.mousike.android.components.glass.LocalGlassContainerBackdrop
+import app.mousike.android.components.glass.LocalGlassMaterialSource
+import app.mousike.android.components.glass.LocalGlassBackdrop
+import app.mousike.android.components.glass.rememberGlassSettings
+import app.mousike.android.components.glass.backdrop.backdrops.layerBackdrop
+import app.mousike.android.components.glass.backdrop.backdrops.rememberCanvasBackdrop
+import app.mousike.android.components.glass.backdrop.backdrops.rememberLayerBackdrop
+import kotlin.math.roundToInt
+
+/** The four library Homes own status backing when no horizontal app header covers it. */
+internal val LocalHomeGlassInAppHeader = staticCompositionLocalOf { false }
+
+internal val LocalDrawHomeGlassPane = staticCompositionLocalOf { true }
+
+internal val LocalHomeTopCover = staticCompositionLocalOf { false }
+
+/** Landscape library Homes initially reserve no horizontal navigation row. */
+internal val LocalHomeLandscapeTopCover = staticCompositionLocalOf { false }
+
+/** Only Top navigation folds the opaque space around its mini-player into a compact dock. */
+internal val LocalHomeTopDockFoldProgress = staticCompositionLocalOf<() -> Float> { { 0f } }
+
+/** Clips the moving panel, including its background and hit targets, below the top overlays. */
+@Composable
+internal fun HomeCollapsingHeader(
+    headerOffset: MutableFloatState,
+    headerHeight: MutableIntState,
+    topContentInset: () -> Dp,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = colorPalette().background0,
+    panelColor: Color = backgroundColor,
+    shape: Shape = topNavigationBarShape(uiRoundnessShape()),
+    content: @Composable () -> Unit,
+) {
+    val anchor = LocalHomeTopMiniPlayerAnchor.current
+    val density = LocalDensity.current
+    val owner = remember { Any() }
+    val sharedGlass = LocalSharedHomeHeaderGlass.current
+    val drawPane = LocalDrawHomeGlassPane.current
+    val appHeaderOwnsPane = LocalHomeGlassInAppHeader.current
+    val toolbar = if (sharedGlass != null && appHeaderOwnsPane) rememberLayerBackdrop() else null
+    if (sharedGlass != null && toolbar != null) {
+        val tabProgress = LocalHomeToolbarTabProgress.current
+        val routeProgress = LocalHomeToolbarRouteProgress.current
+        DisposableEffect(sharedGlass, toolbar, tabProgress, routeProgress) {
+            val layer = HomeToolbarLayer(toolbar, tabProgress, routeProgress)
+            sharedGlass.toolbars.add(layer)
+            onDispose { sharedGlass.toolbars.remove(layer) }
+        }
+    }
+    // Home controls live in the page draw tree, including during route transitions.
+    // Sample the list directly so the shared pane can safely sample the page.
+    val controlsBackdrop = LocalHomeToolbarListBackdrop.current
+        ?: sharedGlass?.surface?.takeUnless { appHeaderOwnsPane }
+        ?: rememberCanvasBackdrop { drawRect(panelColor) }
+    val railInsets = LocalSideRailContentInsets.current
+    val direction = LocalLayoutDirection.current
+    val leftRail = with(density) { railInsets.getLeft(density, direction).toDp() }
+    val rightRail = with(density) { railInsets.getRight(density, direction).toDp() }
+    val sideGlass = sharedGlass != null && (leftRail > 0.dp || rightRail > 0.dp)
+    // Bound both the optical surface and the scrolling controls, not just their layout.
+    val panePadding = if (sideGlass) PaddingValues.Absolute(
+        left = if (leftRail > 0.dp) leftRail + 8.dp else 0.dp,
+        right = if (rightRail > 0.dp) rightRail + 8.dp else 0.dp,
+    ) else PaddingValues(0.dp)
+    DisposableEffect(sharedGlass, owner) {
+        sharedGlass?.attach(owner)
+        onDispose { sharedGlass?.detach(owner) }
+    }
+    DisposableEffect(anchor, owner, headerHeight, headerOffset, density, topContentInset) {
+        anchor?.attach(
+            owner,
+            measuredHeight = { with(density) { headerHeight.intValue.toDp() } },
+            scrollOffset = { with(density) { headerOffset.floatValue.toDp() } },
+            overlayTopInset = { anchor?.headerTopInset() ?: topContentInset() },
+        ) {
+            with(density) { visibleHomeHeaderHeightPx(headerHeight.intValue, headerOffset.floatValue).toDp() }
+        }
+        onDispose { anchor?.detach(owner) }
+    }
+    val panelTop = anchor?.headerTopInset() ?: topContentInset()
+    val coverTop = LocalHomeTopCover.current
+    val topDockFoldProgress = LocalHomeTopDockFoldProgress.current
+    if (sharedGlass == null && (coverTop || anchor?.miniPrecedesHeader() == true)) {
+        val top = if (coverTop) 0.dp else topContentInset()
+        Box(Modifier
+            .zIndex(1f)
+            .offset { IntOffset(0, with(density) { top.roundToPx() }) }
+            .fillMaxWidth()
+            .height((panelTop - top).coerceAtLeast(0.dp))
+            .graphicsLayer {
+                val toolbarAlpha = if (coverTop) {
+                    homeHeaderVisibleFraction(headerHeight.intValue, headerOffset.floatValue)
+                } else 1f
+                alpha = toolbarAlpha * (1f - topDockFoldProgress().coerceIn(0f, 1f))
+            }
+            .background(backgroundColor))
+    }
+    val headerBottomPx = WindowInsets.safeDrawing.getTop(density) + with(density) { APP_HEADER_HEIGHT.roundToPx() }
+    val panelTopPx = with(density) { panelTop.roundToPx() }
+    val panelOffsetPx = { panelTopPx + headerOffset.floatValue.roundToInt() }
+    if (sharedGlass != null && drawPane && appHeaderOwnsPane) {
+        androidx.compose.runtime.SideEffect {
+            sharedGlass.panelTopPx = panelTopPx
+            sharedGlass.panelOffset = { headerOffset.floatValue }
+        }
+    }
+    if (sharedGlass != null && drawPane && !appHeaderOwnsPane) {
+        SharedHomeHeaderPane(
+            shared = sharedGlass,
+            settings = rememberGlassSettings(),
+            filmColor = backgroundColor,
+            shape = shape,
+            heightPx = {
+                val height = sharedGlass.animatedPanelHeight.value
+                val visible = homeHeaderVisibleFraction(headerHeight.intValue, headerOffset.floatValue)
+                val topNav = sharedGlass.topNavigation && sharedGlass.navigationBottomPx > 0
+                val expandedBottom = if (topNav) {
+                    sharedTopHomeGlassHeight(sharedGlass.navigationBottomPx, panelTopPx, height, visible)
+                } else sharedHomeGlassHeight(panelTopPx, height, -height * (1f - visible))
+                val headerBottom = if (topNav) sharedGlass.navigationBottomPx else headerBottomPx.coerceAtMost(expandedBottom)
+                sharedHomeGlassTransitionHeight(headerBottom, expandedBottom, sharedGlass.expansion.value)
+            },
+            opacity = {
+                if (sharedGlass.topNavigation && sharedGlass.navigationBottomPx > 0) 1f
+                else homeHeaderVisibleFraction(headerHeight.intValue, headerOffset.floatValue)
+            },
+            modifier = Modifier.zIndex(1f).padding(panePadding),
+            upperFilmColor = if (sharedGlass.topNavigation) surfaceColor(colorPalette().background1) else null,
+            upperHeightPx = { sharedGlass.navigationBottomPx },
+        )
+    }
+    // Move the panel and its opaque corner mask together. Shrinking a viewport
+    // around stationary content clipped the icons before the toolbar left the screen.
+    if (sharedGlass == null) Box(Modifier
+        .zIndex(1f)
+        .offset { IntOffset(0, panelOffsetPx()) }
+        .fillMaxWidth()
+        .height(with(density) { headerHeight.intValue.toDp() })
+        .graphicsLayer {
+            alpha = homeHeaderVisibleFraction(headerHeight.intValue, headerOffset.floatValue)
+        }
+        .background(backgroundColor))
+    Box(
+        modifier
+            .zIndex(1f)
+            .offset { IntOffset(0, panelOffsetPx()) }
+            .then(if (toolbar != null) {
+                Modifier.layerBackdrop(toolbar, drawOnScreen = false)
+            } else Modifier)
+            .graphicsLayer {
+                alpha = homeHeaderVisibleFraction(headerHeight.intValue, headerOffset.floatValue)
+            }
+            .padding(panePadding)
+            .clip(shape)
+            .then(if (sharedGlass == null) Modifier.background(panelColor) else Modifier)
+            .layout { measurable, constraints ->
+                val panel = measurable.measure(constraints)
+                // HomeChromeLayout measures this slot before subcomposing content.
+                // Publish in measurement, not an after-layout size callback.
+                headerHeight.intValue = panel.height
+                if (drawPane) sharedGlass?.measuredPanelHeight?.intValue = panel.height
+                layout(panel.width, panel.height) { panel.placeRelative(0, 0) }
+            }
+    ) {
+        Box(
+            Modifier
+                .padding(if (sideGlass) PaddingValues(0.dp) else railInsets.asPaddingValues())
+        ) {
+            CompositionLocalProvider(
+                LocalGlassContainerBackdrop provides controlsBackdrop,
+                LocalGlassMaterialSource provides controlsBackdrop,
+                LocalGlassBackdrop provides controlsBackdrop,
+            ) { content() }
+        }
+    }
+}

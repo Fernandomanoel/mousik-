@@ -4,8 +4,8 @@ from html import escape
 from pathlib import Path
 from urllib.request import Request, urlopen
 
-ORDER = ["N-Zik", "N-Zik-Desktop-Compagnon", "N-Zik-Website", "Better-Lyrics", "DiscordRPC", "Next-Visualizer"]
-headers = {"User-Agent": "nzik-contributors"}
+ORDER = ["mousike", "mousike-Desktop-Compagnon", "mousike-Website", "Better-Lyrics", "DiscordRPC", "Next-Visualizer"]
+headers = {"User-Agent": "mousike-contributors"}
 if token := os.getenv("GH_TOKEN"):
     headers["Authorization"] = "Bearer " + token
 

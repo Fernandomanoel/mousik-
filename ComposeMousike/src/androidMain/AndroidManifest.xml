@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    tools:ignore="ExtraText"
+    android:installLocation="preferExternal">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <!-- Local PC bridge: Android 17 local network protection (spec-mousike-pc-bridge) -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name = "android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name = "android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name = "android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+
+    <uses-feature    android:name="android.software.leanback" android:required="false" />
+    <uses-feature    android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature    android:name="android.hardware.microphone" android:required="false" />
+
+    <queries>
+        <intent>
+            <action android:name="android.media.action.DISPLAY_AUDIO_EFFECT_CONTROL_PANEL" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.WEB_SEARCH" />
+        </intent>
+        <!-- Required on API 30+ (package visibility) to resolve the default home launcher in
+             ShortcutIconSync.homeLauncherPackage — without this, resolveActivity() cannot see the
+             launcher and always returns null. -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.HOME" />
+        </intent>
+    </queries>
+
+    <application
+        android:name="app.mousike.android.MainApplication"
+        android:allowBackup="true"
+        android:banner="@mipmap/ic_banner"
+        android:configChanges="colorMode|density|fontScale|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|orientation|screenLayout|screenSize|smallestScreenSize|touchscreen|uiMode"
+        android:hardwareAccelerated="true"
+        android:appCategory="audio"
+        android:icon="@mipmap/ic_launcher"
+        android:label="${appName}"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Mousike"
+        android:requestLegacyExternalStorage="true"
+        android:enableOnBackInvokedCallback="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="false"
+        android:largeHeap="true"
+        tools:targetApi="tiramisu">
+
+
+        <activity android:name="app.mousike.android.components.settings.appearance.preview.ThemePreviewActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity
+            android:name="app.mousike.android.components.image.PickedImageEditorActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Mousike" />
+
+        <activity
+            android:name="app.mousike.android.components.image.CoverImageExportActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <activity
+            android:name="app.mousike.android.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Mousike"
+            android:windowSoftInputMode="adjustResize"
+            android:supportsPictureInPicture="true"
+            android:configChanges=
+                "screenSize|smallestScreenSize|screenLayout|orientation">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.MUSIC_PLAYER" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.APP_MUSIC" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <!-- Youtube filter -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="youtube.com" />
+                <data android:host="m.youtube.com" />
+                <data android:host="www.youtube.com" />
+                <data android:host="music.youtube.com" />
+                <!-- video prefix -->
+                <data android:pathPrefix="/v/" />
+                <data android:pathPrefix="/embed/" />
+                <data android:pathPrefix="/watch" />
+                <!-- channel prefix -->
+                <data android:pathPrefix="/channel/" />
+                <data android:pathPrefix="/user/" />
+                <data android:pathPrefix="/c/" />
+                <!-- playlist prefix -->
+                <data android:pathPrefix="/playlist" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="youtu.be" />
+                <data android:pathPrefix="/" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="vnd.youtube" />
+                <data android:scheme="vnd.youtube.launch" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="metrolist.cc" android:path="/listen" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mousike" android:host="theme" />
+            </intent-filter>
+
+            <!-- Share filter -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
+            <!-- Shortcuts are registered dynamically; Rescue uses the separate :rescue process. -->
+        </activity>
+
+        <!-- Rescue Center: runs in a separate process so it works even when the main
+             app crashes at startup (Room migration failure, init bug, etc.).
+             MainApplication.onCreate returns early for non-main processes, so none of
+             the heavy init (DI, Room, player, crash handler) runs here. -->
+        <activity
+            android:name=".components.ui.screens.rescue.RescueActivity"
+            android:process=":rescue"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Mousike">
+            <intent-filter>
+                <action android:name="app.mousike.android.action.rescue" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <receiver android:name=".widget.MusicWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/music_widget_info" />
+        </receiver>
+        <receiver android:name=".widget.TurntableWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/turntable_widget_info" />
+        </receiver>
+        <receiver android:name=".widget.PlaylistWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/playlist_widget_info" />
+        </receiver>
+
+        <!-- NEW PLAYER SERVICE -->
+        <service
+            android:name="app.mousike.android.playback.services.PlayerServiceModern"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+
+        <receiver android:name="androidx.media3.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+        <!-- NEW PLAYER SERVICE -->
+
+        <service android:name="app.mousike.android.download.services.MyDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync">
+            <!-- This is needed for Scheduler -->
+            <intent-filter>
+                <action android:name="androidx.media3.exoplayer.downloadService.action.RESTART"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </service>
+
+        <!-- Local PC bridge server -->
+        <service android:name="app.mousike.android.bridge.BridgeServerService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- PC bridge pairing: the QR scanner follows the device orientation (library default: landscape) -->
+        <activity android:name="app.mousike.android.components.ui.screens.bridge.PairingCaptureActivity"
+            android:exported="false"
+            android:clearTaskOnLaunch="true"
+            android:screenOrientation="fullSensor"
+            android:stateNotNeeded="true"
+            android:theme="@style/zxing_CaptureTheme"
+            android:windowSoftInputMode="stateAlwaysHidden" />
+        <activity android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="fullSensor"
+            tools:replace="screenOrientation" />
+
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
+        </service>
+
+        <receiver
+            android:name="app.mousike.android.playback.services.PlayerServiceModern$NotificationDismissReceiver"
+            android:exported="false" />
+
+        <!-- Listen Together (spec-listen-together): notification actions approve/reject join
+             requests and song suggestions; delivered by the app itself, never exported -->
+        <receiver
+            android:name="app.mousike.android.listentogether.ListenTogetherActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="app.mousike.android.LISTEN_TOGETHER_APPROVE_JOIN" />
+                <action android:name="app.mousike.android.LISTEN_TOGETHER_REJECT_JOIN" />
+                <action android:name="app.mousike.android.LISTEN_TOGETHER_APPROVE_SUGGESTION" />
+                <action android:name="app.mousike.android.LISTEN_TOGETHER_REJECT_SUGGESTION" />
+            </intent-filter>
+        </receiver>
+
+        <meta-data android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc"/>
+
+        <meta-data android:name="com.google.android.gms.car.notification.SmallIcon"
+            android:resource="@drawable/ic_launcher" />
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <provider
+            android:name="app.mousike.android.playback.services.ArtworkContentProvider"
+            android:authorities="${applicationId}.artwork"
+            android:exported="true" />
+
+    </application>
+</manifest>

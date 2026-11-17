@@ -6,5 +6,5 @@ Fixed:
 - Fixed an issue with playback jumping to next song even when the 'Skip on error' option is disabled. Added more retry attempts before throwing an error.
 
 Refactored:
-- Renamed DataspecServices to StreamResolver and restructured the app.n_zik.android.core.playback package
-- Cleaned up project namespace to app.n_zik.android without affecting the user-facing application ID
+- Renamed DataspecServices to StreamResolver and restructured the app.mousike.android.core.playback package
+- Cleaned up project namespace to app.mousike.android without affecting the user-facing application ID

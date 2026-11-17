@@ -1,0 +1,60 @@
+package app.mousike.android.components.ui.screens.home
+
+import app.mousike.android.enums.PlaylistsType
+import app.mousike.android.models.Playlist
+import app.mousike.android.models.PlaylistPreview
+import app.mousike.android.core.rewind.RewindPlaylists
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+// runBlocking bridges JUnit's synchronous entrypoints to the suspend refresh dispatcher.
+class HomeLibraryRefreshTest {
+    private fun preview(id: Long, browseId: String?, editable: Boolean = false): PlaylistPreview =
+        PlaylistPreview(Playlist(id, "Playlist $id", browseId, isEditable = editable), 1)
+
+    private val podcast = preview(1, "MPSPPLXK2KwV2tv0jwie5sRfW9Mrdz3gyZp9Vr")
+    private val otherPodcast = preview(2, "MPSPPLsecond")
+    private val playlist = preview(3, "VLPLordinary")
+    private val local = preview(4, null)
+    private val scope = HomeLibraryPlaylistScope(PlaylistsType.YTPlaylist, YouTubeLibraryFilter.Podcasts,
+        "", true, true, true, true, RewindPlaylists.Filter.All)
+
+    @Test fun `podcast-only pull refresh loads visible exact IDs and ignores ordinary playlists`() = runBlocking {
+        val visible = scope.copy(query = "Playlist 1").visible(listOf(podcast, otherPodcast, playlist, local))
+        val refreshed = mutableListOf<String?>()
+        val result = refreshHomeLibraryPodcasts(homeLibraryActionTargets(visible, emptyList()),
+            refreshPodcast = { row -> refreshed.add(row.browseId); true })
+        assertEquals(listOf(podcast.playlist.browseId), refreshed)
+        assertEquals(HomeLibraryRefreshResult(1, 0), result)
+    }
+
+    @Test fun `mixed visible targets refresh podcasts only`() = runBlocking {
+        val refreshed = mutableListOf<Long>()
+        val visible = scope.copy(youtubeFilter = YouTubeLibraryFilter.All)
+            .visible(listOf(podcast, otherPodcast, playlist, local))
+        val result = refreshHomeLibraryPodcasts(visible,
+            refreshPodcast = { row -> refreshed.add(row.id); true })
+        assertEquals(listOf(1L, 2L), refreshed)
+        assertEquals(HomeLibraryRefreshResult(2, 0), result)
+    }
+
+    @Test fun `empty and unsupported targets do not refresh anything`() = runBlocking {
+        for (targets in listOf(emptyList(), listOf(local, preview(5, "PIPED_IMPORT"),
+            preview(6, "MPSPPLedited", editable = true), preview(7, "modified:MPSPPLcopy")))) {
+            val result = refreshHomeLibraryPodcasts(targets,
+                refreshPodcast = { error("Protected or local rows must not refresh") })
+            assertEquals(HomeLibraryRefreshResult(0, 0), result)
+        }
+    }
+
+    @Test fun `failed podcast does not prevent other visible podcasts from refreshing`() = runBlocking {
+        val refreshed = mutableListOf<Long>()
+        val result = refreshHomeLibraryPodcasts(listOf(podcast, otherPodcast),
+            refreshPodcast = { row -> refreshed.add(row.id); row.id != podcast.playlist.id })
+        assertEquals(listOf(1L, 2L), refreshed)
+        assertEquals(HomeLibraryRefreshResult(1, 1), result)
+        assertTrue(refreshed.none { it == local.playlist.id })
+    }
+}

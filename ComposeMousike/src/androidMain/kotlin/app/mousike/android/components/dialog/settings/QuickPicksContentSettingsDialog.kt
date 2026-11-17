@@ -1,0 +1,271 @@
+package app.mousike.android.components.dialog.settings
+
+import app.mousike.android.utils.preferences
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import app.mousike.android.R
+import app.mousike.android.components.settings.common.SettingsNestedOption
+import app.mousike.android.components.dialog.common.ContentFramedDialog
+import app.mousike.android.components.dialog.common.ToggleItem
+import app.mousike.android.components.dialog.common.ToggleListDialog
+import app.mousike.android.utils.quickPicksSectionOrderKey
+import app.mousike.android.utils.showTipsKey
+import app.mousike.android.utils.showChartsKey
+import app.mousike.android.utils.showRelatedAlbumsKey
+import app.mousike.android.utils.showSimilarArtistsKey
+import app.mousike.android.utils.showNewAlbumsArtistsKey
+import app.mousike.android.utils.showNewAlbumsKey
+import app.mousike.android.utils.showPlaylistMightLikeKey
+import app.mousike.android.utils.showMoodsAndGenresKey
+import app.mousike.android.utils.showMyTopPlaylistKey
+import app.mousike.android.utils.showMonthlyPlaylistsKey
+import app.mousike.android.utils.showFreshFindsOldFavoritesKey
+import app.mousike.android.utils.showMixedForYouKey
+import app.mousike.android.utils.showForgottenFavoritesKey
+import app.mousike.android.utils.showYourDailyDiscoverKey
+import app.mousike.android.utils.showFreshNewMusicKey
+import app.mousike.android.utils.showNewReleasesKey
+import app.mousike.android.utils.showAlbumsForYouKey
+import app.mousike.android.utils.showTodaysBiggestHitsKey
+import app.mousike.android.utils.showAllHitsKey
+import app.mousike.android.utils.showFeaturedPlaylistsKey
+import app.mousike.android.utils.showTrendingCommunityPlaylistsKey
+import app.mousike.android.utils.showFromTheCommunityKey
+import app.mousike.android.utils.showTrendingSongsForYouKey
+import app.mousike.android.utils.showTopMusicVideosKey
+import app.mousike.android.utils.showCoverAndRemixesKey
+import app.mousike.android.utils.showTrendingInShortsKey
+import app.mousike.android.utils.showMusicVideosForYouKey
+import app.mousike.android.utils.showLivePerformancesKey
+import app.mousike.android.utils.showMoodsKey
+import app.mousike.android.utils.showGenericYtmSectionsKey
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.core.utils.Toaster
+import org.json.JSONArray
+import sh.calvin.reorderable.rememberReorderableLazyListState
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
+import android.content.SharedPreferences
+
+private val defaultSectionOrder = listOf(
+    "tips",
+    "fresh_finds_old_favorites",
+    "mixed_for_you",
+    "forgotten_favorites",
+    "your_daily_discover",
+    "fresh_new_music",
+    "new_releases",
+    "new_albums_artists",
+    "new_albums",
+    "albums_for_you",
+    "related_albums",
+    "my_top",
+    "rewind",
+    "similar_artists",
+    "todays_biggest_hits",
+    "all_hits",
+    "playlists_might_like",
+    "featured_playlists",
+    "trending_community_playlists",
+    "from_the_community",
+    "trending_songs_for_you",
+    "top_music_videos",
+    "cover_and_remixes",
+    "trending_in_shorts",
+    "music_videos_for_you",
+    "live_performances",
+    "moods",
+    "moods_genres",
+    "generic_ytm_sections",
+    "charts"
+)
+
+internal data class QuickPicksSectionDef(
+    val id: String,
+    val preferenceKey: String,
+    val iconRes: Int,
+    val labelRes: Int,
+    val defaultValue: Boolean
+)
+
+internal fun buildSectionDefs(): Map<String, QuickPicksSectionDef> = mapOf(
+    "tips" to QuickPicksSectionDef("tips", showTipsKey, R.drawable.person, R.string.recommendations_for_you_title, true),
+    "charts" to QuickPicksSectionDef("charts", showChartsKey, R.drawable.trending, R.string.recommendations_charts_title, true),
+    "related_albums" to QuickPicksSectionDef("related_albums", showRelatedAlbumsKey, R.drawable.album, R.string.album_related_title, true),
+    "similar_artists" to QuickPicksSectionDef("similar_artists", showSimilarArtistsKey, R.drawable.people, R.string.artist_similar_title, true),
+    "new_albums_artists" to QuickPicksSectionDef("new_albums_artists", showNewAlbumsArtistsKey, R.drawable.alternative_version, R.string.recommendations_followed_artists_new_albums_title, true),
+    "new_albums" to QuickPicksSectionDef("new_albums", showNewAlbumsKey, R.drawable.album, R.string.recommendations_new_albums_title, true),
+    "playlists_might_like" to QuickPicksSectionDef("playlists_might_like", showPlaylistMightLikeKey, R.drawable.playlist, R.string.recommendations_playlists_title, true),
+    "moods_genres" to QuickPicksSectionDef("moods_genres", showMoodsAndGenresKey, R.drawable.moods, R.string.recommendations_moods_and_genres_title, true),
+    "my_top" to QuickPicksSectionDef("my_top", showMyTopPlaylistKey, R.drawable.person, R.string.recommendations_personal_top_title, true),
+    // Spec 2: restored "Rewind" section — reuses the legacy showMonthlyPlaylistsKey so the
+    // existing user preference (kept by spec 1) is preserved, zero new DataStore key.
+    "rewind" to QuickPicksSectionDef("rewind", showMonthlyPlaylistsKey, R.drawable.musical_notes, R.string.rewind_title, true),
+    "fresh_finds_old_favorites" to QuickPicksSectionDef("fresh_finds_old_favorites", showFreshFindsOldFavoritesKey, R.drawable.trending, R.string.recommendations_fresh_finds_old_favorites_title, true),
+    "mixed_for_you" to QuickPicksSectionDef("mixed_for_you", showMixedForYouKey, R.drawable.playlist, R.string.recommendations_mixed_for_you_title, true),
+    "forgotten_favorites" to QuickPicksSectionDef("forgotten_favorites", showForgottenFavoritesKey, R.drawable.person, R.string.recommendations_forgotten_favorites_title, true),
+    "your_daily_discover" to QuickPicksSectionDef("your_daily_discover", showYourDailyDiscoverKey, R.drawable.discover, R.string.recommendations_daily_discover_title, true),
+    "fresh_new_music" to QuickPicksSectionDef("fresh_new_music", showFreshNewMusicKey, R.drawable.trending, R.string.recommendations_fresh_new_music_title, true),
+    "new_releases" to QuickPicksSectionDef("new_releases", showNewReleasesKey, R.drawable.album, R.string.recommendations_new_releases_title, true),
+    "albums_for_you" to QuickPicksSectionDef("albums_for_you", showAlbumsForYouKey, R.drawable.album, R.string.recommendations_albums_for_you_title, true),
+    "todays_biggest_hits" to QuickPicksSectionDef("todays_biggest_hits", showTodaysBiggestHitsKey, R.drawable.trending, R.string.recommendations_todays_biggest_hits_title, true),
+    "all_hits" to QuickPicksSectionDef("all_hits", showAllHitsKey, R.drawable.trending, R.string.recommendations_all_hits_title, true),
+    "featured_playlists" to QuickPicksSectionDef("featured_playlists", showFeaturedPlaylistsKey, R.drawable.featured_playlist, R.string.recommendations_featured_playlists_title, true),
+    "trending_community_playlists" to QuickPicksSectionDef("trending_community_playlists", showTrendingCommunityPlaylistsKey, R.drawable.playlist, R.string.recommendations_trending_community_playlists_title, true),
+    "from_the_community" to QuickPicksSectionDef("from_the_community", showFromTheCommunityKey, R.drawable.people, R.string.recommendations_community_title, true),
+    "trending_songs_for_you" to QuickPicksSectionDef("trending_songs_for_you", showTrendingSongsForYouKey, R.drawable.trending, R.string.recommendations_trending_songs_title, true),
+    "top_music_videos" to QuickPicksSectionDef("top_music_videos", showTopMusicVideosKey, R.drawable.video, R.string.recommendations_top_music_videos_title, true),
+    "cover_and_remixes" to QuickPicksSectionDef("cover_and_remixes", showCoverAndRemixesKey, R.drawable.musical_notes, R.string.recommendations_covers_and_remixes_title, true),
+    "trending_in_shorts" to QuickPicksSectionDef("trending_in_shorts", showTrendingInShortsKey, R.drawable.trending, R.string.recommendations_trending_shorts_title, true),
+    "music_videos_for_you" to QuickPicksSectionDef("music_videos_for_you", showMusicVideosForYouKey, R.drawable.video, R.string.recommendations_music_videos_title, true),
+    "live_performances" to QuickPicksSectionDef("live_performances", showLivePerformancesKey, R.drawable.person, R.string.recommendations_live_performances_title, true),
+    "moods" to QuickPicksSectionDef("moods", showMoodsKey, R.drawable.moods, R.string.recommendations_moods_title, true),
+    "generic_ytm_sections" to QuickPicksSectionDef("generic_ytm_sections", showGenericYtmSectionsKey, R.drawable.trending, R.string.recommendations_section_other_youtube_title, true)
+)
+
+object QuickPicksContentSettingsDialog : ContentFramedDialog {
+
+    /** Exact searchable options from the same definitions used by this dialog. */
+    internal fun searchOptions(): List<SettingsNestedOption> = buildSectionDefs().values.map { SettingsNestedOption(it.id, it.labelRes) }
+
+
+    override val dialogTitle: String
+        @Composable
+        get() = stringResource(R.string.recommendations_content)
+
+    override var isActive: Boolean by mutableStateOf(false)
+
+    private fun parseOrder(serialized: String): List<String> {
+        if (serialized.isBlank()) return defaultSectionOrder
+        return try {
+            val arr = JSONArray(serialized)
+            val list = mutableListOf<String>()
+            for (i in 0 until arr.length()) {
+                list.add(arr.getString(i))
+            }
+            val validIds = defaultSectionOrder.filter { it in buildSectionDefs().keys }
+            val result = list.filter { it in validIds }.toMutableList()
+            for (id in validIds) {
+                if (id !in result) result.add(id)
+            }
+            result.remove("tips")
+            result.add(0, "tips")
+            result
+        } catch (_: Exception) {
+            defaultSectionOrder
+        }
+    }
+
+    private fun serializeOrder(order: List<String>): String {
+        val arr = JSONArray()
+        order.forEach { arr.put(it) }
+        return arr.toString()
+    }
+
+    private fun loadPrefs(prefs: SharedPreferences): Pair<MutableList<String>, MutableList<Boolean>> {
+        val orderSerialized = prefs.getString(quickPicksSectionOrderKey, "") ?: ""
+        val order = parseOrder(orderSerialized).toMutableList()
+        val toggles = order.map { id ->
+            val def = buildSectionDefs()[id]
+            if (def != null) prefs.getBoolean(def.preferenceKey, def.defaultValue) else true
+        }.toMutableList()
+        return order to toggles
+    }
+
+    private fun savePrefs(prefs: SharedPreferences, order: List<String>, toggles: Map<String, Boolean>) {
+        val editor = prefs.edit()
+        editor.putString(quickPicksSectionOrderKey, serializeOrder(order))
+        buildSectionDefs().forEach { (id, def) ->
+            editor.putBoolean(def.preferenceKey, toggles[id] ?: def.defaultValue)
+        }
+        editor.apply()
+    }
+
+    @Composable
+    override fun DialogBody() {
+        val context = LocalContext.current
+        val prefs = remember { context.preferences }
+        val sectionDefs = remember { buildSectionDefs() }
+
+        val initial = remember { loadPrefs(prefs) }
+
+        var workingOrder by remember { mutableStateOf(initial.first) }
+        var workingToggles by remember { mutableStateOf(initial.second) }
+
+        val lazyListState = rememberLazyListState()
+
+        val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+            val order = workingOrder.toMutableList()
+            val toggles = workingToggles.toMutableList()
+            val fromIndex = order.indexOf(from.key)
+            val toIndex = order.indexOf(to.key)
+            if (fromIndex != -1 && toIndex != -1) {
+                val item = order.removeAt(fromIndex)
+                order.add(toIndex, item)
+                val checkedItem = toggles.removeAt(fromIndex)
+                toggles.add(toIndex, checkedItem)
+                workingOrder = order
+                workingToggles = toggles
+            }
+        }
+
+        val sectionItems = workingOrder.mapIndexed { index, sectionId ->
+            val def = sectionDefs[sectionId] ?: return@mapIndexed null
+            ToggleItem(
+                id = def.id,
+                iconRes = def.iconRes,
+                label = stringResource(def.labelRes),
+                preferenceKey = def.preferenceKey,
+                defaultValue = def.defaultValue
+            )
+        }.filterNotNull()
+
+        ToggleListDialog(
+            frameTitle = dialogTitle,
+            onDismiss = ::hideDialog,
+            items = sectionItems,
+            lazyListState = lazyListState,
+            reorderableState = reorderableState,
+            pinnedItemCount = 1,
+            enforceMinOneChecked = true,
+            checkedStatesOverride = workingToggles.toList(),
+            onCheckedChange = { index, newValue ->
+                val newToggles = workingToggles.toMutableList()
+                newToggles[index] = newValue
+                workingToggles = newToggles
+            },
+            onReset = {
+                workingOrder = defaultSectionOrder.toMutableList()
+                workingToggles = defaultSectionOrder.map { id ->
+                    sectionDefs[id]?.defaultValue ?: true
+                }.toMutableList()
+            },
+            onCancel = {
+                hideDialog()
+            },
+            onConfirm = {
+                val toggleMap = mutableMapOf<String, Boolean>()
+                workingOrder.forEachIndexed { index, id ->
+                    toggleMap[id] = workingToggles[index]
+                }
+                savePrefs(prefs, workingOrder, toggleMap)
+                Toaster.s(R.string.settings_preference_saved_message)
+                hideDialog()
+            }
+        )
+    }
+    fun reset(context: Context) {
+        val prefs = context.preferences
+        val defaultToggles = buildSectionDefs().mapValues { it.value.defaultValue }
+        savePrefs(prefs, defaultSectionOrder, defaultToggles)
+    }
+}

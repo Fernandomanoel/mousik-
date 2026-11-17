@@ -1,0 +1,33 @@
+package app.mousike.android.components.settings.network
+
+import app.mousike.android.components.settings.common.settingsSearchTarget
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.navigation.NavController
+import app.mousike.android.R
+import app.mousike.android.enums.NavRoutes
+import app.mousike.android.components.settings.common.SettingsSectionCard
+import app.mousike.android.components.settings.common.OtherSettingsEntry
+
+@Composable
+internal fun NetworkServerCard(query: String, navController: NavController, modifier: Modifier = Modifier) {
+
+    if (query.isBlank() || stringResource(R.string.bridge_server).contains(query, true)) {
+        SettingsSectionCard(
+            title = stringResource(R.string.bridge_server),
+            icon = R.drawable.devices,
+            modifier = modifier,
+            content = {
+                OtherSettingsEntry(
+                    modifier = Modifier.settingsSearchTarget("network.bridge_server.bridge_server"),
+                    title = stringResource(R.string.bridge_server),
+                    text = stringResource(R.string.bridge_server_description),
+                    icon = R.drawable.devices,
+                    onClick = { navController.navigate(NavRoutes.bridgeServer.name) }
+                )
+            }
+        )
+    }
+
+}

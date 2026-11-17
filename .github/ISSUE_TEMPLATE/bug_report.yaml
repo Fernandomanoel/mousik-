@@ -1,5 +1,5 @@
 name: 👾 Bug report
-description: Make a bug report to help us improve N-Zik
+description: Make a bug report to help us improve mousike
 title: "[BUG]: "
 labels: ["bug"]
 assignees:
@@ -39,7 +39,7 @@ body:
     id: version-number
     attributes:
       label: 🏷️ App Version
-      description: Please specify the exact version of N-Zik.
+      description: Please specify the exact version of mousike.
       placeholder: 5.0.0-f
     validations:
       required: true
@@ -56,7 +56,7 @@ body:
         - Release32
         - Minified64
         - Minified32
-        - Foss (N-Zik-Foss, com.nevar.nzik.foss)
+        - Foss (mousike-Foss, app.mousike.foss)
     validations:
       required: true
 
@@ -113,7 +113,7 @@ body:
       label: 🔄 How to reproduce
       description: Provide step-by-step instructions on how to trigger the bug.
       placeholder: |
-        1. Open N-Zik
+        1. Open mousike
         2. Click on '...'
         3. Scroll down to '...'
         4. Boom! Error happens

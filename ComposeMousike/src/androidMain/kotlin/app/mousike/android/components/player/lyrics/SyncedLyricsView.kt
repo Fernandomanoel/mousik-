@@ -1,0 +1,517 @@
+package app.mousike.android.components.player.lyrics
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import app.mousike.android.enums.ColorPaletteMode
+import app.mousike.android.components.player.lyricsThemeColor
+import app.mousike.android.enums.lyrics.LyricsAlignment
+import app.mousike.android.enums.lyrics.LyricsBackground
+import app.mousike.android.enums.lyrics.LyricsColor
+import app.mousike.android.enums.lyrics.LyricsFontSize
+import app.mousike.android.enums.lyrics.LyricsHighlight
+import app.mousike.android.enums.lyrics.LyricsOutline
+import app.mousike.android.R
+
+import app.mousike.android.components.player.lyrics.utils.SynchronizedLyrics
+import app.mousike.android.utils.verticalFadingEdge
+import app.mousike.android.core.utils.Toaster
+import app.mousike.android.colorPalette
+import dev.rebelonion.translator.Language
+import dev.rebelonion.translator.Translator
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
+import timber.log.Timber
+import app.mousike.android.components.player.lyrics.utils.HtmlDecoder
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import androidx.compose.animation.core.tween
+import kotlinx.coroutines.CancellationException
+
+internal data class SyncedSentence(
+    val timeMs: Long,
+    val text: String,
+    val agent: String? = null,
+    val isBackground: Boolean = false,
+    val endMs: Long? = null
+)
+
+private val agentTagRegex = Regex("\\{agent:([^}]*)\\}")
+private val bgTagRegex = Regex("\\{bg\\}")
+private val syncedLineRegex = Regex("""^\[(\d{1,9}):([0-5]\d)(?:[.:](\d{1,3}))?](.*)$""")
+
+internal fun parseSyncedSentences(lrcText: String, preserveText: Boolean = false): List<SyncedSentence> = buildList {
+    add(SyncedSentence(0L, ""))
+    for (rawLine in lrcText.lineSequence()) {
+        val match = syncedLineRegex.matchEntire(rawLine.trimStart()) ?: continue
+        val (minutes, seconds, fraction, line) = match.destructured
+        val time = minutes.toLong() * 60_000 + seconds.toLong() * 1_000 +
+            fraction.padEnd(3, '0').toLong()
+        val importedLine = parseLyricsFileLineText(line)
+        val agentMatch = if (importedLine == null) agentTagRegex.find(line) else null
+        val agent = agentMatch?.groupValues?.get(1)
+        val isBg = importedLine == null && bgTagRegex.containsMatchIn(line)
+        val untaggedText = importedLine?.text ?: line.replace(agentTagRegex, "").replace(bgTagRegex, "")
+        val cleanText = if (preserveText) untaggedText else untaggedText.trim()
+        add(SyncedSentence(time, cleanText, agent, isBg, importedLine?.endMs))
+    }
+}
+
+/** One-shot computation of the interval-indicator data for synced sentences: for each blank line, the gap to the next sentence (blank-line end estimated from the previous line's singing duration, clamped to a 2s margin before the next line). */
+internal fun computeSyncedGapWindows(sentences: List<SyncedSentence>): Map<Int, Pair<Long, Long>> {
+    return buildMap {
+        sentences.forEachIndexed { index, sentence ->
+            val startMs = sentence.timeMs
+            val nextStartMs = if (index < sentences.size - 1) sentences[index + 1].timeMs else startMs + 10000L
+            val sentenceText = sentence.text.trim()
+
+            if (sentenceText.isBlank()) {
+                var currentEnd = startMs
+                val prevSentence = if (index > 0) sentences[index - 1] else null
+                if (prevSentence != null && prevSentence.text.isNotBlank()) {
+                    val prevStartMs = prevSentence.timeMs
+                    val prevText = prevSentence.text.trim()
+
+                    // Estimate end of singing: ~120ms per character + 500ms trailing
+                    val estimatedDuration = (prevText.length * 120L) + 500L
+                    // Max end is 2 seconds before the next line starts, so we guarantee a 2s gap if possible
+                    val maxEstimatedEnd = nextStartMs - 2000L
+
+                    currentEnd = (prevStartMs + estimatedDuration)
+                        .coerceAtMost(maxEstimatedEnd)
+                        // Minimum 1 second after the previous line started
+                        .coerceAtLeast(prevStartMs + 1000L)
+                        // We can even start the gap before the blank line's official timestamp!
+                        .coerceAtMost(startMs)
+                }
+
+                if (currentEnd < nextStartMs) {
+                    val gap = nextStartMs - currentEnd
+                    if (gap > 2000L) {
+                        put(index, Pair(currentEnd, nextStartMs - 650L))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SyncedLyricsView(
+    text: String,
+    currentPositionProvider: () -> Long,
+    onSeekTo: (Long) -> Unit,
+    showlyricsthumbnail: Boolean,
+    isLandscape: Boolean,
+    trailingContent: (@Composable () -> Unit)?,
+    showBackgroundLyrics: Boolean,
+    lyricsBackground: LyricsBackground,
+    showSecondLine: Boolean,
+    translateEnabled: Boolean,
+    romanizationEnabled: Boolean,
+    languageDestination: Language,
+    translator: Translator,
+    lyricsOutline: LyricsOutline,
+    colorPaletteMode: ColorPaletteMode,
+    fontSize: LyricsFontSize,
+    customSize: Float,
+    lyricsAlignment: LyricsAlignment,
+    lyricsSizeAnimate: Boolean,
+    lyricsColor: LyricsColor,
+    lyricsCustomColor: Int,
+    dominantColor: Int,
+    lyricsHighlight: LyricsHighlight = LyricsHighlight.None,
+    isAutoScrollEnabled: Boolean = true,
+    onAutoScrollEnabledChange: (Boolean) -> Unit = {},
+    clickLyricsText: Boolean,
+    @Suppress("UNUSED_PARAMETER") // Kept for API compatibility; centering now uses viewportHeight
+    thumbnailSize: Dp,
+    isDisplayed: Boolean,
+    onDismiss: () -> Unit,
+    onInvalidLrc: (Boolean) -> Unit,
+    showIntervalIndicator: Boolean = true,
+    karaokeRespectAgentPosition: Boolean = true,
+    forcedCoverBackground: Color? = null
+) {
+    val density = LocalDensity.current
+
+    // Decode + parse LRC + one-shot gap windows off the main thread (issue #606).
+    // Previous sentences stay displayed until the new parse completes.
+    var syncedSentences by remember { mutableStateOf<List<SyncedSentence>>(emptyList()) }
+    var gapWindows by remember { mutableStateOf<Map<Int, Pair<Long, Long>>>(emptyMap()) }
+    var synchronizedLyrics by remember { mutableStateOf(SynchronizedLyrics(emptyList())) }
+    LaunchedEffect(text) {
+        val sentences = withContext(MousikeDispatchers.MEDIA) {
+            parseSyncedSentences(HtmlDecoder.decodeHtmlEntities(text))
+        }
+        val windows = withContext(MousikeDispatchers.MEDIA) { computeSyncedGapWindows(sentences) }
+        syncedSentences = sentences
+        gapWindows = windows
+        synchronizedLyrics = SynchronizedLyrics(sentences.map { it.timeMs to it.text })
+        if (sentences.isEmpty()) onInvalidLrc(true) else onInvalidLrc(false)
+    }
+
+    // Live playback position for the interval indicator
+    var currentPositionMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            currentPositionMs = currentPositionProvider()
+            delay(100)
+        }
+    }
+
+    // --- Translation cache ---
+    // Keyed on options that affect translation output; survives scroll without re-fetching.
+    val translationCache = remember(syncedSentences, showSecondLine, translateEnabled, romanizationEnabled, languageDestination) {
+        mutableStateMapOf<Int, String>()
+    }
+
+    // Pre-compute translations for every sentence in the background, once per key change.
+    LaunchedEffect(syncedSentences, showSecondLine, translateEnabled, romanizationEnabled, languageDestination) {
+        if (!showSecondLine && !translateEnabled && !romanizationEnabled) return@LaunchedEffect
+
+        val linesToTranslate = mutableListOf<Pair<Int, String>>()
+        syncedSentences.forEachIndexed { index, sentence ->
+            val trimmed = sentence.text.trim()
+            if (trimmed.isEmpty()) {
+                translationCache[index] = trimmed
+            } else if (!translationCache.containsKey(index)) {
+                linesToTranslate.add(index to trimmed)
+            }
+        }
+
+        if (linesToTranslate.isEmpty()) return@LaunchedEffect
+
+        if (translateEnabled) {
+            withContext(MousikeDispatchers.UI) {
+                Toaster.i(R.string.lyrics_translation_in_progress_message)
+            }
+        }
+
+        withContext(MousikeDispatchers.DATA) {
+            try {
+                // Join all lines to translate in one go
+                val textToTranslate = linesToTranslate.joinToString("\n") { it.second }
+
+                val helperTranslation = translator.translate(textToTranslate, Language.CHINESE_TRADITIONAL, Language.AUTO)
+                var destLanguage = languageDestination
+                if (destLanguage == Language.AUTO) {
+                    destLanguage = if (helperTranslation.translatedText == textToTranslate)
+                        Language.CHINESE_TRADITIONAL
+                    else
+                        helperTranslation.sourceLanguage
+                }
+                val mainTranslation = translator.translate(textToTranslate, destLanguage, Language.AUTO)
+
+                val cleanTranslatedText = mainTranslation.translatedText.replace("\\\"", "\"").trim()
+                val cleanPronunciation = mainTranslation.translatedPronunciation?.replace("\\\"", "\"")?.trim()
+
+                val helpPronLineText = helperTranslation.sourcePronunciation?.trim() ?: ""
+                val mainPronLineText = mainTranslation.sourcePronunciation?.trim() ?: textToTranslate
+
+                val cleanTransLines = cleanTranslatedText.split("\n")
+                val cleanPronLines = cleanPronunciation?.split("\n")
+                val helpPronLines = helpPronLineText.split("\n")
+                val mainPronLines = mainPronLineText.split("\n")
+
+                linesToTranslate.forEachIndexed { i, (sentenceIndex, trimmed) ->
+                    val cleanTransLine = cleanTransLines.getOrNull(i)?.trim() ?: ""
+                    val cleanPronLine = cleanPronLines?.getOrNull(i)?.trim()
+                    
+                    val hPronLine = helpPronLines.getOrNull(i)?.trim() ?: ""
+                    val mPronLine = mainPronLines.getOrNull(i)?.trim() ?: trimmed
+                    val transPronLine = cleanPronLine ?: cleanTransLine
+
+                    val isSameText = mainTranslation.sourceText == mainTranslation.translatedText
+
+                    val outputText = if (!showSecondLine || isSameText) {
+                        if (translateEnabled && romanizationEnabled) {
+                            transPronLine
+                        } else if (translateEnabled) {
+                            cleanTransLine
+                        } else if (romanizationEnabled) {
+                            if (helperTranslation.sourceText == helperTranslation.translatedText)
+                                hPronLine
+                            else
+                                mPronLine.ifEmpty { trimmed }
+                        } else {
+                            trimmed
+                        }
+                    } else {
+                        if (translateEnabled && romanizationEnabled) {
+                            val pron = if (helperTranslation.sourceText == helperTranslation.translatedText) hPronLine else mPronLine.ifEmpty { trimmed }
+                            pron + "\n[$transPronLine]"
+                        } else if (translateEnabled) {
+                            trimmed + "\n[$cleanTransLine]"
+                        } else if (romanizationEnabled) {
+                            val pron = if (helperTranslation.sourceText == helperTranslation.translatedText) hPronLine else mPronLine.ifEmpty { trimmed }
+                            trimmed + "\n[$pron]"
+                        } else {
+                            trimmed
+                        }
+                    }
+
+                    val finalText = outputText.replace("\\r", "\r").replace("\\n", "\n")
+                    translationCache[sentenceIndex] = finalText
+                }
+
+                if (translateEnabled) {
+                    withContext(MousikeDispatchers.UI) {
+                        Toaster.s(R.string.lyrics_translation_success_message)
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.tag("SyncedLyricsView").e("sync translation error: ${e.message}")
+                if (translateEnabled) {
+                    withContext(MousikeDispatchers.UI) {
+                        Toaster.e(R.string.lyrics_translation_failed_message)
+                    }
+                }
+            }
+        }
+    }
+
+    val lazyListState = rememberLazyListState()
+
+    // Reset scroll position to top when lyrics content changes (mode switch / new song)
+    LaunchedEffect(text) {
+        lazyListState.scrollToItem(0)
+    }
+
+
+    val isDragged by lazyListState.interactionSource.collectIsDraggedAsState()
+
+    LaunchedEffect(isDragged) {
+        if (isDragged) {
+            onAutoScrollEnabledChange(false)
+        }
+    }
+
+    val config = LocalConfiguration.current
+    val screenHeightPx = with(density) { config.screenHeightDp.dp.roundToPx() }
+    val vpH = lazyListState.layoutInfo.viewportEndOffset - lazyListState.layoutInfo.viewportStartOffset
+    val effectiveVpH = if (vpH > 0) vpH else screenHeightPx
+
+    val currentText = syncedSentences
+        .getOrNull(synchronizedLyrics.index)?.text ?: ""
+    val translationText = translationCache[synchronizedLyrics.index] ?: currentText
+    val trueLineCount = translationText.lines().size.coerceIn(1, 5)
+
+    val fontSizeIndex = when (fontSize) {
+        LyricsFontSize.Light -> 0
+        LyricsFontSize.Medium -> 1
+        LyricsFontSize.Heavy -> 2
+        LyricsFontSize.Large -> 3
+        else -> 4
+    }
+    val charsPerLine = if (fontSize == LyricsFontSize.Custom) {
+        (40f * 16f / customSize).toInt().coerceAtLeast(10)
+    } else {
+        (50 - fontSizeIndex * 10).coerceAtLeast(10)
+    }
+    val wrappedLines = when {
+        translationText.length > charsPerLine * 2 -> 3
+        translationText.length > charsPerLine -> 2
+        else -> 1
+    }
+    val lineCount = maxOf(trueLineCount, wrappedLines)
+    val lineMultiplier = when (lineCount) {
+        1 -> 0.45f
+        2 -> 0.46f
+        3 -> 0.48f
+        4 -> 0.40f
+        else -> 0.35f
+    }
+    val multiplier = if (showlyricsthumbnail) lineMultiplier else 0.42f
+    val fixedCenter = (effectiveVpH * multiplier).toInt()
+
+    LaunchedEffect(synchronizedLyrics, density, isAutoScrollEnabled, vpH) {
+        // Position is read on UI and passed by value; the scan runs on MEDIA (issue #606).
+        synchronizedLyrics.update(currentPositionProvider() + 50L)
+
+        if (isAutoScrollEnabled) {
+            var reMeasuredVpH = lazyListState.layoutInfo.viewportEndOffset - lazyListState.layoutInfo.viewportStartOffset
+            if (reMeasuredVpH == 0) {
+                delay(100)
+                reMeasuredVpH = lazyListState.layoutInfo.viewportEndOffset - lazyListState.layoutInfo.viewportStartOffset
+            }
+            val finalEffectiveVpH = if (reMeasuredVpH > 0) reMeasuredVpH else screenHeightPx
+            val finalFixedCenter = (finalEffectiveVpH * multiplier).toInt()
+            
+            try {
+                val targetIndex = synchronizedLyrics.index + 1
+                lazyListState.scrollToItem(targetIndex, -finalFixedCenter)
+            } catch (e: CancellationException) {
+                if (!isActive) throw e
+            }
+        }
+
+        while (isActive) {
+            delay(50)
+            if (!synchronizedLyrics.update(currentPositionProvider() + 50L)) continue
+            if (isAutoScrollEnabled) {
+                var reMeasuredVpH = lazyListState.layoutInfo.viewportEndOffset - lazyListState.layoutInfo.viewportStartOffset
+                val finalEffectiveVpH = if (reMeasuredVpH > 0) reMeasuredVpH else screenHeightPx
+                val finalFixedCenter = (finalEffectiveVpH * multiplier).toInt()
+                
+                try {
+                    val targetIndex = synchronizedLyrics.index + 1
+                    val itemInfo = lazyListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == targetIndex }
+                    if (itemInfo != null) {
+                        val currentPos = itemInfo.offset + itemInfo.size / 2
+                        val offset = currentPos - finalFixedCenter
+                        if (kotlin.math.abs(offset) > 10) {
+                            lazyListState.animateScrollBy(
+                                value = offset.toFloat(),
+                                animationSpec = tween(durationMillis = 800)
+                            )
+                        }
+                    } else {
+                        lazyListState.scrollToItem(targetIndex, -finalFixedCenter)
+                    }
+                } catch (e: CancellationException) {
+                    if (!isActive) throw e
+                }
+            }
+        }
+    }
+
+    // (vpH-based re-scroll removed - caused double animations)
+
+    var modifierBG = Modifier.verticalFadingEdge()
+if (showBackgroundLyrics && showlyricsthumbnail) modifierBG =
+        modifierBG.background(if (lyricsColor == LyricsColor.Cover) forcedCoverBackground ?: colorPalette().accent else colorPalette().accent)
+
+    val accentColor = when (lyricsColor) {
+        LyricsColor.White -> Color.White
+        LyricsColor.Cover -> Color(dominantColor)
+        LyricsColor.Custom -> Color(lyricsCustomColor)
+        LyricsColor.Thememode -> lyricsThemeColor(colorPalette(), showBackgroundLyrics && showlyricsthumbnail)
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            state = lazyListState,
+            userScrollEnabled = true,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = modifierBG
+                .fillMaxSize()
+                .background(
+                    if (isDisplayed && !showlyricsthumbnail)
+                        when (lyricsBackground) {
+                            LyricsBackground.Black -> Color.Black.copy(0.6f)
+                            LyricsBackground.White -> Color.White.copy(0.4f)
+                            else -> Color.Transparent
+                        }
+                    else Color.Transparent
+                )
+        ) {
+            item(key = "header", contentType = 0) {
+                Spacer(modifier = Modifier.height(thumbnailSize))
+            }
+
+            itemsIndexed(
+                items = syncedSentences,
+                key = { index, _ -> index },
+                contentType = { _, _ -> "lyric_line" }
+            ) { index, sentence ->
+                val trimmedSentence = sentence.text.trim()
+
+                // Read from cache — no network call here
+                val displayText = if (showSecondLine || translateEnabled || romanizationEnabled) {
+                    translationCache[index] ?: trimmedSentence
+                } else {
+                    trimmedSentence
+                }
+
+                val hasGapIndicator = showIntervalIndicator && gapWindows.containsKey(index)
+
+                // Agent-based alignment: v1=Left, v2=Right, bg/v1000=Center
+                val effectiveAlignment = when {
+                    karaokeRespectAgentPosition && sentence.agent == "v1" -> LyricsAlignment.Left
+                    karaokeRespectAgentPosition && sentence.agent == "v2" -> LyricsAlignment.Right
+                    karaokeRespectAgentPosition && sentence.agent == "v1000" -> LyricsAlignment.Center
+                    karaokeRespectAgentPosition && sentence.isBackground -> LyricsAlignment.Center
+                    else -> lyricsAlignment
+                }
+                val lineAlignment = when (effectiveAlignment) {
+                    LyricsAlignment.Left -> Alignment.CenterStart
+                    LyricsAlignment.Center -> Alignment.Center
+                    LyricsAlignment.Right -> Alignment.CenterEnd
+                }
+
+                if (!hasGapIndicator) {
+                    Box(
+                        contentAlignment = lineAlignment,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        LyricsTextPainter(
+                            text = displayText,
+                            isSync = true,
+                            isCurrentIndex = index == synchronizedLyrics.index,
+                            showlyricsthumbnail = showlyricsthumbnail,
+                            lyricsOutline = lyricsOutline,
+                            colorPaletteMode = colorPaletteMode,
+                            fontSize = fontSize,
+                            customSize = customSize,
+                            lyricsAlignment = effectiveAlignment,
+                            lyricsSizeAnimate = lyricsSizeAnimate,
+                            lyricsColor = lyricsColor,
+                            lyricsCustomColor = lyricsCustomColor,
+                            dominantColor = dominantColor,
+                            lyricsHighlight = lyricsHighlight,
+                            clickLyricsText = clickLyricsText,
+                            textOnAccentBackground = showBackgroundLyrics && showlyricsthumbnail,
+                            onClick = {
+                                if (clickLyricsText) onSeekTo(sentence.timeMs) else onDismiss()
+                            }
+                        )
+                    }
+                }
+
+                // Interval indicator after this line (if there is a gap and the feature is enabled)
+                if (showIntervalIndicator) {
+                    gapWindows[index]?.let { (gapStart, gapEnd) ->
+                        val isVisible = currentPositionMs in gapStart until gapEnd
+                        LyricsIntervalIndicator(
+                            gapStartMs = gapStart,
+                            gapEndMs = gapEnd,
+                            currentPositionMs = currentPositionMs,
+                            visible = isVisible,
+                            color = accentColor,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+
+            item(key = "footer", contentType = 2) {
+                Spacer(modifier = Modifier.height(thumbnailSize))
+            }
+        }
+    }
+}

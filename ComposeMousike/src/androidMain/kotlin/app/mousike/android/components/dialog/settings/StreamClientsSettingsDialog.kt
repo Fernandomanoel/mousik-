@@ -1,0 +1,218 @@
+package app.mousike.android.components.dialog.settings
+
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import app.mousike.android.R
+import app.mousike.android.LocalPlayerServiceBinder
+import app.mousike.android.components.dialog.common.ContentFramedDialog
+import app.mousike.android.components.dialog.common.ToggleItem
+import app.mousike.android.components.dialog.common.ToggleListDialog
+import app.mousike.android.utils.streamClientWebRemixEnabledKey
+import app.mousike.android.utils.streamClientVisionosEnabledKey
+import app.mousike.android.utils.streamClientTvEmbeddedEnabledKey
+import app.mousike.android.utils.streamClientTvSimplyEnabledKey
+import app.mousike.android.utils.streamClientTvHtml5EnabledKey
+import app.mousike.android.utils.streamClientAndroidVrEnabledKey
+import app.mousike.android.utils.streamClientAndroidCreatorEnabledKey
+import app.mousike.android.utils.streamClientIosEnabledKey
+import app.mousike.android.utils.streamClientIpadosEnabledKey
+import app.mousike.android.utils.streamClientWebEnabledKey
+import app.mousike.android.utils.streamClientWebCreatorEnabledKey
+import app.mousike.android.utils.streamClientMobileEnabledKey
+import app.mousike.android.utils.streamClientAndroidEnabledKey
+import app.mousike.android.utils.streamClientRestartNeededKey
+import app.mousike.android.utils.streamClientsOrderKey
+import app.mousike.android.playback.services.clearStreamCaches
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import kotlinx.coroutines.launch
+import org.json.JSONArray
+import sh.calvin.reorderable.rememberReorderableLazyListState
+import android.content.Context
+
+private val defaultClientOrder = listOf(
+    "web_remix",
+    "android_vr",
+    "visionos",
+    "tv_embedded",
+    "tv_simply",
+    "tv_html5",
+    "android_creator",
+    "android",
+    "ios",
+    "ipados",
+    "web",
+    "web_creator",
+    "mobile"
+)
+
+private data class ClientDef(
+    val id: String,
+    val preferenceKey: String,
+    val iconRes: Int,
+    val labelRes: Int,
+    val defaultValue: Boolean,
+    val descriptionRes: Int? = null
+)
+
+private fun buildClientDefs(): Map<String, ClientDef> = mapOf(
+    "web_remix" to ClientDef("web_remix", streamClientWebRemixEnabledKey, R.drawable.ytmusic, R.string.network_stream_client_web_remix, true, R.string.network_stream_client_youtube_music_web_description),
+    "android_vr" to ClientDef("android_vr", streamClientAndroidVrEnabledKey, R.drawable.musical_notes, R.string.network_stream_client_android_vr, true, R.string.network_stream_client_android_vr_description),
+    "visionos" to ClientDef("visionos", streamClientVisionosEnabledKey, R.drawable.musical_notes, R.string.network_stream_client_visionos, true, R.string.network_stream_client_visionos_description),
+    "tv_embedded" to ClientDef("tv_embedded", streamClientTvEmbeddedEnabledKey, R.drawable.video, R.string.network_stream_client_tv_embedded, true, R.string.network_stream_client_tv_embedded_description),
+    "tv_simply" to ClientDef("tv_simply", streamClientTvSimplyEnabledKey, R.drawable.video, R.string.network_stream_client_tv_simply, true, R.string.network_stream_client_tv_simply_description),
+    "tv_html5" to ClientDef("tv_html5", streamClientTvHtml5EnabledKey, R.drawable.video, R.string.network_stream_client_tv_html5, true, R.string.network_stream_client_tv_html5_description),
+    "android_creator" to ClientDef("android_creator", streamClientAndroidCreatorEnabledKey, R.drawable.musical_notes, R.string.network_stream_client_android_creator, true, R.string.network_stream_client_android_creator_description),
+    "android" to ClientDef("android", streamClientAndroidEnabledKey, R.drawable.musical_notes, R.string.network_stream_client_android, true, R.string.network_stream_client_android_description),
+    "ios" to ClientDef("ios", streamClientIosEnabledKey, R.drawable.musical_notes, R.string.network_stream_client_ios, true, R.string.network_stream_client_ios_description),
+    "ipados" to ClientDef("ipados", streamClientIpadosEnabledKey, R.drawable.musical_notes, R.string.network_stream_client_ipados, true, R.string.network_stream_client_ipados_description),
+    "web" to ClientDef("web", streamClientWebEnabledKey, R.drawable.musical_notes, R.string.network_stream_client_web, true, R.string.network_stream_client_web_description),
+    "web_creator" to ClientDef("web_creator", streamClientWebCreatorEnabledKey, R.drawable.musical_notes, R.string.network_stream_client_web_creator, true, R.string.network_stream_client_web_creator_description),
+    "mobile" to ClientDef("mobile", streamClientMobileEnabledKey, R.drawable.musical_notes, R.string.network_stream_client_mobile, true, R.string.network_stream_client_mobile_description)
+)
+
+object StreamClientsSettingsDialog : ContentFramedDialog {
+
+    override val dialogTitle: String
+        @Composable
+        get() = stringResource(R.string.settings_stream_disabled_clients_title)
+
+    override var isActive: Boolean by mutableStateOf(false)
+
+    private fun parseOrder(serialized: String): List<String> {
+        if (serialized.isBlank()) return defaultClientOrder
+        return try {
+            val arr = JSONArray(serialized)
+            val list = mutableListOf<String>()
+            for (i in 0 until arr.length()) {
+                list.add(arr.getString(i))
+            }
+            val validIds = defaultClientOrder.filter { it in buildClientDefs().keys }
+            val result = list.filter { it in validIds }.toMutableList()
+            for (id in validIds) {
+                if (id !in result) result.add(id)
+            }
+            result
+        } catch (_: Exception) {
+            defaultClientOrder
+        }
+    }
+
+    private fun serializeOrder(order: List<String>): String {
+        val arr = JSONArray()
+        order.forEach { arr.put(it) }
+        return arr.toString()
+    }
+
+    @Composable
+    override fun DialogBody() {
+        val context = LocalContext.current
+        val binder = LocalPlayerServiceBinder.current
+        val prefs = remember { context.getSharedPreferences("preferences", Context.MODE_PRIVATE) }
+        val clientDefs = remember { buildClientDefs() }
+
+        val initial = remember {
+            val orderSerialized = prefs.getString(streamClientsOrderKey, "") ?: ""
+            val order = parseOrder(orderSerialized).toMutableList()
+            val toggles = order.map { id ->
+                val def = clientDefs[id]
+                if (def != null) prefs.getBoolean(def.preferenceKey, def.defaultValue) else true
+            }.toMutableList()
+            order to toggles
+        }
+
+        var workingOrder by remember { mutableStateOf(initial.first) }
+        var workingToggles by remember { mutableStateOf(initial.second) }
+
+        val lazyListState = rememberLazyListState()
+
+        val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+            val order = workingOrder.toMutableList()
+            val toggles = workingToggles.toMutableList()
+            val fromIndex = order.indexOf(from.key)
+            val toIndex = order.indexOf(to.key)
+            if (fromIndex != -1 && toIndex != -1) {
+                val item = order.removeAt(fromIndex)
+                order.add(toIndex, item)
+                val checkedItem = toggles.removeAt(fromIndex)
+                toggles.add(toIndex, checkedItem)
+                workingOrder = order
+                workingToggles = toggles
+            }
+        }
+
+        val items = workingOrder.mapNotNull { clientId ->
+            val def = clientDefs[clientId] ?: return@mapNotNull null
+            ToggleItem(
+                id = def.id,
+                iconRes = def.iconRes,
+                label = stringResource(def.labelRes),
+                preferenceKey = def.preferenceKey,
+                defaultValue = def.defaultValue,
+                description = def.descriptionRes?.let { stringResource(it) }
+            )
+        }
+
+        ToggleListDialog(
+            frameTitle = dialogTitle,
+            onDismiss = ::hideDialog,
+            items = items,
+            lazyListState = lazyListState,
+            reorderableState = reorderableState,
+            enforceMinOneChecked = true,
+            checkedStatesOverride = workingToggles.toList(),
+            onCheckedChange = { index, newValue ->
+                val newToggles = workingToggles.toMutableList()
+                newToggles[index] = newValue
+                workingToggles = newToggles
+            },
+            onReset = {
+                workingOrder = defaultClientOrder.toMutableList()
+                workingToggles = defaultClientOrder.map { id ->
+                    clientDefs[id]?.defaultValue ?: true
+                }.toMutableList()
+            },
+            onCancel = {
+                hideDialog()
+            },
+            onConfirm = {
+                // Detect if any enabled/disabled state changed to trigger stream restart
+                val initialById = initial.first.zip(initial.second).toMap()
+                val hasChanges = workingOrder.any { id ->
+                    val idx = workingOrder.indexOf(id)
+                    workingToggles.getOrElse(idx) { true } != (initialById[id] ?: true)
+                }
+                val editor = prefs.edit()
+                editor.putString(streamClientsOrderKey, serializeOrder(workingOrder))
+                workingOrder.forEachIndexed { index, id ->
+                    val def = clientDefs[id] ?: return@forEachIndexed
+                    editor.putBoolean(def.preferenceKey, workingToggles[index])
+                }
+                if (hasChanges) {
+                    editor.putBoolean(streamClientRestartNeededKey, true)
+                    clearStreamCaches()
+                    MousikeDispatchers.fireAndForget(MousikeDispatchers.DATA).launch {
+                        clearAudioCache(binder?.cache)
+                    }
+                }
+                editor.apply()
+                hideDialog()
+            }
+        )
+    }
+
+    fun reset(context: Context) {
+        val prefs = context.getSharedPreferences("preferences", Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+        editor.putString(streamClientsOrderKey, serializeOrder(defaultClientOrder))
+        buildClientDefs().forEach { (_, def) ->
+            editor.putBoolean(def.preferenceKey, def.defaultValue)
+        }
+        editor.apply()
+    }
+}

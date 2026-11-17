@@ -31,7 +31,7 @@ Fixed:
 - Menu: remove title from all item menus (song, album, artist, playlist, video, player).
 - Menu: fix double header in Sort.kt MenuComponent.
 - Menu: skip header in ListMenu/GridMenu when title=null and no handle bar.
-- Menu: respect Color.Unspecified in SettingIcon for logo icons (Spotify, RiPlay, NZik, YouTube Music).
+- Menu: respect Color.Unspecified in SettingIcon for logo icons (Spotify, RiPlay, Mousike, YouTube Music).
 - Karaoke: increase line multiplier for 3-4+ lines to prevent lyrics being too high.
 - Karaoke: allow lyrics to go backwards when seeking.
 - Lyrics: limit LyricsSettingsMenu height to 50% of screen.

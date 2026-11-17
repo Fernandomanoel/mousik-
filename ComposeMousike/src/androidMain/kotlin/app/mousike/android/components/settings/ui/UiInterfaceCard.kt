@@ -1,0 +1,324 @@
+package app.mousike.android.components.settings.ui
+
+import app.mousike.android.components.dialog.common.DialogPresence
+import app.mousike.android.components.settings.common.settingsSearchTarget
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import app.mousike.android.enums.HomeScreenTabs
+import app.mousike.android.enums.MenuStyle
+import app.mousike.android.enums.NavigationBarPosition
+import app.mousike.android.enums.NavigationBarType
+import app.mousike.android.enums.PlayerPosition
+import app.mousike.android.enums.SearchDisplayOrder
+import app.mousike.android.enums.TransitionEffect
+import app.mousike.android.utils.disableNavigationBackStackKey
+import app.mousike.android.utils.hideStatusBarKey
+import app.mousike.android.utils.indexNavigationTabKey
+import app.mousike.android.utils.menuStyleKey
+import app.mousike.android.utils.navigationBarPositionKey
+import app.mousike.android.utils.navigationBarTypeKey
+import app.mousike.android.utils.playerPositionKey
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.utils.rememberQueueScrollPositionKey
+import app.mousike.android.utils.rightToLeftInterfaceKey
+import app.mousike.android.utils.searchDisplayOrderKey
+import app.mousike.android.utils.showFloatingIconKey
+import app.mousike.android.utils.transitionEffectKey
+import app.mousike.android.components.dialog.common.ValueSelectorDialog
+import app.mousike.android.components.dialog.settings.HomeTabsSettingsDialog
+import app.mousike.android.components.search.SearchHistoryPageSettings
+import app.mousike.android.components.settings.common.OtherSettingsEntry
+import app.mousike.android.components.settings.common.OtherSwitchSettingEntry
+import app.mousike.android.components.settings.common.settingsCardEnter
+import app.mousike.android.components.settings.common.settingsCardExit
+import app.mousike.android.components.settings.common.SettingsSectionCard
+import app.mousike.android.components.tab.Search
+import app.mousike.android.R
+
+/** Owns the interface settings and their local dialogs. */
+@Composable
+internal fun UiInterfaceCard(search: Search) {
+    var hideStatusBar by rememberPreference(hideStatusBarKey, false)
+    var rightToLeft by rememberPreference(rightToLeftInterfaceKey, false)
+    val layoutDirectionTitle = stringResource(R.string.settings_interface_right_to_left_label)
+    val layoutDirectionDescription = stringResource(R.string.settings_interface_right_to_left_description)
+    val layoutDirectionMatches = search.inputValue.isBlank() ||
+        layoutDirectionTitle.contains(search.inputValue, ignoreCase = true) ||
+        layoutDirectionDescription.contains(search.inputValue, ignoreCase = true)
+    var indexNavigationTab by rememberPreference(
+        indexNavigationTabKey,
+        HomeScreenTabs.Default
+    )
+    var navigationBarPosition by rememberPreference(navigationBarPositionKey, NavigationBarPosition.BottomFloating)
+    var navigationBarType by rememberPreference(navigationBarTypeKey, NavigationBarType.IconOnly)
+    var showFloatingIcon by rememberPreference(showFloatingIconKey, false)
+    var menuStyle by rememberPreference(menuStyleKey, MenuStyle.List)
+    var transitionEffect by rememberPreference(transitionEffectKey, TransitionEffect.Fade)
+    var disableBackStack by rememberPreference(disableNavigationBackStackKey, false)
+    var playerPosition by rememberPreference(playerPositionKey, PlayerPosition.Bottom)
+    var searchDisplayOrder by rememberPreference(searchDisplayOrderKey, SearchDisplayOrder.SuggestionsFirst)
+
+    val navSearchContextMatch = layoutDirectionMatches ||
+        stringResource(R.string.settings_interface_hide_status_bar_label).contains(search.inputValue, true) ||
+        stringResource(R.string.search_history_pages).contains(search.inputValue, true) ||
+        stringResource(R.string.search_history_pages_description).contains(search.inputValue, true) ||
+        stringResource(R.string.search_display_order).contains(search.inputValue, true) ||
+        stringResource(R.string.settings_navigation_position_label).contains(search.inputValue, true) ||
+        stringResource(R.string.settings_navigation_style_label).contains(search.inputValue, true) ||
+        stringResource(R.string.player_position).contains(search.inputValue, true) ||
+        stringResource(R.string.settings_menu_style_label).contains(search.inputValue, true) ||
+        stringResource(R.string.home_tabs_settings).contains(search.inputValue, true) ||
+        stringResource(R.string.settings_home_default_page_label).contains(search.inputValue, true) ||
+        stringResource(R.string.settings_navigation_transition_effect_label).contains(search.inputValue, true)
+
+    AnimatedVisibility(
+        visible = navSearchContextMatch,
+        enter = settingsCardEnter,
+        exit = settingsCardExit
+    ) {
+        SettingsSectionCard(
+            modifier = Modifier.testTag("ui.card.interface"),
+            title = stringResource(R.string.settings_interface_title),
+            icon = R.drawable.ui,
+            content = {
+                if (search.inputValue.isBlank() || stringResource(R.string.settings_interface_hide_status_bar_label).contains(search.inputValue, true)) {
+                    OtherSwitchSettingEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.settings_use_font_type.hide_status_bar"),
+                        title = stringResource(R.string.settings_interface_hide_status_bar_label),
+                        text = stringResource(R.string.interface_hide_status_bar_description),
+                        isChecked = hideStatusBar,
+                        onCheckedChange = { hideStatusBar = it },
+                        icon = R.drawable.eye_off
+                    )
+                }
+
+                if (layoutDirectionMatches) {
+                    OtherSwitchSettingEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.right_to_left"),
+                        title = layoutDirectionTitle,
+                        text = layoutDirectionDescription,
+                        icon = R.drawable.reorder,
+                        isChecked = rightToLeft,
+                        onCheckedChange = { rightToLeft = it },
+                    )
+                }
+
+                var showNavPosDialog by remember { mutableStateOf(false) }
+                if (search.inputValue.isBlank() || stringResource(R.string.settings_navigation_position_label).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.navigation_bar_position"),
+                        title = stringResource(R.string.settings_navigation_position_label),
+                        text = stringResource(R.string.interface_navigation_bar_position_description),
+                        selectedValueText = navigationBarPosition.text,
+                        icon = R.drawable.locate,
+                        onClick = { showNavPosDialog = true }
+                    )
+                }
+                DialogPresence(visible = showNavPosDialog) {
+                    ValueSelectorDialog(
+                        title = stringResource(R.string.settings_navigation_position_label),
+                        selectedValue = navigationBarPosition,
+                        onValueSelected = { navigationBarPosition = it },
+                        valueText = { it.text },
+                        values = NavigationBarPosition.values().toList(),
+                        onDismiss = { showNavPosDialog = false }
+                    )
+                }
+
+                var showNavTypeDialog by remember { mutableStateOf(false) }
+                if (search.inputValue.isBlank() || stringResource(R.string.settings_navigation_style_label).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.navigation_bar_type"),
+                        title = stringResource(R.string.settings_navigation_style_label),
+                        text = stringResource(R.string.interface_navigation_bar_type_description),
+                        selectedValueText = navigationBarType.text,
+                        icon = R.drawable.burger,
+                        onClick = { showNavTypeDialog = true }
+                    )
+                }
+                DialogPresence(visible = showNavTypeDialog) {
+                    ValueSelectorDialog(
+                        title = stringResource(R.string.settings_navigation_style_label),
+                        selectedValue = navigationBarType,
+                        onValueSelected = { navigationBarType = it },
+                        valueText = { it.text },
+                        values = NavigationBarType.values().toList(),
+                        onDismiss = { showNavTypeDialog = false }
+                    )
+                }
+
+                var showPlayerPosDialog by remember { mutableStateOf(false) }
+                if (search.inputValue.isBlank() || stringResource(R.string.player_position).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.player_position"),
+                        title = stringResource(R.string.player_position),
+                        text = stringResource(R.string.interface_player_position_description),
+                        selectedValueText = playerPosition.text,
+                        icon = R.drawable.position,
+                        onClick = { showPlayerPosDialog = true }
+                    )
+                }
+                DialogPresence(visible = showPlayerPosDialog) {
+                    ValueSelectorDialog(
+                        title = stringResource(R.string.player_position),
+                        selectedValue = playerPosition,
+                        onValueSelected = { playerPosition = it },
+                        valueText = { it.text },
+                        values = PlayerPosition.values().toList(),
+                        onDismiss = { showPlayerPosDialog = false }
+                    )
+                }
+
+                var showMenuStyleDialog by remember { mutableStateOf(false) }
+                if (search.inputValue.isBlank() || stringResource(R.string.settings_menu_style_label).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.menu_style"),
+                        title = stringResource(R.string.settings_menu_style_label),
+                        text = stringResource(R.string.interface_menu_style_description),
+                        selectedValueText = menuStyle.text,
+                        icon = R.drawable.reorder,
+                        onClick = { showMenuStyleDialog = true }
+                    )
+                }
+                DialogPresence(visible = showMenuStyleDialog) {
+                    ValueSelectorDialog(
+                        title = stringResource(R.string.settings_menu_style_label),
+                        selectedValue = menuStyle,
+                        onValueSelected = { menuStyle = it },
+                        valueText = { it.text },
+                        values = MenuStyle.values().toList(),
+                        onDismiss = { showMenuStyleDialog = false }
+                    )
+                }
+
+                var showDefPageDialog by remember { mutableStateOf(false) }
+                if (search.inputValue.isBlank() || stringResource(R.string.settings_home_default_page_label).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.default_page"),
+                        title = stringResource(R.string.settings_home_default_page_label),
+                        text = stringResource(R.string.interface_default_page_description),
+                        selectedValueText = indexNavigationTab.text,
+                        icon = R.drawable.star_brilliant,
+                        onClick = { showDefPageDialog = true }
+                    )
+                }
+                DialogPresence(visible = showDefPageDialog) {
+                    ValueSelectorDialog(
+                        title = stringResource(R.string.settings_home_default_page_label),
+                        selectedValue = indexNavigationTab,
+                        onValueSelected = { indexNavigationTab = it },
+                        valueText = { it.text },
+                        values = HomeScreenTabs.values().toList(),
+                        onDismiss = { showDefPageDialog = false }
+                    )
+                }
+
+                if (search.inputValue.isBlank() || stringResource(R.string.home_tabs_settings).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.home_tabs_settings"),
+                        title = stringResource(R.string.home_tabs_settings),
+                        text = stringResource(R.string.home_tabs_settings_description),
+                        onClick = { HomeTabsSettingsDialog.showDialog() },
+                        icon = R.drawable.sparkles
+                    )
+                }
+
+                var showTransDialog by remember { mutableStateOf(false) }
+                if (search.inputValue.isBlank() || stringResource(R.string.settings_navigation_transition_effect_label).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.transition_effect"),
+                        title = stringResource(R.string.settings_navigation_transition_effect_label),
+                        text = stringResource(R.string.interface_transition_effect_description),
+                        selectedValueText = transitionEffect.text,
+                        icon = R.drawable.images_sharp,
+                        onClick = { showTransDialog = true }
+                    )
+                }
+                DialogPresence(visible = showTransDialog) {
+                    ValueSelectorDialog(
+                        title = stringResource(R.string.settings_navigation_transition_effect_label),
+                        selectedValue = transitionEffect,
+                        onValueSelected = { transitionEffect = it },
+                        valueText = { it.text },
+                        values = TransitionEffect.values().toList(),
+                        onDismiss = { showTransDialog = false }
+                    )
+                }
+
+                if (search.inputValue.isBlank() || stringResource(R.string.settings_navigation_back_to_home_label).contains(search.inputValue, true)) {
+                    OtherSwitchSettingEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.disable_navigation_back_stack"),
+                        title = stringResource(R.string.settings_navigation_back_to_home_label),
+                        text = stringResource(R.string.settings_navigation_back_to_home_description),
+                        icon = R.drawable.chevron_back,
+                        isChecked = disableBackStack,
+                        onCheckedChange = { disableBackStack = it }
+                    )
+                }
+
+                if (search.inputValue.isBlank() ||
+                    stringResource(R.string.search_history_pages).contains(search.inputValue, true) ||
+                    stringResource(R.string.search_history_pages_description).contains(search.inputValue, true)
+                ) {
+                    SearchHistoryPageSettings()
+                }
+                var showSearchOrderDialog by remember { mutableStateOf(false) }
+                if (search.inputValue.isBlank() || stringResource(R.string.search_display_order).contains(search.inputValue, true)) {
+                    OtherSettingsEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.search_display_order"),
+                        title = stringResource(R.string.search_display_order),
+                        text = stringResource(R.string.search_display_order_description),
+                        icon = R.drawable.search,
+                        onClick = { showSearchOrderDialog = true }
+                    )
+                }
+                DialogPresence(visible = showSearchOrderDialog) {
+                    ValueSelectorDialog(
+                        title = stringResource(R.string.search_display_order),
+                        selectedValue = searchDisplayOrder,
+                        onValueSelected = { searchDisplayOrder = it },
+                        valueText = {
+                            when (it) {
+                                SearchDisplayOrder.SuggestionsFirst -> stringResource(R.string.search_display_order_suggestions_first)
+                                SearchDisplayOrder.SavedSearchesFirst -> stringResource(R.string.search_display_order_saved_searches_first)
+                            }
+                        },
+                        values = SearchDisplayOrder.values().toList(),
+                        onDismiss = { showSearchOrderDialog = false }
+                    )
+                }
+
+                if (search.inputValue.isBlank() || stringResource(R.string.settings_search_floating_button_visible_label).contains(search.inputValue, true)) {
+                    OtherSwitchSettingEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.show_floating_icon"),
+                        title = stringResource(R.string.settings_search_floating_button_visible_label),
+                        text = stringResource(R.string.interface_show_floating_icon_description),
+                        isChecked = showFloatingIcon,
+                        onCheckedChange = { showFloatingIcon = it },
+                        icon = R.drawable.maximize
+                    )
+                }
+
+                var rememberQueueScrollPosition by rememberPreference(rememberQueueScrollPositionKey, true)
+                if (search.inputValue.isBlank() || stringResource(R.string.settings_player_queue_remember_scroll_label).contains(search.inputValue, true)) {
+                    OtherSwitchSettingEntry(
+                        modifier = Modifier.settingsSearchTarget("ui.user_interface.remember_queue_scroll_position"),
+                        title = stringResource(R.string.settings_player_queue_remember_scroll_label),
+                        text = stringResource(R.string.settings_player_queue_remember_scroll_description),
+                        isChecked = rememberQueueScrollPosition,
+                        onCheckedChange = { rememberQueueScrollPosition = it },
+                        icon = R.drawable.reorder
+                    )
+                }
+
+            }
+        )
+    }
+}

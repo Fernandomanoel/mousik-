@@ -1,0 +1,96 @@
+package app.mousike.android.components.search
+
+import android.app.Application
+import android.content.Context
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTouchInput
+import androidx.test.core.app.ApplicationProvider
+import app.mousike.android.enums.FontType
+import app.mousike.android.ui.styling.Appearance
+import app.mousike.android.ui.styling.DefaultDarkColorPalette
+import app.mousike.android.ui.styling.LocalAppearance
+import app.mousike.android.ui.styling.typographyOf
+import app.mousike.android.utils.preferences
+import app.mousike.android.R
+import app.mousike.android.components.glass.glassEnabledKey
+import app.mousike.android.components.glass.GlassArea
+import app.mousike.android.components.glass.GlassAreaMode
+import app.mousike.android.components.glass.GlassStore
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [32], application = Application::class)
+class SearchHistoryGlassActionsTest {
+    @get:Rule val compose = createComposeRule()
+
+    @Test fun `glass delete edit and delete-all keep independent callbacks from query recall`() {
+        assertCallbacks(glass = true)
+    }
+
+    @Test fun `native delete edit and delete-all retain the original row behavior`() {
+        assertCallbacks(glass = false)
+    }
+
+    @Test fun `contour delete edit and delete-all retain the original row behavior`() {
+        assertCallbacks(glass = true, contourOnly = true)
+    }
+
+    private fun assertCallbacks(glass: Boolean, contourOnly: Boolean = false) {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.getSharedPreferences("mousike_square_glass_v2", Context.MODE_PRIVATE).edit().clear().commit()
+        context.preferences.edit().putBoolean(glassEnabledKey, glass).commit()
+        if (contourOnly) GlassStore(context).setAreaMode(GlassArea.ActionButtons, GlassAreaMode.ContourOnly)
+        val appearance = Appearance(
+            colorPalette = DefaultDarkColorPalette,
+            typography = typographyOf(Color.White, true, false, FontType.Rubik),
+            thumbnailShape = CircleShape,
+            uiRoundnessShape = CircleShape,
+            artistThumbnailShape = CircleShape,
+        )
+        val recalled = mutableListOf<String>()
+        val deleted = mutableListOf<String>()
+        val edited = mutableListOf<String>()
+        var cleared = 0
+        compose.setContent {
+            CompositionLocalProvider(LocalAppearance provides appearance) {
+                SearchHistorySection(
+                    visible = true,
+                    queries = listOf("Saved query"),
+                    onQueryClick = { recalled += it },
+                    onQueryDelete = { deleted += it },
+                    onQueryDeleteAll = { cleared++ },
+                    onQueryEdit = { edited += it },
+                )
+            }
+        }
+        compose.mainClock.advanceTimeBy(400)
+        compose.waitForIdle()
+        val delete = if (glass && !contourOnly) compose.onNodeWithContentDescription(context.getString(R.string.common_action_delete))
+            else compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsActions.OnLongClick))
+        delete.performTouchInput { click() }
+        delete.performTouchInput { longClick() }
+        compose.onNodeWithContentDescription(context.getString(R.string.search_title)).performTouchInput { click() }
+        compose.runOnIdle {
+            assertEquals(listOf("Saved query"), deleted)
+            assertEquals(listOf("Saved query"), edited)
+            assertEquals(1, cleared)
+            assertEquals(emptyList<String>(), recalled)
+        }
+        compose.onNodeWithText("Saved query").performTouchInput { click() }
+        compose.runOnIdle { assertEquals(listOf("Saved query"), recalled) }
+    }
+}

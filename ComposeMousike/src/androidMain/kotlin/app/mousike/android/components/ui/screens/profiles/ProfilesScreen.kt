@@ -1,0 +1,668 @@
+package app.mousike.android.components.ui.screens.profiles
+
+import android.app.Activity
+import android.content.Context
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import app.mousike.android.components.navigation.Skeleton
+import app.mousike.android.components.navigation.rememberPageChromeContentPadding
+import app.mousike.android.components.dialog.common.DialogPresence
+import app.mousike.android.components.dialog.common.ButtonRow
+import app.mousike.android.components.dialog.common.ConfirmationDialog
+import app.mousike.android.components.dialog.common.DefaultDialog
+import app.mousike.android.components.dialog.common.DialogButton
+import app.mousike.android.ui.components.themed.HeaderWithIcon
+import app.mousike.android.components.settings.common.SettingsDescription
+import app.mousike.android.ui.styling.Dimensions
+import app.mousike.android.utils.DEFAULT_PROFILE_ID
+import app.mousike.android.utils.center
+import app.mousike.android.utils.currentProfileEntries
+import app.mousike.android.utils.encryptedPreferences
+import app.mousike.android.utils.getActiveProfile
+import app.mousike.android.utils.intent
+import app.mousike.android.utils.isProfileNameValid
+import app.mousike.android.utils.medium
+import app.mousike.android.utils.preferences
+import app.mousike.android.utils.profileDisplayName
+import app.mousike.android.utils.profileLastUsed
+import app.mousike.android.utils.readProfileIds
+import app.mousike.android.utils.resolveProfileDisplayName
+import app.mousike.android.utils.saveProfileDisplayName
+import app.mousike.android.utils.saveProfileLastUsed
+import app.mousike.android.utils.semiBold
+import app.mousike.android.utils.setActiveProfile
+import app.mousike.android.utils.takenProfileNames
+import app.mousike.android.utils.writeProfileEntries
+import app.mousike.android.components.ui.iconBadgeBackground
+import app.mousike.android.R
+import app.mousike.android.colorPalette
+import app.mousike.android.components.dialog.export.ExportProfileStateDialog
+import app.mousike.android.components.dialog.settings.SettingsInputDialog
+import app.mousike.android.components.import.ImportProfileState
+import app.mousike.android.core.backup.DatabaseRestoreJournal
+import app.mousike.android.core.backup.ProfileStateArchive
+import app.mousike.android.core.database.Database
+import app.mousike.android.core.notifications.cancelProfileNotifications
+import app.mousike.android.core.profiles.ProfileDataItem
+import app.mousike.android.core.profiles.profileSharedItems
+import app.mousike.android.core.notifications.ensureProfileChannels
+import app.mousike.android.core.notifications.recreateProfileChannels
+import app.mousike.android.core.rescue.RescueFiles
+import app.mousike.android.download.services.MyDownloadService
+import app.mousike.android.playback.services.PlayerServiceModern
+import app.mousike.android.shortcuts.registerAppShortcuts
+import app.mousike.android.typography
+import app.mousike.android.uiRoundnessShape
+import app.mousike.android.utils.FaceAvatar
+import app.mousike.android.utils.ProfileFace
+import app.mousike.android.utils.coroutines.MousikeDispatchers
+import java.util.UUID
+import kotlin.system.exitProcess
+
+/** One card row of the profiles page, resolved off the composition (DATA dispatcher). */
+private data class ProfileRow(
+    val id: String,
+    val displayName: String,
+    val face: ProfileFace,
+    val lastUsed: Long?,
+    val dbSizeBytes: Long?,
+    val settingsSizeBytes: Long?,
+    /** The profile's own data sizes (its dirs — spec-profile-data-separation). */
+    val imagesSizeBytes: Long?,
+    val songCacheSizeBytes: Long?,
+    val downloadsSizeBytes: Long?,
+    /** The items the profile shares with the base (the sharing toggles' state). */
+    val sharedItems: Set<ProfileDataItem>,
+)
+
+/** Whole page state: the active profile, the base-first card rows and the export eligibility. */
+private data class ProfilePageState(
+    val activeId: String,
+    val rows: List<ProfileRow>,
+    val hasState: Boolean,
+)
+
+@Composable
+fun ProfileScreen(
+    navController: NavController,
+    miniPlayer: @Composable () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val scrollState = rememberLazyListState()
+    val defaultName = stringResource(R.string.profile_base_name)
+
+    var state by remember { mutableStateOf<ProfilePageState?>(null) }
+    var refresh by remember { mutableStateOf(0) }
+
+    var showAddPopup by remember { mutableStateOf(false) }
+    var showRemovePopup by remember { mutableStateOf(false) }
+    var showErrorPopup by remember { mutableStateOf(false) }
+    var showChangePopup by remember { mutableStateOf(false) }
+    var showRenamePopup by remember { mutableStateOf(false) }
+    var removingProfile by remember { mutableStateOf("") }
+    var profileToSwitch by remember { mutableStateOf("") }
+    var profileToRename by remember { mutableStateOf("") }
+
+    // Profile state (list + faces) import / export — the combined .txt archive, the
+    // same one the backup and the rescue screen use.
+    //
+    // On its own no restart is needed: the list, the names and the faces are
+    // re-read on recomposition.
+    val exportProfileState = ExportProfileStateDialog(context)
+    var showImportConfirm by remember { mutableStateOf(false) }
+    var crossProfilePending by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
+    val importProfileState = ImportProfileState(
+        context,
+        onImportComplete = {
+            refresh++
+        },
+    ) { tag, proceed ->
+        crossProfilePending = tag to proceed
+    }
+
+    // Every page read (the names file, the faces, the database sizes) happens on the
+    // DATA dispatcher, never in composition;
+    //
+    // [refresh] re-resolves everything after a create / rename / delete.
+    LaunchedEffect(refresh) {
+        state = withContext(MousikeDispatchers.DATA) {
+            val ids = context.readProfileIds()
+            ProfilePageState(
+                activeId = getActiveProfile(context),
+                hasState = ProfileStateArchive.hasState(context),
+                rows = (listOf(DEFAULT_PROFILE_ID) + ids).map { id ->
+                    val displayName = resolveProfileDisplayName(
+                        id,
+                        context.profileDisplayName(id),
+                        defaultName
+                    )
+                    // The profile's OWN data sizes (its dirs — spec-profile-data-separation).
+                    val sizes = profileDataSizes(context, id)
+                    ProfileRow(
+                        id = id,
+                        displayName = displayName,
+                        face = runCatching { loadProfileFace(context, id, defaultName) }
+                            .getOrElse { ProfileFace(displayName, FaceAvatar.Initials(displayName)) },
+                        lastUsed = context.profileLastUsed(id),
+                        // File.length() returns 0 for a missing file — null renders
+                        // "No data" instead of a misleading "0 B".
+                        dbSizeBytes = runCatching {
+                            context.getDatabasePath(Database.fileNameForProfile(id)).length().takeIf { it > 0L }
+                        }.getOrNull(),
+                        settingsSizeBytes = runCatching { profilePrefsFile(context, id).length().takeIf { it > 0L } }.getOrNull(),
+                        imagesSizeBytes = sizes.imagesBytes,
+                        songCacheSizeBytes = sizes.songCacheBytes,
+                        downloadsSizeBytes = sizes.downloadsBytes,
+                        sharedItems = context.profileSharedItems(id),
+                    )
+                },
+            )
+        }
+    }
+
+    // The user profile IDs (the base profile is implicit, never listed).
+    val profileIds: List<String> =
+        state?.rows?.filter { it.id != DEFAULT_PROFILE_ID }?.map { it.id }.orEmpty()
+
+    Skeleton(
+        navController,
+        topInsetHandledByContent = true,
+        miniPlayer = miniPlayer,
+        navBarContent = { item ->
+            item(0, stringResource(R.string.profile_title), R.drawable.person)
+
+        }
+    ) {
+        val page = state
+        LazyColumn(
+            state = scrollState,
+            contentPadding = rememberPageChromeContentPadding(PaddingValues(bottom = Dimensions.bottomSpacer))
+        ) {
+            item(key = "header", contentType = 0) {
+                // Listen-Together-style header: the icon is shown and a centered
+                // description sits under the title.
+                HeaderWithIcon(
+                    title = stringResource(R.string.profile_title),
+                    iconId = R.drawable.person,
+                    enabled = false,
+                    showIcon = true,
+                    modifier = Modifier,
+                    onClick = {}
+                )
+                SettingsDescription(
+                    text = stringResource(R.string.profile_description),
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                )
+            }
+            // Customization lives here (moved out of Settings): theme/interface, player look, theme store
+            item(key = "customization", contentType = 5) {
+                Column {
+                    ProfileStateActionCard(
+                        icon = R.drawable.ui,
+                        title = stringResource(R.string.settings_interface_page_title),
+                        description = stringResource(R.string.settings_interface_page_description),
+                        onClick = { navController.navigate("${app.mousike.android.enums.NavRoutes.settings.name}?tab=1&focus=") },
+                    )
+                    ProfileStateActionCard(
+                        icon = R.drawable.color_palette,
+                        title = stringResource(R.string.player_appearance),
+                        description = stringResource(R.string.settings_player_appearance_page_description),
+                        onClick = { navController.navigate("${app.mousike.android.enums.NavRoutes.settings.name}?tab=2&focus=") },
+                    )
+                    ProfileStateActionCard(
+                        icon = R.drawable.color_palette,
+                        title = stringResource(R.string.theme_store_title),
+                        description = stringResource(R.string.theme_store_preview_description),
+                        onClick = { navController.navigate(app.mousike.android.enums.NavRoutes.themeStore.name) },
+                    )
+                    val photoContext = androidx.compose.ui.platform.LocalContext.current
+                    val photoScope = androidx.compose.runtime.rememberCoroutineScope()
+                    var bgPhoto by app.mousike.android.utils.rememberPreference(app.mousike.android.components.theme.appBackgroundPhotoKey, "")
+                    val photoPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+                        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+                    ) { uri ->
+                        uri ?: return@rememberLauncherForActivityResult
+                        photoScope.launch(app.mousike.android.utils.coroutines.MousikeDispatchers.DATA) {
+                            // Unique name so the preference change reloads the image
+                            val out = java.io.File(photoContext.filesDir, "app_bg_${System.currentTimeMillis()}.jpg")
+                            val ok = runCatching {
+                                photoContext.contentResolver.openInputStream(uri)?.use { input -> out.outputStream().use { input.copyTo(it) } }
+                            }.isSuccess
+                            if (ok) {
+                                if (bgPhoto.isNotBlank()) java.io.File(bgPhoto).delete()
+                                bgPhoto = out.absolutePath
+                            }
+                        }
+                    }
+                    ProfileStateActionCard(
+                        icon = R.drawable.images_sharp,
+                        title = "Foto de fundo",
+                        description = "Escolha uma foto da galeria para o fundo do app.",
+                        onClick = {
+                            photoPicker.launch(
+                                androidx.activity.result.PickVisualMediaRequest(
+                                    androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
+                            )
+                        },
+                    )
+                    if (bgPhoto.isNotBlank())
+                        ProfileStateActionCard(
+                            icon = R.drawable.trash,
+                            title = "Remover foto de fundo",
+                            description = "Volta ao fundo liso do tema.",
+                            onClick = { java.io.File(bgPhoto).delete(); bgPhoto = "" },
+                        )
+                }
+            }
+            if (page != null) {
+                items(
+                    items = page.rows,
+                    // Namespaced so an ID cannot collide with the fixed "header" / "add" keys.
+                    key = { "profile_${it.id}" },
+                    contentType = { 1 }
+                ) { row ->
+                    ProfileCard(
+                        face = row.face,
+                        lastUsed = row.lastUsed,
+                        dbSizeBytes = row.dbSizeBytes,
+                        settingsSizeBytes = row.settingsSizeBytes,
+                        imagesSizeBytes = row.imagesSizeBytes,
+                        songCacheSizeBytes = row.songCacheSizeBytes,
+                        downloadsSizeBytes = row.downloadsSizeBytes,
+                        sharedItems = row.sharedItems,
+                        isActive = row.id == page.activeId,
+                        onSwitch = if (row.id == page.activeId) {
+                            null
+                        } else {
+                            {
+                                profileToSwitch = row.id
+                                showChangePopup = true
+                            }
+                        },
+                        onRename = {
+                            profileToRename = row.id
+                            showRenamePopup = true
+                        },
+                        // The active profile cannot be deleted: after a delete,
+                        // activeProfile would point at the gone ID
+                        //
+                        // (a fresh empty profile with no "active" row).
+                        onDelete = if (row.id == DEFAULT_PROFILE_ID || row.id == page.activeId) {
+                            null
+                        } else {
+                            {
+                                removingProfile = row.id
+                                showRemovePopup = true
+                            }
+                        },
+                        // 8dp each side → 16dp between cards, the same gap the
+                        // section cards use elsewhere in the app.
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                }
+                item(key = "add", contentType = 2) {
+                    // Same card style as the export / import cards below.
+                    ProfileStateActionCard(
+                        icon = R.drawable.add,
+                        title = stringResource(R.string.profile_action_add),
+                        description = stringResource(R.string.profile_add_description),
+                        onClick = { showAddPopup = true },
+                    )
+                }
+                item(key = "export_state", contentType = 3) {
+                    ProfileStateActionCard(
+                        icon = R.drawable.export_outline,
+                        title = stringResource(R.string.profile_action_export),
+                        description = if (page.hasState) {
+                            stringResource(R.string.backup_export_accounts_description)
+                        } else {
+                            stringResource(R.string.recovery_no_profile_state)
+                        },
+                        enabled = page.hasState,
+                        onClick = { exportProfileState.export() },
+                    )
+                }
+                item(key = "import_state", contentType = 4) {
+                    ProfileStateActionCard(
+                        icon = R.drawable.import_outline,
+                        title = stringResource(R.string.profile_action_import),
+                        description = stringResource(R.string.backup_import_accounts_description),
+                        onClick = { showImportConfirm = true },
+                    )
+                }
+            }
+        }
+
+    }
+
+    DialogPresence(visible = showAddPopup) {
+        SettingsInputDialog(
+            title = stringResource(R.string.profile_action_add),
+            initialValue = "",
+            placeholder = stringResource(R.string.profile_name_input_hint),
+            onDismiss = { showAddPopup = false },
+            onSetValue = { name ->
+                val trimmedName = name.trim()
+                val created = DatabaseRestoreJournal.withProfileStorageMutation(context) {
+                    val ids = context.readProfileIds()
+                    if (!isProfileNameValid(trimmedName, context.takenProfileNames(ids, defaultName))) {
+                        return@withProfileStorageMutation false
+                    }
+                    val id = generateSequence { "profile-${UUID.randomUUID()}" }.first { it !in ids }
+                    if (!context.writeProfileEntries(context.currentProfileEntries() + (id to trimmedName))) {
+                        return@withProfileStorageMutation false
+                    }
+                    context.saveProfileDisplayName(id, trimmedName)
+                    true
+                }
+                if (created) {
+                    // The new profile's direct shortcut must appear in the launcher right away
+                    // (spec-profile-shortcuts: the shortcut set is re-registered after
+                    //
+                    // every profile add / rename / delete, same call as the settings dialog).
+                    registerAppShortcuts(context)
+                    refresh++
+                } else {
+                    // An invalid name and a failed names-file write both surface the
+                    // same error popup.
+                    showErrorPopup = true
+                }
+            },
+        ).apply {
+            showDialog()
+            Render()
+        }
+    }
+
+    val renameRow = state?.rows?.firstOrNull { it.id == profileToRename }
+    DialogPresence(target = renameRow.takeIf { showRenamePopup }) { renameRow ->
+        SettingsInputDialog(
+            title = stringResource(R.string.profile_rename),
+            initialValue = renameRow.displayName,
+            placeholder = stringResource(R.string.profile_name_input_hint),
+            onDismiss = { showRenamePopup = false },
+            onSetValue = { name ->
+                val trimmedName = name.trim()
+                // Confirming the name as-is stores nothing: for the base profile the
+                // dialog opens on the resolved default name, and storing that as a
+                //
+                // "custom" name would make the state archive claim the base carries a
+                // state (hasState) out of nothing.
+                if (trimmedName != renameRow.displayName) {
+                    // The profile's own display name is not a collision for itself —
+                    // the same normalization as isProfileNameValid (trimmed,
+                    // case-insensitive).
+                    val taken = context.takenProfileNames(profileIds, defaultName)
+                        .filterNot { it.trim().equals(renameRow.displayName.trim(), ignoreCase = true) }
+                    if (isProfileNameValid(name, taken)) {
+                        context.saveProfileDisplayName(profileToRename, name.trim())
+                        // The names file is the backup format: mirror the new display
+                        // name into it so a restore never carries a stale name.
+                        context.writeProfileEntries(context.currentProfileEntries())
+                        // The shortcut keeps its stable ID (the rename never re-creates it);
+                        // only its label changes —
+                        //
+                        // re-register so the launcher shows the new name right away (spec-profile-shortcuts).
+                        registerAppShortcuts(context)
+                        // The channel labels carry the display name ("Player — Work"); Android
+                        // channel names are immutable, so the rename is applied by deleting +
+                        //
+                        // re-creating the profile's 6 channels (a no-op for the base, whose
+                        // channels keep their base name) (spec per-profile-notifications).
+                        recreateProfileChannels(context, profileToRename)
+                        // The initials can change: let the always-composed header re-resolve it.
+                        profileFaceUpdateTrigger++
+                        refresh++
+                    } else {
+                        showErrorPopup = true
+                    }
+                }
+            },
+        ).apply {
+            showDialog()
+            Render()
+        }
+    }
+
+    DialogPresence(visible = showRemovePopup) {
+        ConfirmationDialog(
+            title = stringResource(R.string.profile_action_remove),
+            confirmText = stringResource(R.string.common_action_remove),
+            text = stringResource(R.string.profile_remove_confirmation),
+            onDismiss = { showRemovePopup = false },
+            onConfirm = {
+                MousikeDispatchers.fireAndForget(MousikeDispatchers.DATA).launch {
+                    // The deletion does real file I/O (names file, prefs, database,
+                    // avatar): keep it off the UI thread, like the page reads.
+                    val profile = removingProfile
+                    RescueFiles.deleteRegisteredProfile(context, profile)
+                    withContext(MousikeDispatchers.UI) {
+                        // The deleted profile's shortcut must vanish from the launcher right
+                        // away (spec-profile-shortcuts: the shortcut set is re-registered after
+                        //
+                        // every profile add / rename / delete, same call as the settings dialog).
+                        // The names file was rewritten above, so this re-registration no longer
+                        //
+                        // sees the deleted profile.
+                        registerAppShortcuts(context)
+                        refresh++
+                    }
+                }
+            }
+        )
+    }
+
+    DialogPresence(visible = showErrorPopup) {
+        DefaultDialog(
+            title = stringResource(R.string.profile_error_dialog_title),
+            onDismiss = { showErrorPopup = false },
+            modifier = Modifier,
+            footer = {
+                ButtonRow(
+                    buttons = listOf(
+                        DialogButton(
+                            text = stringResource(R.string.common_action_close),
+                            danger = true,
+                            onClick = {
+                                showErrorPopup = false
+                            }
+                        )
+                    )
+                )
+            }
+        ) {
+            BasicText(
+                text = stringResource(R.string.profile_name_invalid_or_taken),
+                style = typography().xs.medium.center,
+            )
+
+
+        }
+    }
+    DialogPresence(visible = showChangePopup) {
+        ConfirmationDialog(
+            title = stringResource(R.string.profile_switch_dialog_title),
+            confirmText = stringResource(R.string.profile_switch_dialog_title),
+            text = stringResource(R.string.profile_restart_required),
+            onDismiss = { showChangePopup = false },
+            onConfirm = {
+                executeProfileSwitch(profileToSwitch, context)
+                // Close the app with exit 0 (no problem occurred): the new profile's stores
+                // can only be loaded in a fresh process.
+                //
+                // The process exit deliberately lives HERE (not in executeProfileSwitch) so the
+                // switch wiring stays pinnable under Robolectric without killing the test JVM (ProfileSwitchTest).
+                exitProcess(0)
+            }
+        )
+
+    }
+
+    DialogPresence(visible = showImportConfirm) {
+        ConfirmationDialog(
+            title = stringResource(R.string.profile_action_import),
+            confirmText = stringResource(R.string.common_action_import),
+            text = stringResource(R.string.recovery_confirm_import_accounts),
+            onDismiss = { showImportConfirm = false },
+            onConfirm = {
+                showImportConfirm = false
+                importProfileState.onShortClick()
+            }
+        )
+    }
+
+    // A picked file tagged with a different profile: confirm before importing it.
+    DialogPresence(target = crossProfilePending) { (tag, proceed) ->
+        ConfirmationDialog(
+            title = stringResource(R.string.backup_action_import),
+            confirmText = stringResource(R.string.common_action_import),
+            text = context.getString(
+                R.string.recovery_cross_profile_confirm,
+                tag,
+                resolveProfileDisplayName(
+                    getActiveProfile(context),
+                    context.profileDisplayName(getActiveProfile(context)),
+                    defaultName
+                )
+            ),
+            onDismiss = { crossProfilePending = null },
+            onConfirm = {
+                crossProfilePending = null
+                proceed()
+            }
+        )
+    }
+}
+
+
+/**
+ * Runs one whole profile switch (the profiles page's switch dialog target): captures the
+ * profile left, cancels its pending notifications (CAP-3 — synchronously, before the switch),
+ * records the switch, commits the outgoing profile's in-memory settings, stops the services
+ * tied to the old profile, and ensures the incoming profile's 6 channels exist. The caller
+ * exits the process afterwards (see the dialog's onConfirm — the process exit deliberately
+ * stays out of this function so the wiring is pinnable under Robolectric without killing the
+ * test JVM).
+ *
+ * internal (not private) so the switch wiring is pinnable under Robolectric (ProfileSwitchTest)
+ * without composing the screen.
+ */
+internal fun executeProfileSwitch(profile: String, context: Context) {
+    // CAP-3: the notifications pending on the channels of the profile left (rewind, sync,
+    // listen-together — the non-ongoing ones survive a process death) are cancelled
+//
+    // synchronously, before the switch and the process exit below — per channel, never by
+    // tag. Captured here, BEFORE setActiveProfile, so the cancel target can never drift to
+//
+    // the destination profile if the statements below are reordered.
+    val leftProfile = getActiveProfile(context)
+    cancelProfileNotifications(context, leftProfile)
+
+    // Flush the outgoing profile while both accessors still resolve its stores.
+    context.preferences.edit().commit()
+    context.encryptedPreferences.edit().commit()
+
+    // The switched profile counts as used from now on (spec: written at switch).
+    context.saveProfileLastUsed(profile, System.currentTimeMillis())
+    setActiveProfile(profile, context)
+
+    context.stopService( context.intent<PlayerServiceModern>() )
+    context.stopService( context.intent<MyDownloadService>() )
+
+    // Close other activities
+    (context as? Activity)?.finishAffinity()
+
+    // The 6 channels of the incoming profile must exist before the process dies (the next
+    // boot re-creates them via MainApplication as a safety net).
+    ensureProfileChannels(context, profile)
+}
+
+/**
+ * One action card of the Profiles page (import / export the profile state
+ * archive, add a profile): the app card style (accent icon box, title,
+ * description). When [enabled] is false the card is inert (the caller swaps
+ * [description] for the reason).
+ */
+@Composable
+private fun ProfileStateActionCard(
+    icon: Int,
+    title: String,
+    description: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    modifier: Modifier = Modifier,
+) {
+    val palette = colorPalette()
+    ProfileCardSurface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        onClick = onClick,
+        enabled = enabled,
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .iconBadgeBackground(palette.accent.copy(alpha = 0.1f), uiRoundnessShape()),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    painter = painterResource(icon),
+                    tint = palette.accent,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                BasicText(
+                    text = title,
+                    style = typography().s.semiBold.copy(color = palette.text),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                BasicText(
+                    text = description,
+                    style = typography().xxs.copy(color = palette.textSecondary),
+                )
+            }
+        }
+    }
+}

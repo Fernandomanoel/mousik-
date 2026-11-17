@@ -1,0 +1,143 @@
+package app.mousike.android.components.dialog.settings
+
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import app.mousike.android.R
+import app.mousike.android.components.settings.common.SettingsNestedOption
+import app.mousike.android.components.dialog.common.ContentFramedDialog
+import app.mousike.android.components.dialog.common.ToggleItem
+import app.mousike.android.components.dialog.common.ToggleListDialog
+import app.mousike.android.core.database.Database
+import app.mousike.android.utils.showFavoritesAlbumKey
+import app.mousike.android.utils.showOnDeviceAlbumsKey
+import app.mousike.android.utils.showDislikedAlbumKey
+import app.mousike.android.utils.excludeDislikedAlbumsKey
+import app.mousike.android.enums.DislikeMode
+import app.mousike.android.utils.homeAlbumsOrderKey
+import app.mousike.android.core.utils.Toaster
+import org.json.JSONArray
+import sh.calvin.reorderable.rememberReorderableLazyListState
+import android.content.Context
+import app.mousike.android.utils.preferences
+
+internal val albumsDefaultOrder = listOf("all", "favorites", "disliked", "on_device")
+
+internal val albumsThemeToggleKeys = mapOf(
+    "favorites" to showFavoritesAlbumKey,
+    "on_device" to showOnDeviceAlbumsKey
+)
+
+object HomeAlbumsSettingsDialog : ContentFramedDialog {
+
+    /** Exact searchable options from the same definitions used by this dialog. */
+    internal fun searchOptions(): List<SettingsNestedOption> = albumsDefaultOrder.map { SettingsNestedOption(it, searchLabelResources.getValue(it)) }
+
+    private val searchLabelResources = mapOf(
+        "all" to R.string.common_option_all,
+        "favorites" to R.string.library_favorites_title,
+        "on_device" to R.string.library_on_device_title,
+        "disliked" to R.string.library_disliked_title,
+    )
+    override val dialogTitle: String @Composable get() = stringResource(R.string.home_albums_settings)
+    override var isActive: Boolean by mutableStateOf(false)
+
+    private fun parseOrder(s: String): List<String> {
+        if (s.isBlank()) return albumsDefaultOrder
+        return try { val a = JSONArray(s); val l = mutableListOf<String>(); for (i in 0 until a.length()) l.add(a.getString(i)); val r = l.filter { it in albumsDefaultOrder }.toMutableList(); for (id in albumsDefaultOrder) { if (id !in r) r.add(id) }; r } catch (_: Exception) { albumsDefaultOrder }
+    }
+    private fun serializeOrder(order: List<String>): String { val a = JSONArray(); order.forEach { a.put(it) }; return a.toString() }
+
+    @Composable
+    override fun DialogBody() {
+        val ctx = LocalContext.current
+        val prefs = remember { ctx.preferences }
+        var workingOrder by remember { mutableStateOf(parseOrder(prefs.getString(homeAlbumsOrderKey, "") ?: "").toMutableList()) }
+
+        val prefKeys = albumsThemeToggleKeys
+
+        var workingToggles by remember {
+            mutableStateOf(
+                albumsDefaultOrder.associateWith { id ->
+                    if (id == "disliked") {
+                        prefs.getString(excludeDislikedAlbumsKey, DislikeMode.Enabled.name)
+                            ?.let { runCatching { DislikeMode.valueOf(it) }.getOrNull() }
+                            ?.isEnabled ?: true
+                    } else {
+                        val pk = prefKeys[id]
+                        if (pk != null) prefs.getBoolean(pk, true) else true
+                    }
+                }.toMutableMap()
+            )
+        }
+
+        val allLabel = stringResource(searchLabelResources.getValue("all"))
+        val favLabel = stringResource(searchLabelResources.getValue("favorites"))
+        val dislikedLabel = stringResource(searchLabelResources.getValue("disliked"))
+
+        val lazyListState = rememberLazyListState()
+        val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+            val o = workingOrder.toMutableList(); val fi = o.indexOf(from.key); val ti = o.indexOf(to.key)
+            if (fi != -1 && ti != -1) { val item = o.removeAt(fi); o.add(ti, item); workingOrder = o }
+        }
+
+        val items = workingOrder.map { id ->
+            when (id) {
+                "all" -> ToggleItem(id, R.drawable.album, allLabel, "always_true_albums", true)
+                "on_device" -> ToggleItem(id, R.drawable.folder, stringResource(R.string.library_on_device_title), showOnDeviceAlbumsKey, true)
+                "favorites" -> ToggleItem(id, R.drawable.bookmark, favLabel, showFavoritesAlbumKey, true)
+                "disliked" -> ToggleItem(id, R.drawable.bookmark_slash, dislikedLabel, showDislikedAlbumKey, true)
+                else -> null
+            }
+        }.filterNotNull()
+
+        ToggleListDialog(
+            frameTitle = dialogTitle,
+            onDismiss = ::hideDialog,
+            items = items, lazyListState = lazyListState, reorderableState = reorderableState,
+            enforceMinOneChecked = true,
+            lockedCheckedIds = setOf("all"),
+            checkedStatesOverride = items.map { workingToggles[it.id] ?: true },
+            onCheckedChange = { index, newValue ->
+                val id = items[index].id
+                val m = workingToggles.toMutableMap()
+                m[id] = newValue
+                workingToggles = m
+            },
+            onReset = {
+                workingOrder = albumsDefaultOrder.toMutableList()
+                val m = albumsDefaultOrder.associateWith { true }.toMutableMap()
+                workingToggles = m
+            },
+            onCancel = { hideDialog() },
+            onConfirm = {
+                val edit = prefs.edit()
+                edit.putString(homeAlbumsOrderKey, serializeOrder(workingOrder))
+                prefKeys.forEach { (id, pk) ->
+                    edit.putBoolean(pk, workingToggles[id] ?: true)
+                }
+                edit.putString(excludeDislikedAlbumsKey, if (workingToggles["disliked"] == true) DislikeMode.Enabled.name else DislikeMode.Disabled.name)
+                edit.apply()
+                if (workingToggles["disliked"] == false) {
+                    Database.albumTable.clearAllDisliked()
+                }
+                Toaster.s(R.string.settings_preference_saved_message); hideDialog()
+            }
+        )
+    }
+
+    fun reset(context: Context) {
+        val prefs = context.preferences
+        prefs.edit()
+            .putString(homeAlbumsOrderKey, serializeOrder(albumsDefaultOrder))
+            .putBoolean(showOnDeviceAlbumsKey, true)
+            .putBoolean(showFavoritesAlbumKey, true)
+            .putString(excludeDislikedAlbumsKey, DislikeMode.Enabled.name)
+            .apply()
+    }
+}

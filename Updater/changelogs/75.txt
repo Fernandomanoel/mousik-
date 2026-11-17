@@ -15,7 +15,7 @@ Removed:
 - Drop Piped integration entirely from the project
   - Deleted the entire extensions/piped/ module and removed its inclusion from settings.gradle.kts.
   - Removed all Piped session models and utils: PipedResponse.kt, GetPipedSession.kt, SyncPipedUtils.kt, PipedSession.kt.
-  - Removed Piped dependencies from ComposeN-Zik and innertube modules' build.gradle.kts.
+  - Removed Piped dependencies from ComposeMousike and innertube modules' build.gradle.kts.
   - Removed all Piped login, sync, and playlist logic from UI components including AccountsSettings, PlayerMenu, NewPlaylistDialog, and RenamePlaylistDialog.
   - Removed Piped toggle and filtering logic from HomeLibrary.
   - Removed Piped.fetchInstances() initialization from MainActivity.
@@ -70,7 +70,7 @@ Fixed:
   - HomeAlbum.kt: replaced runBlocking { Flow.first() } in Composable with allSongsOfDirect().
   - MyDownloadHelper: replaced runBlocking { Flow.first() } with isLikedDirect().
   - MatchAlbumUtils: replaced Flow.first() inside withTransaction with findByIdDirect().
-  - NZikRadio: replaced Flow.first() loops with isMappedSync() / isLikedDirect().
+  - MousikeRadio: replaced Flow.first() loops with isMappedSync() / isLikedDirect().
   - SyncPipedUtils: replaced runBlocking { Flow.first() } inside asyncTransaction with existsDirect().
   - SyncYTMusicUtils + LocalPlaylistSongs: moved network calls outside asyncTransaction blocks.
 - Eliminate remaining DB lock sources in crossfade and notification paths

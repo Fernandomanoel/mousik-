@@ -1,5 +1,5 @@
 name: 👷 Dev Bug report
-description: Report a bug found while testing the N-Zik Dev build
+description: Report a bug found while testing the mousike Dev build
 title: "[DEV BUG]: "
 labels: ["bug"]
 assignees:
@@ -12,7 +12,7 @@ body:
         ****
         ### ❗ READ BEFORE SUBMITTING ❗
 
-        This form is for bugs found specifically in the **Dev64** and **Dev32** builds of N-Zik.
+        This form is for bugs found specifically in the **Dev64** and **Dev32** builds of mousike.
         If you're on the **Beta64/Beta32**, **Release64/Release32**, **Minified64/Minified32** or **Foss** build, please use the corresponding Bug report template instead.
 
         * **Media cannot be played / Unknown Error / Login required:**
@@ -40,7 +40,7 @@ body:
     id: version-number
     attributes:
       label: 🏷️ App Version
-      description: Please specify the exact dev version of N-Zik.
+      description: Please specify the exact dev version of mousike.
       placeholder: 5.1.0-dev-20260805
     validations:
       required: true
@@ -109,7 +109,7 @@ body:
       label: 🔄 How to reproduce
       description: Provide step-by-step instructions on how to trigger the bug.
       placeholder: |
-        1. Open N-Zik
+        1. Open mousike
         2. Click on '...'
         3. Scroll down to '...'
         4. Boom! Error happens

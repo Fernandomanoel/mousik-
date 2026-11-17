@@ -1,0 +1,249 @@
+package app.mousike.android.core.notifications
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.res.Resources
+import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
+import android.os.Build
+import android.service.notification.StatusBarNotification
+import app.mousike.android.utils.DEFAULT_PROFILE_ID
+import app.mousike.android.utils.profileDisplayName
+import app.mousike.android.R
+import app.mousike.android.bridge.BRIDGE_SERVER_CHANNEL_ID
+import app.mousike.android.modules.AndroidModuleDownloadListener
+import app.mousike.android.updater.services.UpdateDownloadManager
+import app.mousike.android.components.ui.screens.rewind.RewindReminderWorker
+import app.mousike.android.download.utils.MyDownloadHelper
+import app.mousike.android.listentogether.ListenTogetherClient
+import app.mousike.android.playback.services.PlayerServiceModern
+import timber.log.Timber
+
+/**
+ * Per-profile notification channels (goal ⑩ — scope Profiles, spec per-profile-notifications).
+ *
+ * The app's 6 profiled channels (player, sleep timer, download, sync, rewind, listen-together)
+ * are resolved per profile: the base profile keeps its current channel IDs exactly (zero
+ * migration, bit-for-bit identical behavior — its 5 boot channels keep being created by
+ * `MainApplication.createNotificationChannels()`, the listen-together one by
+ * `ListenTogetherClient.ensureNotificationChannel()` on first use), while every user profile
+ * owns its 6 channels as `<current id>_<profile id>`. The "update" and "PC bridge" channels
+ * are NOT profiled (app-wide features, not per-profile ones).
+ */
+
+private const val TAG = "ProfileNotificationChannels"
+
+/** The spec of one of the 6 profiled channels (its base ID + the channel attributes). */
+private data class ChannelSpec(
+    val baseId: String,
+    val nameRes: Int,
+    val descRes: Int,
+    val importance: Int,
+    /** true when the base channel is created with `setShowBadge(false)`. */
+    val badgeOff: Boolean,
+)
+
+private val PROFILE_CHANNEL_SPECS = listOf(
+    ChannelSpec(
+        PlayerServiceModern.NotificationChannelId,
+        R.string.player_title,
+        R.string.player_title,
+        NotificationManager.IMPORTANCE_LOW,
+        badgeOff = true,
+    ),
+    ChannelSpec(
+        PlayerServiceModern.SleepTimerNotificationChannelId,
+        R.string.player_sleep_timer_title,
+        R.string.player_sleep_timer_title,
+        NotificationManager.IMPORTANCE_DEFAULT,
+        badgeOff = true,
+    ),
+    ChannelSpec(
+        MyDownloadHelper.DOWNLOAD_NOTIFICATION_CHANNEL_ID,
+        R.string.downloads_title,
+        R.string.downloads_title,
+        NotificationManager.IMPORTANCE_LOW,
+        badgeOff = true,
+    ),
+    ChannelSpec(
+        RewindReminderWorker.CHANNEL_ID,
+        R.string.rewind_channel,
+        R.string.rewind_channel,
+        NotificationManager.IMPORTANCE_LOW,
+        badgeOff = true,
+    ),
+    ChannelSpec(
+        ListenTogetherClient.NOTIFICATION_CHANNEL_ID,
+        R.string.listen_together_notification_channel_name,
+        R.string.listen_together_notification_channel_description,
+        NotificationManager.IMPORTANCE_HIGH,
+        badgeOff = false, // mirrors ListenTogetherClient.ensureNotificationChannel (the default badge)
+    ),
+)
+
+/**
+ * The channel ID [baseId] posts on for [profileId]: the base profile keeps its current ID
+ * unchanged (zero migration), every other profile gets `<base id>_<profile id>` — exactly one
+ * profile suffix (the base IDs already contain underscores, e.g. `default_channel_id`, so the
+ * suffix never doubles).
+ *
+ * Pure on purpose (unit-tested without Android).
+ */
+fun channelId(baseId: String, profileId: String): String =
+    if (profileId == DEFAULT_PROFILE_ID) baseId else "${baseId}_$profileId"
+
+/**
+ * The set of the 6 channel IDs of [profileId] — what the emitters post on and what the profile
+ * switch cancels. Pure on purpose (unit-tested without Android).
+ */
+fun profileChannelIds(profileId: String): Set<String> =
+    PROFILE_CHANNEL_SPECS.mapTo(mutableSetOf()) { channelId(it.baseId, profileId) }
+
+/**
+ * Creates (idempotently) the 6 channels of [profileId], each named with its base channel's
+ * display name plus the profile's display name (e.g. `"Player — Work"`); the channels stay
+ * separated by ID, the name only disambiguates the owning profile. The display name is the
+ * stored name when set, its ID otherwise.
+ *
+ * No-op for the base profile (its channels are created by MainApplication, unchanged, zero
+ * migration). Called at boot for the active profile and at profile switch for the incoming
+ * profile; re-creating an existing channel is a no-op on Android, so its name — like its
+ * settings — is fixed at first creation and not updated by a later profile rename.
+ */
+fun ensureProfileChannels(context: Context, profileId: String) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    if (profileId == DEFAULT_PROFILE_ID) return
+    val displayName = context.profileDisplayName(profileId) ?: profileId
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    val strings = ContextCompat.getContextForLanguage(context).resources
+    notificationManager.createNotificationChannels(
+        PROFILE_CHANNEL_SPECS.map { spec ->
+            NotificationChannel(
+                channelId(spec.baseId, profileId),
+                strings.getString(R.string.profile_channel_name, strings.getString(spec.nameRes), displayName),
+                spec.importance,
+            ).apply {
+                description = strings.getString(spec.descRes)
+                if (spec.badgeOff) setShowBadge(false)
+            }
+        },
+    )
+    Timber.tag(TAG).d("Ensured the 6 channels of profile '%s'", profileId)
+}
+
+/** Creates a canonical channel before library initialization without rewriting an existing channel. */
+internal fun ensureStartupNotificationChannel(context: Context, baseId: String, profileId: String): String {
+    val id = channelId(baseId, profileId)
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return id
+    val manager = context.getSystemService(NotificationManager::class.java) ?: return id
+    if (manager.getNotificationChannel(id) != null) return id
+    val spec = PROFILE_CHANNEL_SPECS.first { it.baseId == baseId }
+    val strings = ContextCompat.getContextForLanguage(context).resources
+    val baseName = strings.getString(spec.nameRes)
+    val name = if (profileId == DEFAULT_PROFILE_ID) baseName else strings.getString(
+        R.string.profile_channel_name,
+        baseName,
+        context.profileDisplayName(profileId) ?: profileId,
+    )
+    manager.createNotificationChannel(NotificationChannel(id, name, spec.importance).apply {
+        description = strings.getString(spec.descRes)
+        if (spec.badgeOff) setShowBadge(false)
+    })
+    return id
+}
+
+/** Refreshes only the names and descriptions of existing channels when the app locale changes. */
+@RequiresApi(Build.VERSION_CODES.O)
+internal fun refreshNotificationChannelLabels(context: Context, strings: Resources, manager: NotificationManager) {
+    for (channel in manager.notificationChannels) {
+        val spec = PROFILE_CHANNEL_SPECS.firstOrNull {
+            channel.id == it.baseId || channel.id.startsWith("${it.baseId}_")
+        }
+        val name = if (spec != null) {
+            val baseName = strings.getString(spec.nameRes)
+            val profileId = channel.id.removePrefix(spec.baseId).removePrefix("_")
+            if (profileId.isEmpty()) baseName else strings.getString(
+                R.string.profile_channel_name,
+                baseName,
+                context.profileDisplayName(profileId) ?: profileId,
+            )
+        } else {
+            when (channel.id) {
+                BRIDGE_SERVER_CHANNEL_ID -> strings.getString(R.string.bridge_server)
+                UpdateDownloadManager.UPDATE_CHANNEL_ID -> strings.getString(R.string.updates_channel_name)
+                AndroidModuleDownloadListener.CHANNEL_ID -> strings.getString(R.string.modules_download_channel)
+                else -> continue
+            }
+        }
+        val description = spec?.let { strings.getString(it.descRes) } ?: channel.description
+        if (channel.name.toString() != name || channel.description != description) {
+            channel.name = name
+            channel.description = description
+            manager.createNotificationChannel(channel)
+        }
+    }
+}
+
+/**
+ * Recreates the 6 channels of [profileId] — the last step of a profile RENAME: the channel IDs
+ * are stable across renames, but Android channel names are immutable, so the only way to reflect
+ * the new display name is to delete the channels and re-create them. The deletion also dismisses
+ * any notification currently posted on these channels (the media notification re-posts on the
+ * next playback state change). [ensureProfileChannels] then rebuilds them under the fresh name.
+ * No-op for the base profile (its channels are boot-managed; the base is never renamed).
+ */
+fun recreateProfileChannels(context: Context, profileId: String) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    if (profileId == DEFAULT_PROFILE_ID) return
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    profileChannelIds(profileId).forEach { notificationManager.deleteNotificationChannel(it) }
+    ensureProfileChannels(context, profileId)
+    Timber.tag(TAG).d("Recreated the 6 channels of profile '%s' after a rename", profileId)
+}
+
+/**
+ * Cancels every ACTIVE notification posted on one of the 6 channels of [profileId] — channel
+ * by channel, never by tag (robust to any notification posted on these channels, from any
+ * source): the non-ongoing ones (rewind, sync, listen-together, sleep timer) survive a process
+ * death, the ongoing ones are cancelled as well (their services are stopped separately).
+ * Called synchronously in the profile switch, before the process exit, and in the profile
+ * deletion flows. Notification channels are an API 26 (O) feature — a no-op below O.
+ */
+fun cancelProfileNotifications(context: Context, profileId: String) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    val toCancel = notificationsOnChannels(notificationManager.activeNotifications, profileChannelIds(profileId))
+    toCancel.forEach { sbn ->
+        // Cancel by (tag, id) when the notification carries a tag, by id otherwise — a plain
+        // id cancel would leave a same-id, different-tag notification in place.
+        if (sbn.tag != null) notificationManager.cancel(sbn.tag, sbn.id) else notificationManager.cancel(sbn.id)
+    }
+    Timber.tag(TAG).d("Cancelled %d pending notification(s) of profile '%s'", toCancel.size, profileId)
+}
+
+/**
+ * Purges [profileId]'s notification state — the last step of a profile deletion: cancels its
+ * pending notifications ([cancelProfileNotifications]) and deletes its 6 channels, so a deleted
+ * profile leaves no orphan channel (or surviving notification) behind in the system. Never
+ * touches the base profile's channels (boot-managed — `MainApplication` / `ListenTogetherClient`
+ * recreate them, the base is never deleted).
+ */
+fun deleteProfileChannels(context: Context, profileId: String) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    if (profileId == DEFAULT_PROFILE_ID) return
+    cancelProfileNotifications(context, profileId)
+    val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    profileChannelIds(profileId).forEach { notificationManager.deleteNotificationChannel(it) }
+    Timber.tag(TAG).d("Deleted the 6 channels of profile '%s'", profileId)
+}
+
+/**
+ * The [active] notifications posted on one of [channelIds] (the selection done by
+ * [cancelProfileNotifications]). Pure on purpose (unit-tested without Android).
+ */
+fun notificationsOnChannels(
+    active: Array<out StatusBarNotification>?,
+    channelIds: Set<String>,
+): List<StatusBarNotification> =
+    active.orEmpty().filter { it.notification?.channelId in channelIds }

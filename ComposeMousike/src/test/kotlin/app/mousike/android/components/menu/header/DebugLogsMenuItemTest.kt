@@ -1,0 +1,132 @@
+package app.mousike.android.components.menu.header
+
+import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.core.content.edit
+import androidx.compose.foundation.shape.CircleShape
+import androidx.test.core.app.ApplicationProvider
+import app.mousike.android.enums.FontType
+import app.mousike.android.ui.styling.Appearance
+import app.mousike.android.ui.styling.DefaultDarkColorPalette
+import app.mousike.android.ui.styling.LocalAppearance
+import app.mousike.android.ui.styling.typographyOf
+import app.mousike.android.utils.logDebugEnabledKey
+import app.mousike.android.utils.preferences
+import app.mousike.android.R
+import app.mousike.android.utils.debug.debugLogFiles
+import app.mousike.android.utils.debug.profileDiagnosticsDir
+import org.junit.After
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.io.File
+
+/**
+ * Compose UI tests for [DebugLogsMenuItem], the "Enable debug logs" entry of the hamburger
+ * menu. JUnit 4 + [RobolectricTestRunner] through the project's junit-vintage-engine on the
+ * JUnit 5 platform (`createComposeRule()` only works with JUnit 4), with the plain
+ * [Application] so the app's heavy init (DI, Room, player) is skipped.
+ *
+ * Covers the spec's burger-item matrix rows: the label follows the live state (enable
+ * off / disable on, no restart), the tap toggles debug logging with the same side effects
+ * as the header badge (log files purged on disable) and flips the label.
+ *
+ * The width clamp of the label (capped at the rendered "Rescue Center" label width,
+ * `clampedLabelMaxWidth`) is shared with the header badges and covered through
+ * [app.mousike.android.components.ui.header.HeaderVersionBadgeTest]; it is not observable
+ * through this item's own semantics because the clickable Row merges its descendants
+ * (material3 convention) and Robolectric's text measurement is degenerate.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [33], application = Application::class)
+class DebugLogsMenuItemTest {
+
+    @get:Rule
+    val composeRule = createComposeRule()
+
+    private val context: Context = ApplicationProvider.getApplicationContext()
+    private val prefs: SharedPreferences get() = context.preferences
+    private val logsDir: File get() = profileDiagnosticsDir(context)
+
+    private val enableLabel: String get() = context.getString(R.string.maintenance_debug_logging_title)
+    private val disableLabel: String get() = context.getString(R.string.settings_logging_disabled_label)
+
+    private val appearance = Appearance(
+        colorPalette = DefaultDarkColorPalette,
+        typography = typographyOf(Color.White, true, false, FontType.Rubik),
+        thumbnailShape = CircleShape,
+        uiRoundnessShape = CircleShape,
+        artistThumbnailShape = CircleShape,
+    )
+
+    @After
+    fun tearDown() {
+        debugLogFiles(logsDir).forEach { it.delete() }
+        prefs.edit { remove(logDebugEnabledKey) }
+    }
+
+    private fun showItem() {
+        composeRule.setContent {
+            CompositionLocalProvider(LocalAppearance provides appearance) {
+                DebugLogsMenuItem(onLongClick = {})
+            }
+        }
+    }
+
+    @Test
+    fun itemShowsEnableLabelWhenOff() {
+        showItem()
+
+        composeRule.onNodeWithText(enableLabel).assertIsDisplayed()
+        composeRule.onNodeWithText(disableLabel).assertDoesNotExist()
+    }
+
+    @Test
+    fun labelFollowsTheDebugLoggingStateLive() {
+        // Seeded from disk before composition (cold start scenario)
+        prefs.edit { putBoolean(logDebugEnabledKey, true) }
+        showItem()
+        composeRule.onNodeWithText(disableLabel).assertIsDisplayed()
+
+        // Flip from outside the menu (settings / badge path) — no restart
+        prefs.edit { putBoolean(logDebugEnabledKey, false) }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(enableLabel).assertIsDisplayed()
+
+        prefs.edit { putBoolean(logDebugEnabledKey, true) }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithText(disableLabel).assertIsDisplayed()
+    }
+
+    @Test
+    fun tapDisablesDebugLoggingAndPurgesLogFiles() {
+        logsDir.mkdirs()
+        debugLogFiles(logsDir).forEach { it.writeText("log") }
+        prefs.edit { putBoolean(logDebugEnabledKey, true) }
+        showItem()
+        composeRule.onNodeWithText(disableLabel).assertIsDisplayed()
+
+        composeRule.onNodeWithText(disableLabel).performClick()
+        composeRule.waitForIdle()
+
+        assertFalse("tap should switch the preference off", prefs.getBoolean(logDebugEnabledKey, true))
+        // The debug log is purged on disable; the crash log survives (crash capture is
+        // independent of the debug switch, the Maintenance sheet reads it unconditionally)
+        assertFalse("debug log should be purged on disable", File(logsDir, "mousike_log.txt").exists())
+        assertTrue("crash log must survive the debug-log purge", File(logsDir, "mousike_crash_log.txt").exists())
+        // The label flips back to the enable state live
+        composeRule.onNodeWithText(enableLabel).assertIsDisplayed()
+        composeRule.onNodeWithText(disableLabel).assertDoesNotExist()
+    }
+}

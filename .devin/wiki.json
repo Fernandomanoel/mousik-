@@ -1,25 +1,25 @@
 {
   "repo_notes": [
-    "N-Zik is a multilingual Android music app, built with Kotlin Multiplatform (KMP).",
+    "mousike is a multilingual Android music app, built with Kotlin Multiplatform (KMP).",
     "Prioritize documentation for 'composeApp' (UI/Core), 'modules' (Shared Logic), and 'extensions' (Data Providers).",
     "Tone: Technical yet pedagogical, suitable for contributors learning Kotlin/Compose.",
     "Extensions are mapped in settings.gradle.kts and reside in 'extensions/' and 'modules/'.",
-    "Crowdin's GitHub integration uses crowdin.yml. Android reads the English XML catalogs from ComposeN-Zik/src/androidMain/localization/source/ and translations from localization/translations/<locale>/. Gradle generates the Android resource directories at build time.",
+    "Crowdin's GitHub integration uses crowdin.yml. Android reads the English XML catalogs from ComposeMousike/src/androidMain/localization/source/ and translations from localization/translations/<locale>/. Gradle generates the Android resource directories at build time.",
     "EXCLUDE: Do not document Desktop-specific logic or VLCJ implementations (Desktop support is out of scope).",
-    "Describe the current N-Zik implementation."
+    "Describe the current mousike implementation."
   ],
   "pages": [
     {
       "title": "Overview",
       "page_notes": [
         {
-          "content": "Introduction to N-Zik as a multilingual Android music app."
+          "content": "Introduction to mousike as a multilingual Android music app."
         },
         {
           "content": "Summary of core features: Modern UI, Multilingual support, Background playback."
         },
         {
-          "content": "Summarize the features maintained in N-Zik."
+          "content": "Summarize the features maintained in mousike."
         }
       ]
     },
@@ -142,7 +142,7 @@
       "title": "Localization System",
       "page_notes": [
         {
-          "content": "Comprehensive guide to N-Zik's multilingual framework."
+          "content": "Comprehensive guide to mousike's multilingual framework."
         },
         {
           "content": "Integration of Crowdin for community translations."
@@ -198,7 +198,7 @@
       "parent": "Theme System",
       "page_notes": [
         {
-          "content": "Documentation for the toggle between N-Zik and classic ViMusic UI styles."
+          "content": "Documentation for the toggle between mousike and classic ViMusic UI styles."
         }
       ]
     },
@@ -268,7 +268,7 @@
       "title": "Project Context",
       "page_notes": [
         {
-          "content": "History, context, and philosophical goals of N-Zik."
+          "content": "History, context, and philosophical goals of mousike."
         }
       ]
     },

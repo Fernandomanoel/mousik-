@@ -1,0 +1,199 @@
+package app.mousike.android.components.ui.screens.rewind.slides
+
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import app.mousike.android.R
+import app.mousike.android.components.ui.screens.rewind.RewindData
+
+@Composable
+fun RewindTotalTimeCard(
+    data: RewindData,
+    page: Int,
+    pageCount: Int,
+    active: Boolean,
+    onNext: () -> Unit,
+    onShareSlide: (() -> Unit)? = null
+) {
+    val textScale = LocalRewindTextScale.current
+    val onOrange = rewindColors.value.textOn(rewindColors.value.orange)
+    val onLime = rewindColors.value.textOn(rewindColors.value.lime)
+    RewindStoryShell(
+        page = page,
+        pageCount = pageCount,
+        background = rewindColors.value.orange,
+        progressColor = onOrange,
+        onNext = onNext,
+        onShareSlide = onShareSlide
+    ) {
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val compact = maxHeight < 700.dp
+            val discSize = if (compact) 235.dp else 282.dp
+            val numberSize = when {
+                data.stats.totalMinutes >= 100_000 -> if (compact) 48 else 58
+                data.stats.totalMinutes >= 10_000 -> if (compact) 57 else 69
+                else -> if (compact) 66 else 80
+            }
+            Column(modifier = Modifier.fillMaxSize()) {
+                RewindReveal(active, 50, direction = RewindRevealDirection.Left) {
+                    RewindKicker(stringResource(R.string.rewind_totals_kicker, data.periodLabel), rewindColors.value.lime)
+                }
+                Spacer(Modifier.height(11.dp))
+                RewindReveal(active, 130, direction = RewindRevealDirection.Left) {
+                    RewindAdaptiveTitle(
+                        text = stringResource(R.string.rewind_totals_heading),
+                        color = onOrange,
+                        fontSize = textScale.size(if (compact) 33.sp else 39.sp),
+                        lineHeight = textScale.size(if (compact) 31.sp else 36.sp),
+                        letterSpacing = textScale.letterSpacing((-1.9).sp),
+                        fontWeight = FontWeight.Black
+                    )
+                }
+                Spacer(Modifier.height(3.dp))
+                RewindReveal(active, 260) {
+                    Text(
+                        text = stringResource(R.string.rewind_totals_subheading),
+                        color = onOrange.copy(alpha = 0.67f),
+                        fontSize = textScale.size(12.sp),
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(Modifier.size(discSize + 34.dp)) {
+                        drawCircle(rewindColors.value.lime.copy(alpha = 0.90f))
+                    }
+                    RewindReveal(active, 420, scaleFrom = 0.64f) {
+                        Box(
+                            modifier = Modifier
+                                .size(discSize)
+                                .rewindCardBackground(rewindColors.value.ink, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = stringResource(R.string.rewind_totals_heading),
+                                    color = rewindColors.value.cream.copy(alpha = 0.58f),
+                                    fontSize = textScale.size(9.sp),
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = textScale.letterSpacing(1.0.sp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                RewindAnimatedNumber(
+                                    value = data.stats.totalMinutes,
+                                    active = active,
+                                    color = rewindColors.value.lime,
+                                    fontSize = numberSize,
+                                    delayMillis = 620,
+                                    durationMillis = 1_300
+                                )
+                                Text(
+                                    text = stringResource(R.string.rewind_label_minutes),
+                                    color = rewindColors.value.cream,
+                                    fontSize = textScale.size(14.sp),
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = textScale.letterSpacing(1.8.sp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+                RewindReveal(active, 1_180) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(9.dp)
+                    ) {
+                        TotalMetric(
+                            label = stringResource(R.string.rewind_label_plays),
+                            value = formatRewindNumber(data.stats.totalPlays.toLong()),
+                            background = rewindColors.value.ink,
+                            foreground = rewindColors.value.cream,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TotalMetric(
+                            label = stringResource(R.string.rewind_label_days),
+                            value = formatRewindNumber(data.daysWithMusic.toLong()),
+                            background = rewindColors.value.lime,
+                            foreground = onLime,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TotalMetric(
+                            label = stringResource(R.string.rewind_label_hours),
+                            value = formatRewindNumber(data.stats.totalMinutes / 60L),
+                            background = rewindColors.value.cream,
+                            foreground = rewindColors.value.ink,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TotalMetric(
+    label: String,
+    value: String,
+    background: androidx.compose.ui.graphics.Color,
+    foreground: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier
+) {
+    val textScale = LocalRewindTextScale.current
+    Column(
+        modifier = modifier
+            .rewindCardBackground(background, RoundedCornerShape(8.dp))
+            .padding(horizontal = 10.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = value,
+            color = foreground,
+            fontSize = textScale.size(20.sp),
+            lineHeight = textScale.size(21.sp),
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.rewindMarqueeOnly()
+        )
+        Text(
+            text = label,
+            color = foreground.copy(alpha = 0.65f),
+            fontSize = textScale.size(8.sp),
+            fontWeight = FontWeight.Black,
+            letterSpacing = textScale.letterSpacing(0.7.sp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}

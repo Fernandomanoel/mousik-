@@ -1,0 +1,213 @@
+package app.mousike.android.components.settings.other
+
+import app.mousike.android.components.settings.common.settingsTopContentPadding
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
+import androidx.media3.common.util.UnstableApi
+import app.mousike.android.utils.pauseSearchHistoryKey
+import app.mousike.android.utils.preferences
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.R
+import app.mousike.android.colorPalette
+import app.mousike.android.components.search.SearchHistorySection
+import app.mousike.android.components.search.SearchHistoryStore
+import app.mousike.android.components.search.filterSearchHistory
+import app.mousike.android.components.search.rememberSearchHistory
+import app.mousike.android.components.settings.ExtensionsSettingsCard
+import app.mousike.android.components.settings.MaintenanceSettingsCard
+import app.mousike.android.components.settings.RescueCenterSettingsCard
+import app.mousike.android.components.settings.common.SettingsCardSlot
+import app.mousike.android.components.settings.common.SettingsDescription
+import app.mousike.android.components.settings.common.rememberSettingsSearchFocus
+import app.mousike.android.components.settings.common.settingsCardEnter
+import app.mousike.android.components.settings.common.settingsCardExit
+import app.mousike.android.components.settings.common.settingsSearchContent
+import app.mousike.android.components.settings.common.settingsSearchDescription
+import app.mousike.android.components.settings.common.settingsSearchTitle
+import app.mousike.android.components.settings.common.visibleCardTitleRes
+import app.mousike.android.components.tab.Search
+import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.first
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+fun OtherSettings(
+    focus: String = ""
+) {
+    val search = Search(initialVisible = true)
+    val searchFocus = rememberSettingsSearchFocus(search.isFocused, search.inputValue.isBlank())
+
+    val context = LocalContext.current
+
+    val isHistoryPaused by rememberPreference(pauseSearchHistoryKey, false)
+    val history = rememberSearchHistory(SearchHistoryStore.PAGE_SETTINGS_OTHER, isHistoryPaused)
+    val historyMatches = filterSearchHistory(history.value, search.inputValue)
+    val historyVisible = search.isFocused && historyMatches.isNotEmpty()
+
+    fun recordSearchQuery(query: String = search.inputValue) {
+        history.value = SearchHistoryStore.record(context.preferences, SearchHistoryStore.PAGE_SETTINGS_OTHER, query)
+    }
+
+    val scrollState = rememberScrollState()
+    var containerTopY by remember { mutableFloatStateOf(-1f) }
+    var maintenanceCardTopY by remember { mutableFloatStateOf(-1f) }
+    var extensionsCardTopY by remember { mutableFloatStateOf(-1f) }
+    var rescueCardTopY by remember { mutableFloatStateOf(-1f) }
+
+    LaunchedEffect(focus) {
+        if (focus != "debug" && focus != "maintenance" && focus != "extensions" && focus != "rescue") return@LaunchedEffect
+
+        val focusedRescue = focus == "rescue"
+        val focusedExtensions = focus == "extensions"
+        val offset = snapshotFlow {
+            val cardTopY = when {
+                focusedRescue -> rescueCardTopY
+                focusedExtensions -> extensionsCardTopY
+                else -> maintenanceCardTopY
+            }
+            if (cardTopY < 0f || containerTopY < 0f) -1f
+            else cardTopY - containerTopY + scrollState.value
+        }.first { it >= 0f }
+        scrollState.animateScrollTo(offset.roundToInt())
+    }
+
+    Column(
+        modifier = Modifier
+            .background(colorPalette().background0)
+            .fillMaxHeight()
+            .fillMaxWidth()
+            .verticalScroll(scrollState)
+            .onGloballyPositioned { containerTopY = it.positionInRoot().y }
+            .settingsTopContentPadding()
+    ) {
+
+        settingsSearchTitle(searchFocus, R.string.settings_miscellaneous_title, R.drawable.equalizer)
+
+        settingsSearchDescription(searchFocus) {
+            SettingsDescription(
+                text = stringResource(R.string.settings_miscellaneous_page_description),
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center
+            )
+        }
+
+        search.SearchBar(this, barPadding = searchFocus.barPadding, onSearch = { recordSearchQuery() })
+
+        SearchHistorySection(
+            visible = historyVisible,
+            queries = historyMatches,
+            onQueryClick = { search.input = TextFieldValue(it); recordSearchQuery(it); search.isFocused = false },
+            onQueryDelete = {
+                history.value = SearchHistoryStore.delete(context.preferences, SearchHistoryStore.PAGE_SETTINGS_OTHER, it)
+            },
+            onQueryDeleteAll = {
+                history.value = SearchHistoryStore.deleteAll(context.preferences, SearchHistoryStore.PAGE_SETTINGS_OTHER)
+            }
+        )
+
+        val hasSearchResults = search.inputValue.isBlank() || visibleCardTitleRes(context, 7, search.inputValue).isNotEmpty()
+        LaunchedEffect(hasSearchResults) {
+            if (!hasSearchResults) scrollState.scrollTo(0)
+        }
+        OtherSettingsContent(
+            search = search,
+            onCardPosition = { id, top ->
+                when (id) {
+                    "maintenance" -> maintenanceCardTopY = top
+                    "extensions" -> extensionsCardTopY = top
+                    "rescue" -> rescueCardTopY = top
+                }
+            },
+            cardsContainer = { cards -> settingsSearchContent(searchFocus, hasResults = hasSearchResults, query = search.inputValue) { cards() } },
+        )
+
+
+
+    }
+}
+
+@androidx.annotation.OptIn(UnstableApi::class)
+@Composable
+internal fun OtherSettingsContent(
+    search: Search,
+    selectedCards: Set<Int>? = null,
+    cardModifier: @Composable (Int) -> Modifier = { Modifier },
+    onCardPosition: (String, Float) -> Unit = { _, _ -> },
+    cardsContainer: @Composable (@Composable () -> Unit) -> Unit = { it() },
+) {
+    cardsContainer {
+        if (selectedCards == null || R.string.settings_section_service_lifetime_title in selectedCards) {
+            SettingsCardSlot(R.string.settings_section_service_lifetime_title, modifier = { cardModifier(R.string.settings_section_service_lifetime_title) }) {
+                OtherServiceLifetimeCard(search)
+            }
+        }
+        if (selectedCards == null || R.string.settings_section_proxy_title in selectedCards) {
+            SettingsCardSlot(R.string.settings_section_proxy_title, modifier = { cardModifier(R.string.settings_section_proxy_title) }) {
+                OtherProxyCard(search)
+            }
+        }
+        if (selectedCards == null || R.string.parental_control in selectedCards) {
+            SettingsCardSlot(R.string.parental_control, modifier = { cardModifier(R.string.parental_control) }) {
+                OtherParentalControlCard(search)
+            }
+        }
+        val searchCtx_Extensions = search.inputValue.isBlank() || stringResource(R.string.modules_title).contains(search.inputValue, true) || stringResource(R.string.modules_ffmpeg).contains(search.inputValue, true) || stringResource(R.string.modules_ffmpeg_description).contains(search.inputValue, true)
+        AnimatedVisibility(
+            visible = (selectedCards == null || R.string.modules_title in selectedCards) && searchCtx_Extensions,
+            enter = settingsCardEnter,
+            exit = settingsCardExit
+        ) {
+            SettingsCardSlot(R.string.modules_title, modifier = { cardModifier(R.string.modules_title).onGloballyPositioned { onCardPosition("extensions", it.positionInRoot().y) } }) {
+                ExtensionsSettingsCard()
+            }
+        }
+
+        val searchCtx_Maintenance = search.inputValue.isBlank() || stringResource(R.string.maintenance_title).contains(search.inputValue, true) || stringResource(R.string.maintenance_open).contains(search.inputValue, true) || stringResource(R.string.maintenance_debug_logging_title).contains(search.inputValue, true) || stringResource(R.string.settings_logging_error_file_description).contains(search.inputValue, true) || stringResource(R.string.logs_action_export).contains(search.inputValue, true) || stringResource(R.string.logs_export_debug_description).contains(search.inputValue, true)
+        AnimatedVisibility(
+            visible = (selectedCards == null || R.string.maintenance_title in selectedCards) && searchCtx_Maintenance,
+            enter = settingsCardEnter,
+            exit = settingsCardExit
+        ) {
+            SettingsCardSlot(R.string.maintenance_title, modifier = { cardModifier(R.string.maintenance_title).onGloballyPositioned { onCardPosition("maintenance", it.positionInRoot().y) } }) {
+                MaintenanceSettingsCard()
+            }
+        }
+
+        val searchCtx_Rescue = search.inputValue.isBlank() || stringResource(R.string.recovery_center).contains(search.inputValue, true) || stringResource(R.string.recovery_center_description).contains(search.inputValue, true)
+        AnimatedVisibility(
+            visible = (selectedCards == null || R.string.recovery_center in selectedCards) && searchCtx_Rescue,
+            enter = settingsCardEnter,
+            exit = settingsCardExit
+        ) {
+            SettingsCardSlot(R.string.recovery_center, modifier = { cardModifier(R.string.recovery_center).onGloballyPositioned { onCardPosition("rescue", it.positionInRoot().y) } }) {
+                RescueCenterSettingsCard()
+            }
+        }
+
+        if (selectedCards == null || R.string.settings_reset in selectedCards) {
+            SettingsCardSlot(R.string.settings_reset, modifier = { cardModifier(R.string.settings_reset) }) {
+                OtherResetCard(search)
+            }
+        }
+    }
+}

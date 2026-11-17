@@ -1,0 +1,234 @@
+package app.mousike.android.components.dialog.common
+
+import app.mousike.android.components.glass.GlassArea
+import app.mousike.android.components.glass.glassOverlayPaint
+import app.mousike.android.components.glass.forArea
+import app.mousike.android.components.glass.glassAreaContour
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.shadow
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
+import app.mousike.android.utils.isLandscape
+import app.mousike.android.utils.semiBold
+import app.mousike.android.colorPalette
+import app.mousike.android.surfaceColor
+import app.mousike.android.typography
+import app.mousike.android.uiRoundnessShape
+import app.mousike.android.components.glass.rememberGlassSettings
+import app.mousike.android.components.glass.glassMaterial
+import app.mousike.android.components.glass.GlassDialogWindow
+import app.mousike.android.components.glass.LocalGlassMenuHost
+import app.mousike.android.components.glass.canHostGlassDialog
+import app.mousike.android.components.glass.glassRenderer
+import app.mousike.android.components.glass.GlassMaterialContainerScope
+import app.mousike.android.components.glass.LocalGlassBackdrop
+import app.mousike.android.components.glass.LocalIndependentGlassBackdrop
+import app.mousike.android.components.glass.LocalGlassContainerBackdrop
+import app.mousike.android.components.glass.LocalGlassMaterialSource
+import app.mousike.android.components.glass.usesGlassMaterial
+import app.mousike.android.components.glass.backdrop.backdrops.rememberCanvasBackdrop
+
+/** Shared dialog surface with bounded width and height. */
+@Composable
+fun DialogFrame(
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    title: String? = null,
+    horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
+    footer: (@Composable ColumnScope.() -> Unit)? = null,
+    bodyPadding: PaddingValues = PaddingValues(24.dp),
+    content: @Composable ColumnScope.() -> Unit
+) {
+    if (LocalDialogPresentation.current == null) {
+        DialogPresence(visible = true) {
+            DialogFrame(onDismiss, modifier, title, horizontalAlignment, footer, bodyPadding, content)
+        }
+        return
+    }
+    val presentation = requireNotNull(LocalDialogPresentation.current)
+    val interactive = presentation.interactive
+    val cardBounds = remember { mutableStateOf(Rect.Zero) }
+    val glass = rememberGlassSettings()
+    val glassHost = LocalGlassMenuHost.current
+    val sameWindow = glassHost?.dialogs?.windowRoot === LocalView.current.rootView
+    val useGlass = glass.usesGlassMaterial(GlassArea.Dialogs)
+    val hasBackdrop = LocalIndependentGlassBackdrop.current != null || glassHost?.modalBackdrop != null
+    val useSharedHost = canHostGlassDialog(glass, glassRenderer(glass), sameWindow && hasBackdrop)
+    val shape = uiRoundnessShape()
+    val surface = surfaceColor(colorPalette().background1)
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp.dp
+    val screenHeightDp = LocalConfiguration.current.screenHeightDp.dp
+    val maxWidth =
+        if (isLandscape) Dialog.MAX_WIDTH_LANDSCAPE else Dialog.MAX_WIDTH_PORTRAIT
+    val maxHeight =
+        if (isLandscape) Dialog.MAX_HEIGHT_LANDSCAPE else Dialog.MAX_HEIGHT_PORTRAIT
+
+    GlassDialogWindow(
+        useSharedHost = useSharedHost,
+        onDismissRequest = { if (presentation.interactive) onDismiss() },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = interactive,
+            dismissOnClickOutside = interactive
+        )
+    ) {
+        if (!useSharedHost) NativeDialogDimming(presentation)
+        val transparentSource = rememberCanvasBackdrop {}
+        val materialSource = if (useSharedHost) LocalGlassBackdrop.current else transparentSource
+        val focusManager = LocalFocusManager.current
+        LaunchedEffect(interactive) { if (!interactive) focusManager.clearFocus(force = true) }
+        CompositionLocalProvider(
+            LocalDialogPresentation provides null,
+            LocalDialogInput provides presentation
+        ) {
+            Box(
+                modifier = Modifier.fillMaxWidth().testTag("dialogFrameViewport")
+                    .onPreviewKeyEvent { !presentation.interactive }
+                    .pointerInput(onDismiss) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            if (!cardBounds.value.contains(down.position)) {
+                                down.consume()
+                                val up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                                up?.consume()
+                                if (up != null && presentation.interactive) onDismiss()
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = modifier
+                        .testTag("dialogFrameCard")
+                        .onGloballyPositioned { cardBounds.value = it.boundsInParent() }
+                        .then(if (interactive) Modifier else Modifier
+                            .clearAndSetSemantics { }
+                            .pointerInput(Unit) {
+                                awaitPointerEventScope {
+                                    while (true) {
+                                        awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
+                                    }
+                                }
+                            })
+                        .wrapContentSize()
+                        .sizeIn(
+                            maxWidth = screenWidthDp * maxWidth,
+                            maxHeight = screenHeightDp * maxHeight
+                        )
+                        // Tight width prevents marquee children from repeatedly changing the window size.
+                        .width(screenWidthDp * maxWidth)
+                        .padding(16.dp)
+                        .graphicsLayer {
+                            val motion = presentation.motion.value
+                            alpha = dialogFadeAlpha(motion)
+                            scaleX = dialogScale(motion)
+                            scaleY = scaleX
+                        }
+                        .then(if (useGlass) Modifier else Modifier
+                            .shadow(8.dp, shape, clip = false)
+                            .background(surface, shape)
+                            .glassAreaContour(glass, GlassArea.Dialogs, shape)),
+                ) {
+                    GlassMaterialContainerScope(
+                        modifier = Modifier,
+                        sectionFilm = if (useGlass) null else surface,
+                        materialSource = if (useGlass) materialSource else null,
+                        material = if (useGlass) ({ exported -> Modifier.glassMaterial(
+                            glass.forArea(GlassArea.Dialogs), shape, menu = true, filmColor = surface,
+                            ownBackdrop = materialSource, separateWindow = !useSharedHost,
+                            excludeBottomRim = false,
+                            exportedBackdrop = exported,
+                        ) }) else null,
+                    ) { plate ->
+                        // The plate owns its clip; the footer can stretch past it during Jelly.
+                        Box(Modifier.matchParentSize()
+                            .glassOverlayPaint(if (useGlass) glass.forArea(GlassArea.Dialogs).film else surface.alpha)
+                            .then(plate))
+                        Column(Modifier.fillMaxWidth().testTag(if (useGlass) "dialogFrameGlass" else "dialogFrameNative")) {
+                        // Shared-window actions sample the child-free visible plate. Native
+                        // windows retain direct alpha compositing: sampling their transparent
+                        // tint export again would apply that same parent film twice.
+                        val childSource = if (useGlass && useSharedHost) LocalGlassContainerBackdrop.current
+                            else LocalGlassMaterialSource.current
+                        CompositionLocalProvider(LocalGlassMaterialSource provides childSource) {
+                            title?.let {
+                                Column(
+                                    modifier = Modifier
+                                        .testTag("dialogFrameHeader")
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp, vertical = 20.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    BasicText(
+                                        text = it,
+                                        modifier = Modifier.fillMaxWidth().testTag("dialogFrameTitle"),
+                                        style = typography().l.semiBold.copy(
+                                            color = colorPalette().text,
+                                            textAlign = TextAlign.Center
+                                        )
+                                    )
+                                }
+                            }
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .testTag("dialogFrameBody")
+                                    .clipToBounds()
+                                    .fillMaxWidth()
+                                    .padding(bodyPadding),
+                                horizontalAlignment = horizontalAlignment,
+                                content = content
+                            )
+                            footer?.let {
+                                Column(
+                                    modifier = Modifier
+                                        .testTag("dialogFrameFooter")
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                                    horizontalAlignment = horizontalAlignment,
+                                    content = it
+                                )
+                            }
+                        }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

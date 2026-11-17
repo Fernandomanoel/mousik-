@@ -1,0 +1,268 @@
+package app.mousike.android.ui.screens.searchresult
+import app.mousike.android.utils.showButtonPlayerVideoDefault
+import app.mousike.android.components.navigation.rememberTopContentInsetProvider
+
+import app.mousike.android.components.search.SearchResultHeaderActions
+import app.mousike.android.components.search.SearchResultHeaderIcon
+import android.annotation.SuppressLint
+import android.net.Uri
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.unit.dp
+import androidx.media3.common.util.UnstableApi
+import androidx.navigation.NavController
+import app.mousike.android.R
+import app.mousike.android.LocalPlayerServiceBinder
+import app.mousike.android.enums.NavRoutes
+import app.mousike.android.components.navigation.Skeleton
+import app.mousike.android.ui.components.themed.Title
+
+import app.mousike.android.utils.disableScrollingTextKey
+import app.mousike.android.utils.parentalControlEnabledKey
+import app.mousike.android.utils.preferences
+import app.mousike.android.utils.rememberPreference
+import app.mousike.android.utils.searchResultScreenTabIndexKey
+import app.mousike.android.utils.showButtonPlayerVideoKey
+import androidx.compose.foundation.text.BasicText
+import app.mousike.android.typography
+import androidx.compose.material3.Icon
+import app.mousike.android.components.ui.UiIconButton as IconButton
+import app.mousike.android.colorPalette
+import app.mousike.android.components.menu.GlassDropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Text
+import app.mousike.android.enums.ContentType
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import app.mousike.android.utils.Preference
+import app.mousike.android.utils.filterContentTypeKey
+import app.mousike.android.uiRoundnessShape
+
+
+fun String.toBooleanArray(): BooleanArray = this.map { it == '1' }.toBooleanArray()
+fun BooleanArray.toPrefString(): String = joinToString(separator = "") { if (it) "1" else "0" }
+
+@ExperimentalTextApi
+@SuppressLint("SuspiciousIndentation")
+@ExperimentalFoundationApi
+@ExperimentalAnimationApi
+@ExperimentalComposeUiApi
+@UnstableApi
+@Composable
+fun SearchResultScreen(
+    navController: NavController,
+    miniPlayer: @Composable () -> Unit = {},
+    query: String,
+    onSearchAgain: () -> Unit
+) {
+    val context = LocalContext.current
+    val binder = LocalPlayerServiceBinder.current
+    val saveableStateHolder = rememberSaveableStateHolder()
+    val (tabIndex, onTabIndexChanges) = rememberPreference(searchResultScreenTabIndexKey, 0)
+
+    val hapticFeedback = LocalHapticFeedback.current
+
+    val isVideoEnabled = LocalContext.current.preferences.getBoolean(showButtonPlayerVideoKey, showButtonPlayerVideoDefault)
+    val parentalControlEnabled by rememberPreference(parentalControlEnabledKey, false)
+
+    val disableScrollingText by rememberPreference(disableScrollingTextKey, false)
+
+    val (filterContentType, onFilterContentTypeChanged) = rememberPreference(filterContentTypeKey, ContentType.All)
+    val showFilterMenu = remember { mutableStateOf(false) }
+
+    val (gridStatesPref, onGridStatesPrefChanged) = rememberPreference(Preference.SEARCH_RESULT_GRID_STATES.key, Preference.SEARCH_RESULT_GRID_STATES.default)
+    val gridStates = remember(gridStatesPref) { gridStatesPref.toBooleanArray() }
+    val useGrid = gridStates[tabIndex]
+    val setUseGrid: (Boolean) -> Unit = { newValue ->
+        val arr = gridStates.copyOf()
+        arr[tabIndex] = newValue
+        onGridStatesPrefChanged(arr.toPrefString())
+    }
+
+    val editQuery: () -> Unit = {
+        navController.navigate("${NavRoutes.search.name}?text=${Uri.encode(query)}")
+    }
+    val showLayoutToggle = tabIndex in listOf(1, 4, 5, 6)
+
+    val headerContent: @Composable (textButton: (@Composable () -> Unit)?) -> Unit = {
+        Title(
+            title = stringResource(R.string.search_results_for),
+            verticalPadding = 4.dp
+        )
+        Title(
+            title = query,
+            icon = R.drawable.pencil,
+            onClick = editQuery,
+            enableClick = false,
+            verticalPadding = 4.dp,
+            trailingIcon = {
+                SearchResultHeaderActions(
+                    showLayoutToggle = showLayoutToggle,
+                    onEditQuery = editQuery,
+                ) {
+                    Box {
+                        SearchResultHeaderIcon(
+                            icon = R.drawable.discover,
+                            contentDescription = stringResource(R.string.accessibility_filter),
+                            onClick = { showFilterMenu.value = true },
+                        ) {
+                            IconButton(onClick = { showFilterMenu.value = true }) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.discover),
+                                    contentDescription = stringResource(R.string.accessibility_filter),
+                                    tint = colorPalette().text
+                                )
+                            }
+                        }
+                        GlassDropdownMenu(
+                            expanded = showFilterMenu.value,
+                            containerColor = colorPalette().background0,
+                            onDismissRequest = { showFilterMenu.value = false },
+                            shape = uiRoundnessShape()
+                        ) {
+                            ContentType.entries.forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(type.textName, color = colorPalette().text) },
+                                    leadingIcon = {
+                                        Icon(
+                                            painter = painterResource(id = type.icon),
+                                            contentDescription = null,
+                                            tint = colorPalette().text
+                                        )
+                                    },
+                                    onClick = {
+                                        onFilterContentTypeChanged(type)
+                                        showFilterMenu.value = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    if (showLayoutToggle) {
+                        SearchResultHeaderIcon(
+                            icon = if (useGrid) R.drawable.sort_vertical else R.drawable.sort_grid,
+                            contentDescription = stringResource(R.string.accessibility_switch_mode),
+                            onClick = { setUseGrid(!useGrid) },
+                        ) {
+                            IconButton(onClick = { setUseGrid(!useGrid) }) {
+                                Icon(
+                                    painter = painterResource(id = if (useGrid) R.drawable.sort_vertical else R.drawable.sort_grid),
+                                    contentDescription = stringResource(R.string.accessibility_switch_mode),
+                                    tint = colorPalette().text
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        )
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                painter = painterResource(id = filterContentType.icon),
+                contentDescription = null,
+                tint = colorPalette().textSecondary,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            BasicText(
+                text = filterContentType.textName,
+                style = typography().xs.copy(color = colorPalette().textSecondary)
+            )
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+    }
+
+    val emptyItemsText = stringResource(R.string.search_no_results_message)
+
+    val topContentInset = rememberTopContentInsetProvider(hasNavBar = !app.mousike.android.utils.hideBarsInLandscapeMobile())
+
+    Skeleton(
+        navController,
+        tabIndex,
+        onTabIndexChanges,
+        miniPlayer,
+        topInsetHandledByContent = true,
+        topContentInsetProvider = topContentInset,
+        navBarContent = { item ->
+            item(0, stringResource(R.string.library_songs_title), R.drawable.musical_notes)
+            item(1, stringResource(R.string.library_albums_title), R.drawable.album)
+            item(2, stringResource(R.string.library_artists_title), R.drawable.artist)
+            item(3, stringResource(R.string.search_videos_title), R.drawable.video)
+            item(4, stringResource(R.string.library_playlists_title), R.drawable.playlist)
+            item(5, stringResource(R.string.search_featured_title), R.drawable.featured_playlist)
+            item(6, stringResource(R.string.podcast_title), R.drawable.podcast)
+        }
+    ) { currentTabIndex ->
+        saveableStateHolder.SaveableStateProvider(currentTabIndex) {
+            when (currentTabIndex) {
+                0, 2, 3 -> {
+                    OnlineSearchList(
+                        topContentInsetProvider = topContentInset,
+                        query = query,
+                        tabIndex = currentTabIndex,
+                        filterContentType = filterContentType,
+                        navController = navController,
+                        disableScrollingText = disableScrollingText,
+                        // Artists strip rides in the list header (below the top inset, scrolls with results)
+                        headerContent = { textButton ->
+                            headerContent(textButton)
+                            if (currentTabIndex == 0) SearchArtistsStrip(query, navController)
+                        },
+                        emptyItemsText = emptyItemsText
+                    )
+                }
+
+                1, 4, 5, 6 -> {
+                    if (useGrid) {
+                        OnlineSearchGrid(
+                            topContentInsetProvider = topContentInset,
+                            query = query,
+                            tabIndex = currentTabIndex,
+                            filterContentType = filterContentType,
+                            navController = navController,
+                            disableScrollingText = disableScrollingText,
+                            headerContent = headerContent,
+                            emptyItemsText = emptyItemsText
+                        )
+                    } else {
+                        OnlineSearchList(
+                            topContentInsetProvider = topContentInset,
+                            query = query,
+                            tabIndex = currentTabIndex,
+                            filterContentType = filterContentType,
+                            navController = navController,
+                            disableScrollingText = disableScrollingText,
+                            headerContent = headerContent,
+                            emptyItemsText = emptyItemsText
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+
+
