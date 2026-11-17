@@ -333,7 +333,7 @@ fun lastUsedRelativeText(context: Context, lastUsed: Long?, nowMillis: Long = Sy
 
 /** Deterministic backgrounds of the initials avatar (index by [faceInitialsColorIndex]). */
 private val INITIALS_BACKGROUNDS = listOf(
-    Color(0xFF7B4FD8),
+    Color(0xFF1AA34A),
     Color(0xFF1E88E5),
     Color(0xFF2E9E5B),
     Color(0xFFE8842C),

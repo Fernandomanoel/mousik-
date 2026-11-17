@@ -246,6 +246,44 @@ fun ProfileScreen(
                         description = stringResource(R.string.theme_store_preview_description),
                         onClick = { navController.navigate(app.n_zik.android.enums.NavRoutes.themeStore.name) },
                     )
+                    val photoContext = androidx.compose.ui.platform.LocalContext.current
+                    val photoScope = androidx.compose.runtime.rememberCoroutineScope()
+                    var bgPhoto by app.n_zik.android.utils.rememberPreference(app.n_zik.android.components.theme.appBackgroundPhotoKey, "")
+                    val photoPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+                        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+                    ) { uri ->
+                        uri ?: return@rememberLauncherForActivityResult
+                        photoScope.launch(app.n_zik.android.utils.coroutines.NzikDispatchers.DATA) {
+                            // Unique name so the preference change reloads the image
+                            val out = java.io.File(photoContext.filesDir, "app_bg_${System.currentTimeMillis()}.jpg")
+                            val ok = runCatching {
+                                photoContext.contentResolver.openInputStream(uri)?.use { input -> out.outputStream().use { input.copyTo(it) } }
+                            }.isSuccess
+                            if (ok) {
+                                if (bgPhoto.isNotBlank()) java.io.File(bgPhoto).delete()
+                                bgPhoto = out.absolutePath
+                            }
+                        }
+                    }
+                    ProfileStateActionCard(
+                        icon = R.drawable.images_sharp,
+                        title = "Foto de fundo",
+                        description = "Escolha uma foto da galeria para o fundo do app.",
+                        onClick = {
+                            photoPicker.launch(
+                                androidx.activity.result.PickVisualMediaRequest(
+                                    androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
+                            )
+                        },
+                    )
+                    if (bgPhoto.isNotBlank())
+                        ProfileStateActionCard(
+                            icon = R.drawable.trash,
+                            title = "Remover foto de fundo",
+                            description = "Volta ao fundo liso do tema.",
+                            onClick = { java.io.File(bgPhoto).delete(); bgPhoto = "" },
+                        )
                 }
             }
             if (page != null) {

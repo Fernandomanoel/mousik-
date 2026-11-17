@@ -49,7 +49,7 @@ fun PlayerCoveredPage(
         LocalGlassOpticalUnderlayCovered provides cheapOptics,
     ) {
         Layout(
-            content = content,
+            content = { app.n_zik.android.components.theme.AppPhotoBackground(content) },
             modifier = modifier
                 .blockGlassCoveredInput(covered)
                 .then(if (covered) Modifier.clearAndSetSemantics { } else Modifier)

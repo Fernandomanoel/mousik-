@@ -129,10 +129,10 @@ internal fun storagePayloadBytes(allocated: Long, logical: Long): Long =
 
 internal enum class StorageCategory(val label: Int, val description: Int, val color: Color) {
     IMAGES(R.string.storage_breakdown_cached_images, R.string.storage_info_images, Color(0xFFE09B40)),
-    STREAMING(R.string.storage_breakdown_streamed_audio, R.string.storage_info_streaming, Color(0xFF9B70D0)),
+    STREAMING(R.string.storage_breakdown_streamed_audio, R.string.storage_info_streaming, Color(0xFF2EC4B6)),
     DOWNLOADS(R.string.storage_breakdown_downloaded_audio, R.string.storage_info_downloads, Color(0xFF43A064)),
     WAVEFORMS(R.string.storage_breakdown_waveforms, R.string.storage_info_waveforms, Color(0xFF44A9A7)),
-    THEMES(R.string.storage_breakdown_themes, R.string.storage_info_themes, Color(0xFF8A77DD)),
+    THEMES(R.string.storage_breakdown_themes, R.string.storage_info_themes, Color(0xFF7FD6A8)),
     LYRICS(R.string.storage_breakdown_lyrics, R.string.storage_info_lyrics, Color(0xFF56A7DB)),
     COVERS(R.string.storage_breakdown_custom_covers, R.string.storage_info_covers, Color(0xFFCA6A96)),
     NETWORK(R.string.storage_breakdown_network, R.string.storage_info_network, Color(0xFF6B9AC0)),

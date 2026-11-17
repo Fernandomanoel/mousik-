@@ -154,7 +154,7 @@ internal data class RewindColors(
         val fallback = RewindColors(
             ink = Color(0xFF08070C),
             cream = Color(0xFFFFF6E6),
-            purple = Color(0xFF461CF4),
+            purple = Color(0xFF0E6B3A),
             pink = Color(0xFFFF4B98),
             red = Color(0xFFE83B2F),
             orange = Color(0xFFFF5A2E),

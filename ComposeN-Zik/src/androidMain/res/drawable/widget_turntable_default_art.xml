@@ -4,7 +4,7 @@
     <!-- Circular gradient background -->
     <item>
         <shape android:shape="oval">
-            <gradient android:angle="135" android:startColor="#FF5A2CA0" android:centerColor="#FF330080" android:endColor="#FF6E58B7" android:type="linear" />
+            <gradient android:angle="135" android:startColor="#FF14733A" android:centerColor="#FF0B3D20" android:endColor="#FF1DB954" android:type="linear" />
         </shape>
     </item>
     <!-- Centered app icon -->

@@ -216,9 +216,7 @@ fun SearchResultScreen(
     ) { currentTabIndex ->
         saveableStateHolder.SaveableStateProvider(currentTabIndex) {
             when (currentTabIndex) {
-                0, 2, 3 -> androidx.compose.foundation.layout.Column {
-                    if (currentTabIndex == 0) SearchArtistsStrip(query, navController)
-                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.weight(1f)) {
+                0, 2, 3 -> {
                     OnlineSearchList(
                         topContentInsetProvider = topContentInset,
                         query = query,
@@ -226,10 +224,13 @@ fun SearchResultScreen(
                         filterContentType = filterContentType,
                         navController = navController,
                         disableScrollingText = disableScrollingText,
-                        headerContent = headerContent,
+                        // Artists strip rides in the list header (below the top inset, scrolls with results)
+                        headerContent = { textButton ->
+                            headerContent(textButton)
+                            if (currentTabIndex == 0) SearchArtistsStrip(query, navController)
+                        },
                         emptyItemsText = emptyItemsText
                     )
-                    }
                 }
 
                 1, 4, 5, 6 -> {
